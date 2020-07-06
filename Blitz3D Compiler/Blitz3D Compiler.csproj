@@ -3,11 +3,17 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>Blitz3D.Compiler</RootNamespace>
+    <RootNamespace>Blitz3D</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Converting\" />
+    <Folder Include="Generating\" />
+    <Folder Include="Parsing\" />
+  </ItemGroup>
 
 </Project>

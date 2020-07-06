@@ -1,5 +1,3 @@
-//#include "../stdutil/std.h"
-
 using System.Collections.Generic;
 
 public enum DECL
@@ -28,25 +26,16 @@ public class Decl
 		kind = k;
 		defType = d;
 	}
-	//~Decl(){}
 
-	public virtual void getName(ref string buff)//was char*
+	public virtual void getName(ref string buff)
 	{
 		buff = name;
-		//int sz = name.Length;
-		//memcpy(buff, name.data(), sz);
-		//buff[sz] = 0;
 	}
 }
 
 public class DeclSeq
 {
 	public List<Decl> decls = new List<Decl>();
-	//public DeclSeq(){}
-	//~DeclSeq()
-	//{
-	//    for (;!decls.empty(); decls.pop_back()) delete decls.back();
-	//}
 
 	public Decl findDecl(string s)
 	{

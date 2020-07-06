@@ -93,80 +93,80 @@ public class Toker
 {
 	//private int chars_toked;
 
-	private static Dictionary<string,int> alphaTokes = new Dictionary<string, int>();
-	private static Dictionary<string,int> lowerTokes = new Dictionary<string, int>();
+	private static Dictionary<string,Keyword> alphaTokes = new Dictionary<string, Keyword>();
+	private static Dictionary<string,Keyword> lowerTokes = new Dictionary<string, Keyword>();
 
 	private static bool makeKeywords_made;
 	private static void makeKeywords()
 	{
 		if(makeKeywords_made) return;
 
-		alphaTokes["Dim"] = (int)DIM;
-		alphaTokes["Goto"] = (int)GOTO;
-		alphaTokes["Gosub"] = (int)GOSUB;
-		alphaTokes["Return"] = (int)RETURN;
-		alphaTokes["Exit"] = (int)EXIT;
-		alphaTokes["If"] = (int)IF;
-		alphaTokes["Then"] = (int)THEN;
-		alphaTokes["Else"] = (int)ELSE;
-		alphaTokes["EndIf"] = (int)ENDIF;
-		alphaTokes["End If"] = (int)ENDIF;
-		alphaTokes["ElseIf"] = (int)ELSEIF;
-		alphaTokes["Else If"] = (int)ELSEIF;
-		alphaTokes["While"] = (int)WHILE;
-		alphaTokes["Wend"] = (int)WEND;
-		alphaTokes["For"] = (int)FOR;
-		alphaTokes["To"] = (int)TO;
-		alphaTokes["Step"] = (int)STEP;
-		alphaTokes["Next"] = (int)NEXT;
-		alphaTokes["Function"] = (int)FUNCTION;
-		alphaTokes["End Function"] = (int)ENDFUNCTION;
-		alphaTokes["Type"] = (int)TYPE;
-		alphaTokes["End Type"] = (int)ENDTYPE;
-		alphaTokes["Each"] = (int)EACH;
-		alphaTokes["Local"] = (int)LOCAL;
-		alphaTokes["Global"] = (int)GLOBAL;
-		alphaTokes["Field"] = (int)FIELD;
-		alphaTokes["Const"] = (int)BBCONST;
-		alphaTokes["Select"] = (int)SELECT;
-		alphaTokes["Case"] = (int)CASE;
-		alphaTokes["Default"] = (int)DEFAULT;
-		alphaTokes["End Select"] = (int)ENDSELECT;
-		alphaTokes["Repeat"] = (int)REPEAT;
-		alphaTokes["Until"] = (int)UNTIL;
-		alphaTokes["Forever"] = (int)FOREVER;
-		alphaTokes["Data"] = (int)DATA;
-		alphaTokes["Read"] = (int)READ;
-		alphaTokes["Restore"] = (int)RESTORE;
-		alphaTokes["Abs"] = (int)ABS;
-		alphaTokes["Sgn"] = (int)SGN;
-		alphaTokes["Mod"] = (int)MOD;
-		alphaTokes["Pi"] = (int)PI;
-		alphaTokes["True"] = (int)BBTRUE;
-		alphaTokes["False"] = (int)BBFALSE;
-		alphaTokes["Int"] = (int)BBINT;
-		alphaTokes["Float"] = (int)BBFLOAT;
-		alphaTokes["Str"] = (int)BBSTR;
-		alphaTokes["Include"] = (int)INCLUDE;
+		alphaTokes["Dim"] = DIM;
+		alphaTokes["Goto"] = GOTO;
+		alphaTokes["Gosub"] = GOSUB;
+		alphaTokes["Return"] = RETURN;
+		alphaTokes["Exit"] = EXIT;
+		alphaTokes["If"] = IF;
+		alphaTokes["Then"] = THEN;
+		alphaTokes["Else"] = ELSE;
+		alphaTokes["EndIf"] = ENDIF;
+		alphaTokes["End If"] = ENDIF;
+		alphaTokes["ElseIf"] = ELSEIF;
+		alphaTokes["Else If"] = ELSEIF;
+		alphaTokes["While"] = WHILE;
+		alphaTokes["Wend"] = WEND;
+		alphaTokes["For"] = FOR;
+		alphaTokes["To"] = TO;
+		alphaTokes["Step"] = STEP;
+		alphaTokes["Next"] = NEXT;
+		alphaTokes["Function"] = FUNCTION;
+		alphaTokes["End Function"] = ENDFUNCTION;
+		alphaTokes["Type"] = TYPE;
+		alphaTokes["End Type"] = ENDTYPE;
+		alphaTokes["Each"] = EACH;
+		alphaTokes["Local"] = LOCAL;
+		alphaTokes["Global"] = GLOBAL;
+		alphaTokes["Field"] = FIELD;
+		alphaTokes["Const"] = BBCONST;
+		alphaTokes["Select"] = SELECT;
+		alphaTokes["Case"] = CASE;
+		alphaTokes["Default"] = DEFAULT;
+		alphaTokes["End Select"] = ENDSELECT;
+		alphaTokes["Repeat"] = REPEAT;
+		alphaTokes["Until"] = UNTIL;
+		alphaTokes["Forever"] = FOREVER;
+		alphaTokes["Data"] = DATA;
+		alphaTokes["Read"] = READ;
+		alphaTokes["Restore"] = RESTORE;
+		alphaTokes["Abs"] = ABS;
+		alphaTokes["Sgn"] = SGN;
+		alphaTokes["Mod"] = MOD;
+		alphaTokes["Pi"] = PI;
+		alphaTokes["True"] = BBTRUE;
+		alphaTokes["False"] = BBFALSE;
+		alphaTokes["Int"] = BBINT;
+		alphaTokes["Float"] = BBFLOAT;
+		alphaTokes["Str"] = BBSTR;
+		alphaTokes["Include"] = INCLUDE;
 
-		alphaTokes["New"] = (int)BBNEW;
-		alphaTokes["Delete"] = (int)BBDELETE;
-		alphaTokes["First"] = (int)FIRST;
-		alphaTokes["Last"] = (int)LAST;
-		alphaTokes["Insert"] = (int)INSERT;
-		alphaTokes["Before"] = (int)BEFORE;
-		alphaTokes["After"] = (int)AFTER;
-		alphaTokes["Null"] = (int)BBNULL;
-		alphaTokes["Object"] = (int)OBJECT;
-		alphaTokes["Handle"] = (int)BBHANDLE;
+		alphaTokes["New"] = BBNEW;
+		alphaTokes["Delete"] = BBDELETE;
+		alphaTokes["First"] = FIRST;
+		alphaTokes["Last"] = LAST;
+		alphaTokes["Insert"] = INSERT;
+		alphaTokes["Before"] = BEFORE;
+		alphaTokes["After"] = AFTER;
+		alphaTokes["Null"] = BBNULL;
+		alphaTokes["Object"] = OBJECT;
+		alphaTokes["Handle"] = BBHANDLE;
 
-		alphaTokes["And"] = (int)AND;
-		alphaTokes["Or"] = (int)OR;
-		alphaTokes["Xor"] = (int)XOR;
-		alphaTokes["Not"] = (int)NOT;
-		alphaTokes["Shl"] = (int)SHL;
-		alphaTokes["Shr"] = (int)SHR;
-		alphaTokes["Sar"] = (int)SAR;
+		alphaTokes["And"] = AND;
+		alphaTokes["Or"] = OR;
+		alphaTokes["Xor"] = XOR;
+		alphaTokes["Not"] = NOT;
+		alphaTokes["Shl"] = SHL;
+		alphaTokes["Shr"] = SHR;
+		alphaTokes["Sar"] = SAR;
 
 		foreach(var entry in alphaTokes)
 		{
@@ -174,36 +174,27 @@ public class Toker
 		}
 		makeKeywords_made = true;
 	}
-	public Toker(StreamReader @in)
+	public Toker(StreamReader input)
 	{
-		this.@in = @in;
+		this.input = input;
 		curr_row = -1;
 		makeKeywords();
 		nextline();
 	}
 
-	public int pos => ((curr_row) << 16) | (tokes[curr_toke].from);
-	public Keyword curr => tokes[curr_toke].n;
+	public int Pos => ((curr_row) << 16) | (tokes[curr_toke].from);
+	public Keyword curr => tokes[curr_toke].Keyword;
 
 	public Keyword next()
 	{
 		if(++curr_toke == tokes.Count) nextline();
 		return curr;
 	}
-	public string text
-	{
-		get
-		{
-			int from = tokes[curr_toke].from;
-			int to = tokes[curr_toke].to;
-			return line.Substring(from, to - from);
-		}
-	}
-	public Keyword lookAhead(int n) => tokes[curr_toke + n].n;
+	public string text => tokes[curr_toke].Text;
 
-	//public static int chars_toked;
+	public Keyword lookAhead(int n) => tokes[curr_toke + n].Keyword;
 
-	public static Dictionary<string, int> getKeywords()
+	public static Dictionary<string, Keyword> getKeywords()
 	{
 		makeKeywords();
 		return alphaTokes;
@@ -211,11 +202,11 @@ public class Toker
 
 	private class Toke
 	{
-		public readonly Keyword n;
+		public readonly Keyword Keyword;
 		public readonly int from, to;
 		public Toke(Keyword n, int f, int t, string line)
 		{
-			this.n = n;
+			this.Keyword = n;
 			this.from = f;
 			this.to = t;
 			this.line = line;
@@ -223,27 +214,28 @@ public class Toker
 
 		private readonly string line;
 
-		public string Text => line?.Substring(from, to - from)??null;
+		public string Text => line.Substring(from, to - from);
 	};
 
-	private StreamReader @in;
+	private StreamReader input;
 	private string line;
 	private List<Toke> tokes = new List<Toke>();
+	private int curr_row, curr_toke;
+
 	private void nextline()
 	{
-		++curr_row;
+		curr_row++;
 		curr_toke = 0;
 		tokes.Clear();
-		if(@in.EndOfStream)
+		if(input.EndOfStream)
 		{
 			line = unchecked((char)-1).ToString();//EOF
 			tokes.Add(new Toke((Keyword)(-1)/*EOF*/, 0, 1, line));
 			return;
 		}
 
-		line = @in.ReadLine();
+		line = input.ReadLine();
 		line += '\n';
-		//chars_toked += line.Length;
 
 		for(int k = 0; k < line.Length;)
 		{
@@ -312,7 +304,7 @@ public class Toker
 					}
 				}
 
-				if(!lowerTokes.TryGetValue(ident, out int value))
+				if(!lowerTokes.TryGetValue(ident, out Keyword value))
 				{
 					StringBuilder builder = new StringBuilder(line);
 					for(int i = from; i < k; ++i)
@@ -324,7 +316,7 @@ public class Toker
 					continue;
 				}
 
-				tokes.Add(new Toke((Keyword)value, from, k, line));
+				tokes.Add(new Toke(value, from, k, line));
 				continue;
 			}
 			if(c == '\"')
@@ -354,10 +346,9 @@ public class Toker
 		}
 		if(tokes.Count==0)
 		{
-			Environment.Exit(0);
+			throw new Exception();
 		}
 	}
-	private int curr_row, curr_toke;
 
 	private static bool IsHexDigit(int c) => ('0'<=c && c<='9') || ('a'<=c && c<='f') || ('A'<=c && c<='F');
 };

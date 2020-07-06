@@ -715,6 +715,14 @@ public static class symbols
 		linkSymbol("$EntityClass%entity");
 	}
 
+	private static void dllFunctions(LinkSymbol linkSymbol)
+	{
+		linkSymbol("%HasFocus");
+		linkSymbol("%GetSpecialFolder%id%bank");
+		linkSymbol("api_MoveFile$a$b");
+		linkSymbol("%api_GlobalAlloc%a%b");
+	}
+
 	public static void linkSymbols(LinkSymbol linkSymbol)
 	{
 		runtime_link(linkSymbol);
@@ -731,5 +739,7 @@ public static class symbols
 		multiplay_link(linkSymbol);
 		blitz3d_link(linkSymbol);
 		userlibs_link(linkSymbol);
+
+		dllFunctions(linkSymbol);
 	}
 }

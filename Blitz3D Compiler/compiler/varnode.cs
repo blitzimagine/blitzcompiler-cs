@@ -118,11 +118,6 @@ public class ArrayVarNode : VarNode
         exprs = e;
     }
 
-    ~ArrayVarNode()
-    {
-        exprs = null;
-    }
-
     public override void semant(Environ e)
     {
         exprs.semant(e);
@@ -172,11 +167,6 @@ public class FieldVarNode : VarNode
         tag = t;
     }
 
-    ~FieldVarNode()
-    {
-        expr = null;
-    }
-
     public override void semant(Environ e)
     {
         expr = expr.semant(e);
@@ -208,12 +198,6 @@ public class VectorVarNode : VarNode
     {
         expr = e;
         exprs = es;
-    }
-
-    ~VectorVarNode()
-    {
-        expr = null;
-        exprs = null;
     }
 
     public override void semant(Environ e)

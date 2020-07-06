@@ -38,15 +38,6 @@ public class ProgNode : Node
         stmts = ss;
     }
 
-    //~ProgNode()
-    //{
-    //    consts = null;
-    //    structs = null;
-    //    funcs = null;
-    //    datas = null;
-    //    stmts = null;
-    //}
-
     //////////////////
     // The program! //
     //////////////////

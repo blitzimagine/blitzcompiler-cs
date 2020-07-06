@@ -14,38 +14,28 @@ namespace codegen_86
 
 	public class Tile
 	{
-		public Reg want_l, want_r;
-		public int hits, argFrame;
+		public Reg want_l = 0;
+		public Reg want_r = 0;
+		public int hits = 0;
+		public int argFrame = 0;
+
+		private int need = 0;
+		private readonly Tile l, r;
+		private readonly string assem, assem2;
 
 		public Tile(string a, Tile l = null, Tile r = null)
 		{
-			want_l = 0;
-			want_r = 0;
-			hits = 0;
-			argFrame = 0;
-			need = 0;
 			this.l = l;
 			this.r = r;
 			assem = a;
 		}
 		public Tile(string a, string a2, Tile l = null, Tile r = null)
 		{
-			want_l = 0;
-			want_r = 0;
-			hits = 0;
-			argFrame = 0;
-			need = 0;
 			this.l = l;
 			this.r = r;
 			assem = a;
 			assem2 = a2;
 		}
-
-		//~Tile()
-		//{
-		//	l = null;
-		//	r = null;
-		//}
 
 		public void label()
 		{
@@ -97,17 +87,17 @@ namespace codegen_86
 			//if tile needs an argFrame...
 			if(argFrame!=0)
 			{
-				codeFrags.Add("-" + /*itoa*/(argFrame));
+				codeFrags.Add($"-{argFrame}");
 			}
 
-			Reg got_l = 0;
+			Reg got_l;
 			Reg got_r = 0;
 			if(want_l!=0)
 			{
 				want = want_l;
 			}
 
-			ref string @as = ref assem;
+			string @as = assem;
 
 			if(l is null)
 			{
@@ -139,7 +129,7 @@ namespace codegen_86
 					got_r = r.eval(want_r);
 					if(assem2!=null && assem2.Length>0)
 					{
-						@as = ref assem2;
+						@as = assem2;
 					}
 				}
 				if(want_l == got_r || want_r == got_l)
@@ -163,19 +153,12 @@ namespace codegen_86
 			}
 			else if(want_r != got_r) moveReg(want_r, got_r);
 
-			@as = @as.Replace("%l",regs[(int)want_l]);
-			@as = @as.Replace("%r",regs[(int)want_r]);
-			//int i;
-			//while((i = @as.IndexOf("%l")) != -1)
-			//{
-			//	@as.replace(i, 2, regs[want_l]);
-			//}
-			//while((i = @as.IndexOf("%r")) != -1)
-			//{
-			//	@as.replace(i, 2, regs[want_r]);
-			//}
-
-			codeFrags.Add(@as);
+			if(@as.Length>0)
+			{
+				@as = @as.Replace("%l",regs[(int)want_l]);
+				@as = @as.Replace("%r",regs[(int)want_r]);
+				codeFrags.Add(@as);
+			}
 
 			freeReg(got_r);
 			if(want_l != got_l) moveReg(got_l, want_l);
@@ -201,9 +184,7 @@ namespace codegen_86
 			return got_l;
 		}
 
-		private int need;
-		private Tile l, r;
-		private string assem, assem2;
+		
 
 		//reduce to 3 for stress test
 		private const int NUM_REGS = 6;
@@ -255,7 +236,6 @@ namespace codegen_86
 			s += frameSize.ToString();
 			s += "],";
 			s += regs[(int)n];
-			s += '\n';
 			codeFrags.Add(s);
 		}
 
@@ -267,20 +247,20 @@ namespace codegen_86
 			s += regs[(int)n];
 			s += ",[ebp-";
 			s += frameSize.ToString();
-			s += "]\n";
+			s += "]";
 			codeFrags.Add(s);
 			frameSize -= 4;
 		}
 
 		internal static void moveReg(Reg d, Reg s)
 		{
-			string t = "\tmov\t" + regs[(int)d] + ',' + regs[(int)s] + '\n';
+			string t = "\tmov\t" + regs[(int)d] + ',' + regs[(int)s];
 			codeFrags.Add(t);
 		}
 
 		internal static void swapRegs(Reg d, Reg s)
 		{
-			string t = "\txchg\t" + regs[(int)d] + ',' + regs[(int)s] + '\n';
+			string t = "\txchg\t" + regs[(int)d] + ',' + regs[(int)s];
 			codeFrags.Add(t);
 		}
 	}

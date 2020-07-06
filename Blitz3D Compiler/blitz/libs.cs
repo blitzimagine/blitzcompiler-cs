@@ -3,41 +3,22 @@ using System.IO;
 
 public static class libs
 {
-	public static int bcc_ver;
-	public static int lnk_ver;
-	public static int run_ver;
-	public static int dbg_ver;
-
 	//openLibs
-	public static Linker linkerLib;
 	private static Runtime runtimeLib;
 
 	//linkLibs
-	public static Module runtimeModule;
 	public static Environ runtimeEnviron;
 	public static List<string> keyWords = new List<string>();
 	public static List<UserFunc> userFuncs = new List<UserFunc>();
 
-	public static string openLibs()
+	public static void openLibs()
 	{
-		linkerLib = Linker.linkerGetLinker();
 		runtimeLib = Runtime.runtimeGetRuntime();
 
-		bcc_ver = config.VERSION;
-		lnk_ver = linkerLib.version();
-		run_ver = runtimeLib.version();
-
-		if((lnk_ver >> 16) != (bcc_ver >> 16) || (run_ver >> 16) != (bcc_ver >> 16))
-		{
-			return "Library version error";
-		}
-		runtimeModule = linkerLib.createModule();
 		runtimeEnviron = new Environ("", Type.int_type, 0, null);
 
 		keyWords.Clear();
 		userFuncs.Clear();
-
-		return null;
 	}
 
 	public static string linkLibs()
@@ -52,17 +33,12 @@ public static class libs
 	public static void closeLibs()
 	{
 		runtimeEnviron = null;
-		if(linkerLib!=null)
-		{
-			linkerLib.deleteModule(runtimeModule);
-		}
 		if(runtimeLib!=null)
 		{
 			runtimeLib.shutdown();
 		}
 
 		runtimeEnviron = null;
-		linkerLib = null;
 	}
 
 	private static Type @typeof(int c)
@@ -83,17 +59,23 @@ public static class libs
 	{
 		text = "";
 
-		int t = 0;
-
-		for(; ; )
+		int t;
+		for(;;)
 		{
 			while(char.IsWhiteSpace((char)@in.Peek()))
 			{
 				@in.Read();
 			}
-			if(@in.EndOfStream) return curr = 0;
+			if(@in.EndOfStream)
+			{
+				curr = 0;
+				return curr;
+			}
 			t = @in.Read();
-			if(t != ';') break;
+			if(t != ';')
+			{
+				break;
+			}
 			while(!@in.EndOfStream && @in.Read() != '\n') { }
 		}
 
@@ -101,16 +83,19 @@ public static class libs
 		{
 			text += (char)t;
 			while(char.IsLetterOrDigit((char)@in.Peek()) || @in.Peek() == '_') text += (char)@in.Read();
-			return curr = -1;
+			curr = -1;
+			return curr;
 		}
 		if(t == '\"')
 		{
-			while(@in.Peek() != '\"') text = text + (char)@in.Read();
+			while(@in.Peek() != '\"') text += (char)@in.Read();
 			@in.Read();
-			return curr = -2;
+			curr = -2;
+			return curr;
 		}
 
-		return curr = t;
+		curr = t;
+		return curr;
 	}
 
 	private static string linkRuntime()
@@ -124,7 +109,6 @@ public static class libs
 			//internal?
 			if(s[0] == '_')
 			{
-				runtimeModule.addSymbol(("_" + s), pc);
 				continue;
 			}
 
@@ -193,7 +177,6 @@ public static class libs
 			FuncType f = new FuncType(t, @params, false, cfunc);
 			n = n.ToLowerInvariant();
 			runtimeEnviron.funcDecls.insertDecl(n, f, DECL.FUNC);
-			runtimeModule.addSymbol("_f" + n, pc);
 		}
 		return null;
 	}

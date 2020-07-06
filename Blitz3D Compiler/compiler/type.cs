@@ -3,8 +3,6 @@ using System.Collections.Generic;
 
 public class Type
 {
-	//public virtual ~Type() {}
-
 	public virtual bool intType() => false;
 
 	public virtual bool floatType() => false;
@@ -48,8 +46,6 @@ public class FuncType:Type
 		cfunc = cfn;
 	}
 
-	//~FuncType() => @params = null;
-
 	public override FuncType funcType() => this;
 };
 
@@ -79,8 +75,6 @@ public class StructType:Type
 		ident = i;
 		fields = f;
 	}
-
-	//~StructType() => fields = null;
 
 	public override StructType structType() => this;
 

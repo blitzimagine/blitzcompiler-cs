@@ -33,7 +33,10 @@ public class Parser
 		try
 		{
 			StmtSeqNode stmts = parseStmtSeq(STMTS.PROG);
-			if(toker.curr != (Keyword)(-1)/*EOF*/) throw exp("end-of-file");
+			if(toker.curr != (Keyword)(-1)/*EOF*/)
+			{
+				throw exp("end-of-file");
+			}
 			return new ProgNode(consts, structs, funcs, datas, stmts);
 		}
 		catch(Ex)
@@ -66,16 +69,22 @@ public class Parser
 	{
 		for(;;)
 		{
-			while(toker.curr == (Keyword)':' || (scope != STMTS.LINE && toker.curr == (Keyword)'\n')) toker.next();
+			while(toker.curr == (Keyword)':' || (scope != STMTS.LINE && toker.curr == (Keyword)'\n'))
+			{
+				toker.next();
+			}
 			StmtNode result = null;
 
-			int pos = toker.pos;
+			int pos = toker.Pos;
 
 			switch(toker.curr)
 			{
 				case Keyword.INCLUDE:
 				{
-					if(toker.next() != Keyword.STRINGCONST) throw exp("include filename");
+					if(toker.next() != Keyword.STRINGCONST)
+					{
+						throw exp("include filename");
+					}
 					string inc = toker.text;
 					toker.next();
 					inc = inc.Substring(1, inc.Length - 2);
@@ -99,7 +108,10 @@ public class Parser
 					included.Add(incfile);
 
 					StmtSeqNode ss = parseStmtSeq(scope);//a_ptr<StmtSeqNode>
-					if(toker.curr != Keyword.EOF) throw exp("end-of-file");
+					if(toker.curr != (Keyword)(-1))//EOF
+					{
+						throw exp("end-of-file");
+					}
 
 					result = new IncludeNode(incfile, ss/*.release()*/);
 
@@ -163,7 +175,7 @@ public class Parser
 					toker.next();
 					ExprNode expr = parseExpr(false);//a_ptr<ExprNode>
 					StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);//a_ptr<StmtSeqNode>
-					int pos2 = toker.pos;
+					int pos2 = toker.Pos;
 					if(toker.curr != Keyword.WEND) throw exp("'Wend'");
 					toker.next();
 					result = new WhileNode(expr/*.release()*/, stmts2/*.release()*/, pos2);
@@ -175,7 +187,7 @@ public class Parser
 					ExprNode expr = null;
 					StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);//a_ptr<StmtSeqNode>
 					Keyword curr = (Keyword)toker.curr;
-					int pos2 = toker.pos;
+					int pos2 = toker.Pos;
 					if(curr != Keyword.UNTIL && curr != Keyword.FOREVER) throw exp("'Until' or 'Forever'");
 					toker.next();
 					if(curr == Keyword.UNTIL) expr = parseExpr(false);
@@ -229,7 +241,7 @@ public class Parser
 						toker.next();
 						string ident = parseIdent();
 						stmts2 = parseStmtSeq(STMTS.BLOCK);
-						int pos2 = toker.pos;
+						int pos2 = toker.Pos;
 						if(toker.curr != Keyword.NEXT) throw exp("'Next'");
 						toker.next();
 						result = new ForEachNode(var/*.release()*/, ident, stmts2/*.release()*/, pos2);
@@ -249,7 +261,7 @@ public class Parser
 						}
 						else step = new IntConstNode(1);
 						stmts2 = parseStmtSeq(STMTS.BLOCK);
-						int pos2 = toker.pos;
+						int pos2 = toker.Pos;
 						if(toker.curr != Keyword.NEXT) throw exp("'Next'");
 						toker.next();
 						result = new ForNode(var/*.release()*/, from/*.release()*/, to/*.release()*/, step/*.release()*/, stmts2/*.release()*/, pos2);
@@ -315,7 +327,7 @@ public class Parser
 						VarNode var = parseVar();
 						StmtNode stmt = new ReadNode(var);
 						stmt.pos = pos;
-						pos = toker.pos;
+						pos = toker.Pos;
 						stmts.push_back(stmt);
 					} while(toker.curr == (Keyword)',');
 					break;
@@ -360,7 +372,7 @@ public class Parser
 						toker.next();
 						StmtNode stmt = parseArrayDecl();
 						stmt.pos = pos;
-						pos = toker.pos;
+						pos = toker.Pos;
 						stmts.push_back(stmt);
 					} while(toker.curr == (Keyword)',');
 					break;
@@ -371,7 +383,7 @@ public class Parser
 						DeclNode d = parseVarDecl(DECL.LOCAL, false);
 						StmtNode stmt = new DeclStmtNode(d);
 						stmt.pos = pos;
-						pos = toker.pos;
+						pos = toker.Pos;
 						stmts.push_back(stmt);
 					} while(toker.curr == (Keyword)',');
 					break;
@@ -383,7 +395,7 @@ public class Parser
 						DeclNode d = parseVarDecl(DECL.GLOBAL, false);
 						StmtNode stmt = new DeclStmtNode(d);
 						stmt.pos = pos;
-						pos = toker.pos;
+						pos = toker.Pos;
 						stmts.push_back(stmt);
 					} while(toker.curr == (Keyword)',');
 					break;
@@ -406,7 +418,7 @@ public class Parser
 		}
 	}
 
-	private Ex ex(string s) => new Ex(s, toker.pos, incfile);
+	private Ex ex(string s) => new Ex(s, toker.Pos, incfile);
 	private Ex exp(string s) => toker.curr switch
 	{
 		Keyword.NEXT => ex("'Next' without 'For'"),
@@ -429,29 +441,16 @@ public class Parser
 		toker.next();
 		return t;
 	}
-	//private void parseChar(int c)
-	//{
-	//	if(toker.curr != c) throw exp($"'{c}'");
-	//	toker.next();
-	//}
+	
 	private string parseTypeTag()
 	{
 		switch(toker.curr)
 		{
-			case (Keyword)'%':
-				toker.next();
-				return "%";
-			case (Keyword)'#':
-				toker.next();
-				return "#";
-			case (Keyword)'$':
-				toker.next();
-				return "$";
-			case (Keyword)'.':
-				toker.next();
-				return parseIdent();
-			default:
-				return "";
+			case (Keyword)'%':toker.next();return "%";
+			case (Keyword)'#':toker.next();return "#";
+			case (Keyword)'$':toker.next();return "$";
+			case (Keyword)'.':toker.next();return parseIdent();
+			default:return "";
 		}
 	}
 
@@ -514,7 +513,7 @@ public class Parser
 
 		if(toker.curr == Keyword.ELSEIF)
 		{
-			int pos = toker.pos;
+			int pos = toker.Pos;
 			toker.next();
 			IfNode ifnode = parseIf();
 			ifnode.pos = pos;
@@ -537,7 +536,7 @@ public class Parser
 
 	private DeclNode parseVarDecl(DECL kind, bool constant)
 	{
-		int pos = toker.pos;
+		int pos = toker.Pos;
 		string ident = parseIdent();
 		string tag = parseTypeTag();
 		DeclNode d;
@@ -567,7 +566,7 @@ public class Parser
 	}
 	private DimNode parseArrayDecl()
 	{
-		int pos = toker.pos;
+		int pos = toker.Pos;
 		string ident = parseIdent();
 		string tag = parseTypeTag();
 		if(toker.curr != (Keyword)'(') throw exp("'('");
@@ -583,7 +582,7 @@ public class Parser
 	}
 	private DeclNode parseFuncDecl()
 	{
-		int pos = toker.pos;
+		int pos = toker.Pos;
 		string ident = parseIdent();
 		string tag = parseTypeTag();
 		if(toker.curr != (Keyword)'(') throw exp("'('");
@@ -602,7 +601,7 @@ public class Parser
 		StmtSeqNode stmts = parseStmtSeq(STMTS.BLOCK);//a_ptr<StmtSeqNode>
 		if(toker.curr != Keyword.ENDFUNCTION) throw exp("'End Function'");
 		StmtNode ret = new ReturnNode(null);
-		ret.pos = toker.pos;
+		ret.pos = toker.Pos;
 		stmts.push_back(ret);
 		toker.next();
 		DeclNode d = new FuncDeclNode(ident, tag, @params/*.release()*/, stmts/*.release()*/);
@@ -612,7 +611,7 @@ public class Parser
 	}
 	private DeclNode parseStructDecl()
 	{
-		int pos = toker.pos;
+		int pos = toker.Pos;
 		string ident = parseIdent();
 		while(toker.curr == (Keyword)'\n') toker.next();
 		DeclSeqNode fields = new DeclSeqNode();//a_ptr<DeclSeqNode>

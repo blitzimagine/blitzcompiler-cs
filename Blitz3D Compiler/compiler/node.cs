@@ -7,8 +7,6 @@ using System.Collections.Generic;
 
 public class Node
 {
-	//~Node(){}
-
 	//used user funcs...
 	public static HashSet<string> usedfuncs = new HashSet<string>();
 

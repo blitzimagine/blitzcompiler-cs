@@ -20,11 +20,6 @@ public class DeclSeqNode:Node
 	public List<DeclNode> decls = new List<DeclNode>();
 	public DeclSeqNode() { }
 
-	//~DeclSeqNode()
-	//{
-	//    for (; !decls.empty(); decls.pop_back())delete decls.back();
-	//}
-
 	public void proto(DeclSeq d, Environ e)
 	{
 		for(int k = 0; k < decls.Count; ++k)
@@ -101,9 +96,6 @@ public class DeclSeqNode:Node
 	}
 }
 
-//#include "exprnode.h"
-//#include "stmtnode.h"
-
 //'kind' shouldn't really be in Parser...
 //should probably be LocalDeclNode,GlobalDeclNode,ParamDeclNode
 ////////////////////////////
@@ -126,12 +118,6 @@ public class VarDeclNode:DeclNode
 		expr = e;
 		sem_var = null;
 	}
-
-	//~VarDeclNode()
-	//{
-	//    delete expr;
-	//    delete sem_var;
-	//}
 
 	public override void proto(DeclSeq d, Environ e)
 	{
@@ -198,12 +184,6 @@ public class FuncDeclNode:DeclNode
 		@params = p;
 		stmts = ss;
 	}
-
-	//~FuncDeclNode()
-	//{
-	//    delete params;
-	//    delete stmts;
-	//}
 
 	public override void proto(DeclSeq d, Environ e)
 	{
@@ -281,11 +261,6 @@ public class StructDeclNode:DeclNode
 		fields = f;
 	}
 
-	//~StructDeclNode()
-	//{
-	//    delete fields;
-	//}
-
 	public override void proto(DeclSeq d, Environ e)
 	{
 		sem_type = new StructType(ident, new DeclSeq());
@@ -351,11 +326,6 @@ public class DataDeclNode:DeclNode
 	public string str_label;
 	public DataDeclNode(ExprNode e){expr = e;}
 
-	//~DataDeclNode()
-	//{
-	//    delete expr;
-	//}
-
 	public override void proto(DeclSeq d, Environ e)
 	{
 		expr = expr.semant(e);
@@ -408,11 +378,6 @@ public class VectorDeclNode:DeclNode
 		exprs = e;
 		kind = k;
 	}
-
-	//~VectorDeclNode()
-	//{
-	//    delete exprs;
-	//}
 
 	public override void proto(DeclSeq d, Environ env)
 	{

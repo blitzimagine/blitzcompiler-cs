@@ -32,11 +32,6 @@ public class StmtSeqNode: _StmtNode
 	public List<StmtNode> stmts = new List<StmtNode>();
 	public StmtSeqNode(string f){file = f;}
 
-	//~StmtSeqNode()
-	//{
-	//	for(; stmts..Length>0; stmts.pop_back()) delete stmts.back();
-	//}
-
 	public void semant(Environ e)
 	{
 		for(int k = 0; k < stmts.Count; ++k)
@@ -110,11 +105,6 @@ public class IncludeNode: StmtNode
 		stmts = ss;
 	}
 
-	//~IncludeNode()
-	//{
-	//	delete stmts;
-	//}
-
 	public override void semant(Environ e)
 	{
 		label = genLabel();
@@ -143,11 +133,6 @@ public class DeclStmtNode: StmtNode
 		pos = d.pos;
 	}
 
-	//~DeclStmtNode()
-	//{
-	//	delete decl;
-	//}
-
 	public override void semant(Environ e)
 	{
 		decl.proto(e.decls,e);
@@ -174,11 +159,6 @@ public class DimNode: StmtNode
 		tag = t;
 		exprs = e;
 	}
-
-	//~DimNode()
-	//{
-	//	delete exprs;
-	//}
 
 	public override void semant(Environ e)
 	{
@@ -246,12 +226,6 @@ public class AssNode: StmtNode
 		this.expr = expr;
 	}
 
-	//~AssNode()
-	//{
-	//	delete var;
-	//	delete expr;
-	//}
-
 	public override void semant(Environ e)
 	{
 		var.semant(e);
@@ -276,11 +250,6 @@ public class ExprStmtNode: StmtNode
 	{
 		expr = e;
 	}
-
-	//~ExprStmtNode()
-	//{
-	//	delete expr;
-	//}
 
 	public override void semant(Environ e)
 	{
@@ -377,13 +346,6 @@ public class IfNode: StmtNode
 		elseOpt=o;
 	}
 
-	//~IfNode()
-	//{
-	//	delete expr;
-	//	delete stmts;
-	//	delete elseOpt;
-	//}
-
 	public override void semant(Environ e)
 	{
 		expr = expr.semant(e);
@@ -449,12 +411,6 @@ public class WhileNode: StmtNode
 		stmts = s;
 	}
 
-	//~WhileNode()
-	//{
-	//	delete expr;
-	//	delete stmts;
-	//}
-
 	public override void semant(Environ e)
 	{
 		expr = expr.semant(e);
@@ -506,14 +462,7 @@ public class ForNode: StmtNode
 		stepExpr = step;
 		stmts = ss;
 	}
-	//~ForNode()
-	//{
-	//	delete stmts;
-	//	delete stepExpr;
-	//	delete toExpr;
-	//	delete fromExpr;
-	//	delete var;
-	//}
+
 	public override void semant(Environ e)
 	{
 		var.semant(e);
@@ -585,12 +534,6 @@ public class ForEachNode: StmtNode
 		stmts = s;
 	}
 
-	//~ForEachNode()
-	//{
-	//	delete var;
-	//	delete stmts;
-	//}
-
 	public override void semant(Environ e)
 	{
 		var.semant(e);
@@ -650,11 +593,6 @@ public class ReturnNode: StmtNode
 	{
 		expr = e;
 	}
-
-	//~ReturnNode()
-	//{
-	//	delete expr;
-	//}
 
 	public override void semant(Environ e)
 	{
@@ -717,11 +655,6 @@ public class DeleteNode: StmtNode
 	public ExprNode expr;
 	public DeleteNode(ExprNode e){expr = e;}
 
-	//~DeleteNode()
-	//{
-	//	delete expr;
-	//}
-
 	public override void semant(Environ e)
 	{
 		expr = expr.semant(e);
@@ -766,12 +699,6 @@ public class InsertNode: StmtNode
 		before = b;
 	}
 
-	//~InsertNode()
-	//{
-	//	delete expr1;
-	//	delete expr2;
-	//}
-
 	public override void semant(Environ e)
 	{
 		expr1 = expr1.semant(e);
@@ -801,12 +728,6 @@ public class CaseNode: _StmtNode
 		exprs = e;
 		stmts = s;
 	}
-
-	//~CaseNode()
-	//{
-	//	delete exprs;
-	//	delete stmts;
-	//}
 }
 
 ////////////////////////
@@ -824,14 +745,6 @@ public class SelectNode: StmtNode
 		defStmts = null;
 		sem_temp = null;
 	}
-
-	//~SelectNode()
-	//{
-	//	delete expr;
-	//	delete defStmts;
-	//	delete sem_temp;
-	//	for(; cases.Length>0; cases.pop_back()) delete cases.back();
-	//}
 
 	public void push_back(CaseNode c)
 	{
@@ -907,12 +820,6 @@ public class RepeatNode: StmtNode
 		expr = e;
 	}
 
-	//~RepeatNode()
-	//{
-	//	delete stmts;
-	//	delete expr;
-	//}
-
 	public override void semant(Environ e)
 	{
 		sem_brk = genLabel();
@@ -955,11 +862,6 @@ public class ReadNode: StmtNode
 	{
 		var = v;
 	}
-
-	//~ReadNode()
-	//{
-	//	delete var;
-	//}
 
 	public override void semant(Environ e)
 	{

@@ -2,7 +2,7 @@
   "profiles": {
     "Blitz3D Compiler": {
       "commandName": "Project",
-      "commandLineArgs": "openwa/loader.bb loader.asm"
+      "commandLineArgs": "openwa/player.bb"
     }
   }
 }

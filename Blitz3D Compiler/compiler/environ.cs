@@ -23,7 +23,6 @@ public class Environ
 	public Environ globals;
 	public Type returnType;
 	public string funcLabel, breakLabel;
-	public LinkedList<Environ> children = new LinkedList<Environ>(); //for delete!
 
 	public Environ(string f, Type r, int l, Environ gs)
 	{
@@ -35,22 +34,7 @@ public class Environ
 		decls = new DeclSeq();
 		typeDecls = new DeclSeq();
 		funcDecls = new DeclSeq();
-		if(globals!=null) globals.children.AddLast(this);
 	}
-
-	//~Environ()
-	//{
-	//	if(globals!=null) globals.children.Remove(this);
-	//	while(!children.empty()) delete children.back();
-	//	for(; !labels.empty(); labels.pop_back()) delete labels.back();
-
-	//	//delete all types
-	//	delete decls;
-	//	delete funcDecls;
-	//	delete typeDecls;
-
-	//	for(int k = 0; k < (int)types.size(); ++k) delete types[k];
-	//}
 
 	public Decl findDecl(string s)
 	{

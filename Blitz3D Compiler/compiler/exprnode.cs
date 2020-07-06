@@ -38,11 +38,6 @@ public class ExprSeqNode:Node
 {
 	public List<ExprNode> exprs = new List<ExprNode>();
 
-	//~ExprSeqNode()
-	//{
-	//    //for (;!exprs.empty(); exprs.pop_back()) delete exprs.back();
-	//}
-
 	public void push_back(ExprNode e) => exprs.Add(e);
 
 	public int size() => exprs.Count;
@@ -148,11 +143,6 @@ public class CastNode:ExprNode
 		type = ty;
 	}
 
-	//~CastNode()
-	//{
-	//    expr = null;
-	//}
-
 	public override ExprNode semant(Environ e)
 	{
 		if(expr.sem_type is null)
@@ -239,11 +229,6 @@ public class CallNode:ExprNode
 		exprs = e;
 	}
 
-	//~CallNode()
-	//{
-	//    exprs = null;
-	//}
-
 	public override ExprNode semant(Environ e)
 	{
 		Type t = e.findType(tag);
@@ -300,11 +285,6 @@ public class VarExprNode:ExprNode
 	{
 		var = v;
 	}
-
-	//~VarExprNode()
-	//{
-	//    var = null;
-	//}
 
 	public override ExprNode semant(Environ e)
 	{
@@ -368,16 +348,7 @@ public class FloatConstNode:ConstNode
 	{
 		return new TNode(IR.CONST, null, null, BitConverter.SingleToInt32Bits(value));// *(int*)&value
 	}
-	public override int intValue()
-	{
-		//float flt = value;
-		//int temp;
-		//_control87(_RC_NEAR | _PC_24 | _EM_INVALID | _EM_ZERODIVIDE | _EM_OVERFLOW | _EM_UNDERFLOW | _EM_INEXACT | _EM_DENORMAL, 0xfffff);
-		//_asm{ fld[flt]; fistp[temp]; }
-		//_control87(_CW_DEFAULT, 0xfffff);
-		//return temp;
-		return (int)MathF.Round(value);
-	}
+	public override int intValue() => (int)MathF.Round(value);
 	public override float floatValue() => value;
 	public override string stringValue() => /*ftoa*/(value).ToString();
 };
@@ -417,12 +388,6 @@ public class UniExprNode:ExprNode
 		this.expr = expr;
 	}
 
-	//~UniExprNode()
-	//{
-	//    expr = null;
-	//}
-
-	//ExprNode constize();
 	public override ExprNode semant(Environ e)
 	{
 		expr = expr.semant(e);
@@ -519,12 +484,6 @@ public class BinExprNode:ExprNode
 		this.rhs = rhs;
 	}
 
-	//~BinExprNode()
-	//{
-	//    lhs = null;
-	//    rhs = null;
-	//}
-
 	public override ExprNode semant(Environ e)
 	{
 		lhs = lhs.semant(e);
@@ -606,12 +565,6 @@ public class ArithExprNode:ExprNode
 		this.lhs = lhs;
 		this.rhs = rhs;
 	}
-
-	//~ArithExprNode()
-	//{
-	//    lhs = null;
-	//    rhs = null;
-	//}
 
 	public override ExprNode semant(Environ e)
 	{
@@ -771,12 +724,6 @@ public class RelExprNode:ExprNode
 		this.lhs = lhs;
 		this.rhs = rhs;
 	}
-
-	//~RelExprNode()
-	//{
-	//	lhs = null;
-	//	rhs = null;
-	//}
 
 	public override ExprNode semant(Environ e)
 	{
@@ -963,11 +910,6 @@ public class AfterNode:ExprNode
 	public ExprNode expr;
 	public AfterNode(ExprNode e) { expr = e; }
 
-	//~AfterNode()
-	//{
-	//    expr = null;
-	//}
-
 	public override ExprNode semant(Environ e)
 	{
 		expr = expr.semant(e);
@@ -991,11 +933,6 @@ public class BeforeNode:ExprNode
 {
 	public ExprNode expr;
 	public BeforeNode(ExprNode e) { expr = e; }
-
-	//~BeforeNode()
-	//{
-	//    expr = null;
-	//}
 
 	public override ExprNode semant(Environ e)
 	{
@@ -1042,11 +979,6 @@ public class ObjectCastNode:ExprNode
 		type_ident = t;
 	}
 
-	//~ObjectCastNode()
-	//{
-	//	expr = null;
-	//}
-
 	public override ExprNode semant(Environ e)
 	{
 		expr = expr.semant(e);
@@ -1071,11 +1003,6 @@ public class ObjectHandleNode:ExprNode
 {
 	public ExprNode expr;
 	public ObjectHandleNode(ExprNode e){expr = e;}
-
-	//~ObjectHandleNode()
-	//{
-	//	expr = null;
-	//}
 
 	public override ExprNode semant(Environ e)
 	{

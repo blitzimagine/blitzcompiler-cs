@@ -13,9 +13,6 @@ public class Runtime
     private static List<string> syms = new List<string>();
     private static List<string>.Enumerator sym_it;
 
-    //public Runtime(){}
-    //~Runtime(){}
-    public int version() => config.VERSION;
     public string nextSym()
     {
         if (syms.Count==0)

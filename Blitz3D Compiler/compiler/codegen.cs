@@ -87,12 +87,6 @@ public class TNode
         sconst = s;
     }
 
-    //~TNode()
-    //{
-    //    l = null;
-    //    r = null;
-    //}
-
     public void log(){}
 }
 

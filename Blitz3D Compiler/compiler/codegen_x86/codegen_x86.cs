@@ -1,11 +1,19 @@
 //#define NOOPTS
 
+using System.Collections.Generic;
 using System.IO;
 
 namespace codegen_86
 {
 	public class Codegen_x86:Codegen
 	{
+		//code fragments
+		internal static List<string> codeFrags = new List<string>();
+		private static List<string> dataFrags = new List<string>();
+
+		//name of function
+		internal static string funcLabel;
+
 		public Codegen_x86(TextWriter @out, bool debug) : base(@out, debug)//ostream
 		{
 			inCode = false;
@@ -15,8 +23,8 @@ namespace codegen_86
 		{
 			inCode = true;
 			Tile.frameSize = Tile.maxFrameSize = frameSize;
-			Tile.codeFrags.Clear();
-			Tile.funcLabel = l;
+			codeFrags.Clear();
+			funcLabel = l;
 		}
 		public override void code(TNode stmt)
 		{
@@ -33,7 +41,7 @@ namespace codegen_86
 			if(cleanup!=null)
 			{
 				Tile.resetRegs();
-				Tile.allocReg(Reg.EAX);
+				Tile.allocReg(Reg.eax);
 				Tile q = munch(cleanup);
 				q.label();
 				q.eval(0);
@@ -41,7 +49,7 @@ namespace codegen_86
 			}
 			@out.WriteLine("\t.align\t16");
 
-			if(Tile.funcLabel.Length>0) @out.WriteLine(Tile.funcLabel + ":");
+			if(funcLabel.Length>0) @out.WriteLine(funcLabel + ":");
 
 			@out.WriteLine("\tpush\tebx");
 			@out.WriteLine("\tpush\tesi");
@@ -51,7 +59,7 @@ namespace codegen_86
 			if(Tile.maxFrameSize!=0) @out.WriteLine("\tsub\tesp,"+Tile.maxFrameSize);
 
 			int esp_off = 0;
-			foreach(string t in Tile.codeFrags)
+			foreach(string t in codeFrags)
 			{
 				if(t.Length>0 && t[0] == '+')
 				{
@@ -88,54 +96,54 @@ namespace codegen_86
 		{
 			string t = l + ":";
 			if(inCode)
-				Tile.codeFrags.Add(t);
+				codeFrags.Add(t);
 			else
-				Tile.dataFrags.Add(t);
+				dataFrags.Add(t);
 		}
 		public override void i_data(int i, string l)
 		{
 			if(l.Length>0)
 			{
-				Tile.dataFrags.Add($"{l}:\t.dd\t{i}");
+				dataFrags.Add($"{l}:\t.dd\t{i}");
 			}
 			else
 			{
-				Tile.dataFrags.Add($"\t.dd\t{i}");
+				dataFrags.Add($"\t.dd\t{i}");
 			}
 		}
 		public override void s_data(string s, string l)
 		{
 			if(l.Length>0)
 			{
-				Tile.dataFrags.Add($"{l}:\t.db\t\"{s}\",0");
+				dataFrags.Add($"{l}:\t.db\t\"{s}\",0");
 			}
 			else
 			{
-				Tile.dataFrags.Add($"\t.db\t\"{s}\",0");
+				dataFrags.Add($"\t.db\t\"{s}\",0");
 			}
 		}
 		public override void p_data(string p, string l)
 		{
 			if(l.Length>0)
 			{
-				Tile.dataFrags.Add($"{l}:\t.dd\t{p}");
+				dataFrags.Add($"{l}:\t.dd\t{p}");
 			}
 			else
 			{
-				Tile.dataFrags.Add($"\t.dd\t{p}");
+				dataFrags.Add($"\t.dd\t{p}");
 			}
 		}
 		public override void align_data(int n)
 		{
-			Tile.dataFrags.Add($"\t.align\t{n}");
+			dataFrags.Add($"\t.align\t{n}");
 		}
 		public override void flush()
 		{
-			foreach(string s in Tile.dataFrags)
+			foreach(string s in dataFrags)
 			{
 				@out.WriteLine(s);
 			}
-			Tile.dataFrags.Clear();
+			dataFrags.Clear();
 		}
 
 		private bool inCode;
@@ -231,9 +239,9 @@ namespace codegen_86
 					}
 				}
 				Tile q = new Tile("\tcdq\n\tidiv\tecx", munchReg(t.l), munchReg(t.r));
-				q.want_l = Reg.EAX;
-				q.want_r = Reg.ECX;
-				q.hits = 1 << (int)Reg.EDX;
+				q.want_l = Reg.eax;
+				q.want_r = Reg.ecx;
+				q.hits = 1 << (int)Reg.edx;
 				return q;
 			}
 
@@ -303,7 +311,7 @@ namespace codegen_86
 			}
 
 			Tile q = new Tile(op + "%l,cl", munchReg(t.l), munchReg(t.r));
-			q.want_r = Reg.ECX;
+			q.want_r = Reg.ecx;
 			return q;
 		}
 		private Tile munchRelop(TNode t)
@@ -311,7 +319,7 @@ namespace codegen_86
 			Tile q = genCompare(t, out string func, false);
 
 			q = new Tile("\tset" + func + "\tal\n\tmovzx\teax,al", q);
-			q.want_l = Reg.EAX;
+			q.want_l = Reg.eax;
 			return q;
 		}
 
@@ -370,7 +378,7 @@ namespace codegen_86
 			s1 = "\tfucompp\n\tfnstsw\tax\n\tsahf\n\tset" + s1 + "\tal\n\tmovzx\t%l,al";
 			s2 = "\tfucompp\n\tfnstsw\tax\n\tsahf\n\tset" + s2 + "\tal\n\tmovzx\t%l,al";
 			Tile q = new Tile(s1, s2, munchFP(t.l), munchFP(t.r));
-			q.want_l = Reg.EAX;
+			q.want_l = Reg.eax;
 			return q;
 		}
 
@@ -389,8 +397,8 @@ namespace codegen_86
 				q = new Tile("\tcall\t%l", munchReg(t.l), t.r!=null ? munchReg(t.r) : null);
 			}
 			q.argFrame = t.iconst;
-			q.want_l = Reg.EAX;
-			q.hits = (1 << (int)Reg.EAX) | (1 << (int)Reg.ECX) | (1 << (int)Reg.EDX);
+			q.want_l = Reg.eax;
+			q.hits = (1 << (int)Reg.eax) | (1 << (int)Reg.ecx) | (1 << (int)Reg.edx);
 			return q;
 		}
 
@@ -414,7 +422,7 @@ namespace codegen_86
 					break;
 				case IR.RETURN:
 					q = munchReg(t.l);
-					q.want_l = Reg.EAX;
+					q.want_l = Reg.eax;
 					string s1 = "\tjmp\t" + t.sconst;
 					q = new Tile(s1, q);
 					break;

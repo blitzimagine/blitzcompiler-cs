@@ -1,15 +1,16 @@
-using System.Collections.Generic;
-
 namespace codegen_86
 {
 	public enum Reg
 	{
-		EAX=1,
-		ECX,
-		EDX,
-		EDI,
-		ESI,
-		EBX
+		BAD_REG = 0,
+		eax=1,
+		ecx=2,
+		edx=3,
+		edi=4,
+		esi=5,
+		ebx=6,
+		//reduce to 3 for stress test
+		Count = 6
 	}
 
 	public class Tile
@@ -74,7 +75,7 @@ namespace codegen_86
 			if(want_r!=0) spill |= 1 << (int)want_r;
 			if(spill!=0)
 			{
-				for(int n = 1; n <= NUM_REGS; ++n)
+				for(int n = 1; n <= (int)Reg.Count; ++n)
 				{
 					if((spill & (1 << n))!=0)
 					{
@@ -87,7 +88,7 @@ namespace codegen_86
 			//if tile needs an argFrame...
 			if(argFrame!=0)
 			{
-				codeFrags.Add($"-{argFrame}");
+				Codegen_x86.codeFrags.Add($"-{argFrame}");
 			}
 
 			Reg got_l;
@@ -109,7 +110,7 @@ namespace codegen_86
 			}
 			else
 			{
-				if(l.need >= NUM_REGS && r.need >= NUM_REGS)
+				if(l.need >= (int)Reg.Count && r.need >= (int)Reg.Count)
 				{
 					got_r = r.eval(0);
 					pushReg(got_r);
@@ -155,9 +156,9 @@ namespace codegen_86
 
 			if(@as.Length>0)
 			{
-				@as = @as.Replace("%l",regs[(int)want_l]);
-				@as = @as.Replace("%r",regs[(int)want_r]);
-				codeFrags.Add(@as);
+				@as = @as.Replace("%l", want_l.ToString());
+				@as = @as.Replace("%r", want_r.ToString());
+				Codegen_x86.codeFrags.Add(@as);
 			}
 
 			freeReg(got_r);
@@ -173,7 +174,7 @@ namespace codegen_86
 			//restore spilled regs
 			if(spill!=0)
 			{
-				for(int n = NUM_REGS; n >= 1; --n)
+				for(int n = (int)Reg.Count; n >= 1; --n)
 				{
 					if((spill & (1 << n))!=0)
 					{
@@ -184,29 +185,17 @@ namespace codegen_86
 			return got_l;
 		}
 
-		
-
-		//reduce to 3 for stress test
-		private const int NUM_REGS = 6;
-
-		private static readonly string[] regs = {"???", "eax", "ecx", "edx", "edi", "esi", "ebx"};
-
 		//array of 'used' flags
-		private static bool[] regUsed = new bool[NUM_REGS + 1];
+		private static bool[] regUsed = new bool[(int)Reg.Count + 1];
 
 		//size of locals in function
-		internal static int frameSize, maxFrameSize;
+		internal static int frameSize;
+		internal static int maxFrameSize;
 
-		//code fragments
-		internal static List<string> codeFrags = new List<string>();
-		internal static List<string> dataFrags = new List<string>();
-
-		//name of function
-		internal static string funcLabel;
 
 		internal static void resetRegs()
 		{
-			for(int n = 1; n <= NUM_REGS; ++n) regUsed[n] = false;
+			for(int n = 1; n <= (int)Reg.Count; ++n) regUsed[n] = false;
 		}
 
 		internal static Reg allocReg(Reg r)
@@ -214,7 +203,7 @@ namespace codegen_86
 			int n = (int)r;
 			if(n==0 || regUsed[n])
 			{
-				for(n = NUM_REGS; n >= 1 && regUsed[n]; --n) { }
+				for(n = (int)Reg.Count; n >= 1 && regUsed[n]; --n) { }
 				if(n==0) return 0;
 			}
 			regUsed[n] = true;
@@ -229,39 +218,31 @@ namespace codegen_86
 		internal static void pushReg(Reg n)
 		{
 			frameSize += 4;
-			if(frameSize > maxFrameSize) maxFrameSize = frameSize;
-			//char buff[32];
-			//_itoa_s(frameSize, buff, 32, 10);
-			string s = "\tmov\t[ebp-";
-			s += frameSize.ToString();
-			s += "],";
-			s += regs[(int)n];
-			codeFrags.Add(s);
+			if(frameSize > maxFrameSize)
+			{
+				maxFrameSize = frameSize;
+			}
+			string s = $"\tmov\t[ebp-{frameSize}],{n}";
+			Codegen_x86.codeFrags.Add(s);
 		}
 
 		internal static void popReg(Reg n)
 		{
-			//char buff[32];
-			//_itoa_s(frameSize, buff, 32, 10);
-			string s = "\tmov\t";
-			s += regs[(int)n];
-			s += ",[ebp-";
-			s += frameSize.ToString();
-			s += "]";
-			codeFrags.Add(s);
+			string s = $"\tmov\t{n},[ebp-{frameSize}]";
+			Codegen_x86.codeFrags.Add(s);
 			frameSize -= 4;
 		}
 
 		internal static void moveReg(Reg d, Reg s)
 		{
-			string t = "\tmov\t" + regs[(int)d] + ',' + regs[(int)s];
-			codeFrags.Add(t);
+			string t = $"\tmov\t{d},{s}";
+			Codegen_x86.codeFrags.Add(t);
 		}
 
 		internal static void swapRegs(Reg d, Reg s)
 		{
-			string t = "\txchg\t" + regs[(int)d] + ',' + regs[(int)s];
-			codeFrags.Add(t);
+			string t = $"\txchg\t{d},{s}";
+			Codegen_x86.codeFrags.Add(t);
 		}
 	}
 }

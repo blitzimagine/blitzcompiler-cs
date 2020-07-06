@@ -29,7 +29,7 @@ public abstract class StmtNode: _StmtNode
 public class StmtSeqNode: _StmtNode
 {
 	public string file;
-	public List<StmtNode> stmts = new List<StmtNode>();
+	private List<StmtNode> stmts = new List<StmtNode>();
 	public StmtSeqNode(string f){file = f;}
 
 	public void semant(Environ e)
@@ -94,8 +94,8 @@ public class StmtSeqNode: _StmtNode
 /////////////////
 public class IncludeNode: StmtNode
 {
-	public string file,label;
-	public StmtSeqNode stmts;
+	private string file,label;
+	private StmtSeqNode stmts;
 	public IncludeNode(string t,StmtSeqNode ss)
 	{
 		file = t;
@@ -122,7 +122,7 @@ public class IncludeNode: StmtNode
 ///////////////////
 public class DeclStmtNode: StmtNode
 {
-	public DeclNode decl;
+	private DeclNode decl;
 
 	public DeclStmtNode(DeclNode d)
 	{
@@ -146,10 +146,10 @@ public class DeclStmtNode: StmtNode
 //////////////////////////////
 public class DimNode: StmtNode
 {
-	public string ident,tag;
-	public ExprSeqNode exprs;
-	public ArrayType sem_type;
-	public Decl sem_decl;
+	private string ident,tag;
+	private ExprSeqNode exprs;
+	private ArrayType sem_type;
+	private Decl sem_decl;
 	public DimNode(string i,string t,ExprSeqNode e)
 	{
 		ident = i;
@@ -215,8 +215,8 @@ public class DimNode: StmtNode
 ////////////////
 public class AssNode: StmtNode
 {
-	public VarNode var;
-	public ExprNode expr;
+	private VarNode var;
+	private ExprNode expr;
 	public AssNode(VarNode var,ExprNode expr)
 	{
 		this.var = var;
@@ -242,7 +242,7 @@ public class AssNode: StmtNode
 //////////////////////////
 public class ExprStmtNode: StmtNode
 {
-	public ExprNode expr;
+	private ExprNode expr;
 	public ExprStmtNode(ExprNode e)
 	{
 		expr = e;
@@ -265,8 +265,8 @@ public class ExprStmtNode: StmtNode
 ////////////////
 public class LabelNode: StmtNode
 {
-	public string ident;
-	public int data_sz;
+	private string ident;
+	private int data_sz;
 	public LabelNode(string s,int sz)
 	{
 		ident = s;
@@ -294,7 +294,7 @@ public class LabelNode: StmtNode
 ////////////////////
 public class GotoNode: StmtNode
 {
-	public string ident;
+	private string ident;
 	public GotoNode(string s){ident=s;}
 	public override void semant(Environ e)
 	{
@@ -315,7 +315,7 @@ public class GotoNode: StmtNode
 /////////////////////
 public class GosubNode: StmtNode
 {
-	public string ident;
+	private string ident;
 	public GosubNode(string s){ident = s;}
 	public override void semant(Environ e)
 	{
@@ -334,8 +334,8 @@ public class GosubNode: StmtNode
 //////////////////
 public class IfNode: StmtNode
 {
-	public ExprNode expr;
-	public StmtSeqNode stmts,elseOpt;
+	private ExprNode expr;
+	private StmtSeqNode stmts,elseOpt;
 	public IfNode(ExprNode e,StmtSeqNode s,StmtSeqNode o)
 	{
 		expr=e;
@@ -380,7 +380,7 @@ public class IfNode: StmtNode
 ///////////
 public class ExitNode: StmtNode
 {
-	public string sem_brk;
+	private string sem_brk;
 	public override void semant(Environ e)
 	{
 		sem_brk = e.breakLabel;
@@ -397,10 +397,10 @@ public class ExitNode: StmtNode
 /////////////////////
 public class WhileNode: StmtNode
 {
-	public int wendPos;
-	public ExprNode expr;
-	public StmtSeqNode stmts;
-	public string sem_brk;
+	private int wendPos;
+	private ExprNode expr;
+	private StmtSeqNode stmts;
+	private string sem_brk;
 	public WhileNode(ExprNode e,StmtSeqNode s,int wp)
 	{
 		wendPos = wp;
@@ -445,11 +445,11 @@ public class WhileNode: StmtNode
 ///////////////////
 public class ForNode: StmtNode
 {
-	public int nextPos;
-	public VarNode var;
-	public ExprNode fromExpr,toExpr,stepExpr;
-	public StmtSeqNode stmts;
-	public string sem_brk;
+	private int nextPos;
+	private VarNode var;
+	private ExprNode fromExpr,toExpr,stepExpr;
+	private StmtSeqNode stmts;
+	private string sem_brk;
 	public ForNode(VarNode var,ExprNode from,ExprNode to,ExprNode step,StmtSeqNode ss,int np)
 	{
 		nextPos = np;
@@ -518,11 +518,11 @@ public class ForNode: StmtNode
 ///////////////////////////////
 public class ForEachNode: StmtNode
 {
-	public int nextPos;
-	public VarNode var;
-	public string typeIdent;
-	public StmtSeqNode stmts;
-	public string sem_brk;
+	private int nextPos;
+	private VarNode var;
+	private string typeIdent;
+	private StmtSeqNode stmts;
+	private string sem_brk;
 	public ForEachNode(VarNode v,string t,StmtSeqNode s,int np)
 	{
 		nextPos = np;
@@ -584,8 +584,8 @@ public class ForEachNode: StmtNode
 ////////////////////////////
 public class ReturnNode: StmtNode
 {
-	public ExprNode expr;
-	public string returnLabel;
+	private ExprNode expr;
+	private string returnLabel;
 	public ReturnNode(ExprNode e)
 	{
 		expr = e;
@@ -649,7 +649,7 @@ public class ReturnNode: StmtNode
 //////////////////////
 public class DeleteNode: StmtNode
 {
-	public ExprNode expr;
+	private ExprNode expr;
 	public DeleteNode(ExprNode e){expr = e;}
 
 	public override void semant(Environ e)
@@ -669,7 +669,7 @@ public class DeleteNode: StmtNode
 ///////////////////////////
 public class DeleteEachNode: StmtNode
 {
-	public string typeIdent;
+	private string typeIdent;
 	public DeleteEachNode(string t){typeIdent=t;}
 	public override void semant(Environ e)
 	{
@@ -687,8 +687,8 @@ public class DeleteEachNode: StmtNode
 ///////////////////////////
 public class InsertNode: StmtNode
 {
-	public ExprNode expr1, expr2;
-	public bool before;
+	private ExprNode expr1, expr2;
+	private bool before;
 	public InsertNode(ExprNode e1,ExprNode e2,bool b)
 	{
 		expr1 = e1;
@@ -732,10 +732,10 @@ public class CaseNode: _StmtNode
 ////////////////////////
 public class SelectNode: StmtNode
 {
-	public ExprNode expr;
+	private ExprNode expr;
 	public StmtSeqNode defStmts;
-	public List<CaseNode> cases = new List<CaseNode>();
-	public VarNode sem_temp;
+	private List<CaseNode> cases = new List<CaseNode>();
+	private VarNode sem_temp;
 	public SelectNode(ExprNode e)
 	{
 		expr = e;
@@ -806,10 +806,10 @@ public class SelectNode: StmtNode
 ////////////////////////////
 public class RepeatNode: StmtNode
 {
-	public int untilPos;
-	public StmtSeqNode stmts;
-	public ExprNode expr;
-	public string sem_brk;
+	private int untilPos;
+	private StmtSeqNode stmts;
+	private ExprNode expr;
+	private string sem_brk;
 	public RepeatNode(StmtSeqNode s,ExprNode e,int up)
 	{
 		untilPos = up;
@@ -854,7 +854,7 @@ public class RepeatNode: StmtNode
 ///////////////
 public class ReadNode: StmtNode
 {
-	public VarNode var;
+	private VarNode var;
 	public ReadNode(VarNode v)
 	{
 		var = v;
@@ -881,8 +881,8 @@ public class ReadNode: StmtNode
 //////////////////
 public class RestoreNode: StmtNode
 {
-	public string ident;
-	public Label sem_label;
+	private string ident;
+	private Label sem_label;
 	public RestoreNode(string i)
 	{
 		ident = i;

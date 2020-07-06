@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using codegen_86;
 
 public static class main
@@ -29,52 +27,16 @@ public static class main
 		("+k","dump keywords and syntax"),
 	};
 
-	private static void showUsage()
+	private static void showUsage(bool help = false)
 	{
 		Console.WriteLine($"Usage: bbc [{string.Join('|', flags.Select(f => f.flag))}] [sourcefile.bb] [outputfile.asm]");
-	}
-
-	private static void showHelp()
-	{
-		showUsage();
-		foreach(var flag in flags)
+		if(help)
 		{
-			Console.WriteLine($"{flag.flag} : {flag.description}");
+			foreach(var flag in flags)
+			{
+				Console.WriteLine($"{flag.flag} : {flag.description}");
+			}
 		}
-	}
-
-	private static string quickHelp(string kw)
-	{
-		Environ e = libs.runtimeEnviron;
-		Decl d = e.funcDecls.findDecl(kw.ToLowerInvariant());
-		if(d is null || d.type.funcType() == null) return "No quick help available for " + kw;
-		string t = kw;
-		FuncType f = d.type.funcType();
-		if(f.returnType == Type.float_type) t += '#';
-		else if(f.returnType == Type.string_type) t += '$';
-
-		t += " ";
-
-		if(f.returnType != Type.void_type) t += "( ";
-
-		for(int k = 0; k < f.@params.Count; ++k)
-		{
-			string s = string.Empty;
-			if(k!=0) s += ',';
-			Decl p = f.@params.decls[k];
-			s += p.name;
-			if(p.type == Type.float_type) s += '#';
-			else if(p.type == Type.string_type) s += '$';
-			else if(p.type == Type.void_type) s += '*';
-			if(p.defType!=null) s = '[' + s + ']';
-			t += s;
-		}
-
-		if(f.returnType != Type.void_type)
-		{
-			t += f.@params.Count!=0 ? " )" : ")";
-		}
-		return t;
 	}
 
 	public static int Main(string[] argp)
@@ -144,7 +106,7 @@ public static class main
 			return -1;
 		}
 
-		if(showhelp) showHelp();
+		if(showhelp) showUsage(true);
 		if(out_file is null || !out_file.Exists)
 		{
 			out_file = new FileInfo(Path.ChangeExtension(in_file.FullName, ".asm"));
@@ -199,14 +161,6 @@ public static class main
 			Console.WriteLine(file + ":" + row + ":" + col + ":" + row + ":" + col + ":" + x.ex);
 			return -1;
 		}
-
-		//delete prog;
-
-		//delete module;
-		//delete environ_;
-
-		libs.closeLibs();
-
 		return 0;
 	}
 }

@@ -71,7 +71,7 @@ public class DeclVarNode : VarNode
 ///////////////
 public class IdentVarNode : DeclVarNode
 {
-    public string ident, tag;
+    public readonly string ident, tag;
     public IdentVarNode(string i, string t)
     {
         ident = i;
@@ -108,8 +108,8 @@ public class IdentVarNode : DeclVarNode
 /////////////////
 public class ArrayVarNode : VarNode
 {
-    public string ident, tag;
-    public ExprSeqNode exprs;
+    public readonly string ident, tag;
+    public readonly ExprSeqNode exprs;
     public Decl sem_decl;
     public ArrayVarNode(string i, string t, ExprSeqNode e)
     {
@@ -158,7 +158,7 @@ public class ArrayVarNode : VarNode
 public class FieldVarNode : VarNode
 {
     public ExprNode expr;
-    public string ident, tag;
+    public readonly string ident, tag;
     public Decl sem_field;
     public FieldVarNode(ExprNode e, string i, string t)
     {
@@ -192,7 +192,7 @@ public class FieldVarNode : VarNode
 public class VectorVarNode : VarNode
 {
     public ExprNode expr;
-    public ExprSeqNode exprs;
+    public readonly ExprSeqNode exprs;
     public VectorType vec_type;
     public VectorVarNode(ExprNode e, ExprSeqNode es)
     {

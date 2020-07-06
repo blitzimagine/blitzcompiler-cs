@@ -20,7 +20,7 @@ public class Type
 
 	public virtual VectorType vectorType() => null;
 
-	private static StructType n = new StructType("Null");
+	public static StructType n = new StructType("Null");
 
 	//operators
 	public virtual bool canCastTo(Type t) => this == t;
@@ -35,9 +35,9 @@ public class Type
 
 public class FuncType:Type
 {
-	public Type returnType;
-	public DeclSeq @params;
-	public bool userlib, cfunc;
+	public readonly Type returnType;
+	public readonly DeclSeq @params;
+	public readonly bool userlib, cfunc;
 	public FuncType(Type t, DeclSeq p, bool ulib, bool cfn)
 	{
 		returnType = t;
@@ -51,8 +51,8 @@ public class FuncType:Type
 
 public class ArrayType:Type
 {
-	public Type elementType;
-	public int dims;
+	public readonly Type elementType;
+	public readonly int dims;
 	public ArrayType(Type t, int n)
 	{
 		elementType = t;
@@ -67,8 +67,8 @@ public class ArrayType:Type
 
 public class StructType:Type
 {
-	public string ident;
-	public DeclSeq fields;
+	public readonly string ident;
+	public readonly DeclSeq fields;
 
 	public StructType(string i, DeclSeq f = null)
 	{
@@ -83,10 +83,10 @@ public class StructType:Type
 
 public class ConstType:Type
 {
-	public Type valueType;
-	public int intValue;
-	public float floatValue;
-	public string stringValue;
+	public readonly Type valueType;
+	public readonly int intValue;
+	public readonly float floatValue;
+	public readonly string stringValue;
 	public ConstType(int n)
 	{
 		valueType = int_type;
@@ -108,9 +108,9 @@ public class ConstType:Type
 
 public class VectorType:Type
 {
-	public string label;
-	public Type elementType;
-	public int[] sizes;
+	public readonly string label;
+	public readonly Type elementType;
+	public readonly int[] sizes;
 	public VectorType(string l, Type t, int[] szs)
 	{
 		label = l;
@@ -142,10 +142,7 @@ public class v_type : Type
 {
 	public static v_type v = new v_type();
 
-    public override bool canCastTo(Type t)
-    {
-        return t == void_type;
-    }
+    public override bool canCastTo(Type t) => t == void_type;
 }
 
 public class i_type : Type
@@ -154,10 +151,7 @@ public class i_type : Type
 
     public override bool intType() => true;
 
-    public override bool canCastTo(Type t)
-    {
-        return t == int_type || t == float_type || t == string_type;
-    }
+    public override bool canCastTo(Type t) => t == int_type || t == float_type || t == string_type;
 }
 
 public class f_type : Type
@@ -166,10 +160,7 @@ public class f_type : Type
 
     public override bool floatType() => true;
 
-    public override bool canCastTo(Type t)
-    {
-        return t == int_type || t == float_type || t == string_type;
-    }
+    public override bool canCastTo(Type t) => t == int_type || t == float_type || t == string_type;
 }
 
 public class s_type : Type
@@ -178,8 +169,5 @@ public class s_type : Type
 
     public override bool stringType() => true;
 
-    public override bool canCastTo(Type t)
-    {
-        return t == int_type || t == float_type || t == string_type;
-    }
+    public override bool canCastTo(Type t) => t == int_type || t == float_type || t == string_type;
 }

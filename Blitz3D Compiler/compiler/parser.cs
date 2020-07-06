@@ -15,6 +15,16 @@ public class Parser
 		LINE
 	}
 
+	private string incfile;
+	private HashSet<string> included = new HashSet<string>();
+	private Toker toker;
+	private Dictionary<string, DimNode> arrayDecls = new Dictionary<string, DimNode>();
+
+	private DeclSeqNode consts;
+	private DeclSeqNode structs;
+	private DeclSeqNode funcs;
+	private DeclSeqNode datas;
+
 	private static bool isTerm(Keyword c) => c == (Keyword)':' || c == Keyword.NEWLINE;
 
 	public Parser(Toker t)
@@ -49,15 +59,7 @@ public class Parser
 		}
 	}
 
-	private string incfile;
-	private HashSet<string> included = new HashSet<string>();
-	private Toker toker;
-	private Dictionary<string, DimNode> arrayDecls = new Dictionary<string, DimNode>();
-
-	private DeclSeqNode consts;
-	private DeclSeqNode structs;
-	private DeclSeqNode funcs;
-	private DeclSeqNode datas;
+	
 
 	private StmtSeqNode parseStmtSeq(STMTS scope)
 	{
@@ -85,17 +87,17 @@ public class Parser
 					{
 						throw exp("include filename");
 					}
-					string inc = toker.text;
+					string inc = toker.Text;
 					toker.next();
 					inc = inc.Substring(1, inc.Length - 2);
 
 					//WIN32 KLUDGE//
-					inc = Path.GetFullPath(inc);//getBestPathName
+					inc = Path.GetFullPath(inc);
 					inc = inc.ToLowerInvariant();
 
 					if(included.Contains(inc)) break;
 
-					StreamReader i_stream = new StreamReader(inc);//ifstream
+					using StreamReader i_stream = new StreamReader(inc);
 					//if(!i_stream.good()) throw ex("Unable to open include file");
 
 					Toker i_toker = new Toker(i_stream);
@@ -121,7 +123,7 @@ public class Parser
 				break;
 				case Keyword.IDENT:
 				{
-					string ident = toker.text;
+					string ident = toker.Text;
 					toker.next();
 					string tag = parseTypeTag();
 					if(!arrayDecls.ContainsKey(ident) && toker.curr != Keyword.EQ && toker.curr != Keyword.Backslash && toker.curr != Keyword.BracketOpen)
@@ -134,12 +136,12 @@ public class Parser
 							int nest = 1, k;
 							for(k = 1; ; ++k)
 							{
-								Keyword c = toker.lookAhead(k);
+								Keyword c = toker.LookAhead(k);
 								if(isTerm(c)) throw ex("Mismatched brackets");
 								else if(c == Keyword.ParenOpen) ++nest;
 								else if(c == Keyword.ParenClose && (--nest)==0) break;
 							}
-							if(isTerm(toker.lookAhead(++k)))
+							if(isTerm(toker.LookAhead(++k)))
 							{
 								toker.next();
 								exprs = parseExprSeq();
@@ -277,15 +279,13 @@ public class Parser
 				case Keyword.GOTO:
 				{
 					toker.next();
-					string t = parseIdent();
-					result = new GotoNode(t);
+					result = new GotoNode(parseIdent());
 				}
 				break;
 				case Keyword.GOSUB:
 				{
 					toker.next();
-					string t = parseIdent();
-					result = new GosubNode(t);
+					result = new GosubNode(parseIdent());
 				}
 				break;
 				case Keyword.RETURN:
@@ -334,7 +334,7 @@ public class Parser
 				case Keyword.RESTORE:
 					if(toker.next() == Keyword.IDENT)
 					{
-						result = new RestoreNode(toker.text);
+						result = new RestoreNode(toker.Text);
 						toker.next();
 					}
 					else result = new RestoreNode("");
@@ -437,7 +437,7 @@ public class Parser
 	private string parseIdent()
 	{
 		if(toker.curr != Keyword.IDENT) throw exp("identifier");
-		string t = toker.text;
+		string t = toker.Text;
 		toker.next();
 		return t;
 	}
@@ -835,28 +835,28 @@ public class Parser
 				toker.next();
 				break;
 			case Keyword.INTCONST:
-				result = new IntConstNode(int.Parse(toker.text));//atoi
+				result = new IntConstNode(int.Parse(toker.Text));//atoi
 				toker.next();
 				break;
 			case Keyword.FLOATCONST:
-				result = new FloatConstNode(float.Parse(toker.text));//atof
+				result = new FloatConstNode(float.Parse(toker.Text));//atof
 				toker.next();
 				break;
 			case Keyword.STRINGCONST:
-				t = toker.text;
+				t = toker.Text;
 				result = new StringConstNode(t.Substring(1, t.Length - 2));
 				toker.next();
 				break;
 			case Keyword.BINCONST:
 				n = 0;
-				t = toker.text;
+				t = toker.Text;
 				for(k = 1; k < t.Length; ++k) n = (n << 1) | ((t[k] == '1')?1:0);
 				result = new IntConstNode(n);
 				toker.next();
 				break;
 			case Keyword.HEXCONST:
 				n = 0;
-				t = toker.text;
+				t = toker.Text;
 				for(k = 1; k < t.Length; ++k) n = (n << 4) | (char.IsDigit(t[k]) ? t[k] & 0xf : (t[k] & 7) + 9);
 				result = new IntConstNode(n);
 				toker.next();
@@ -874,7 +874,7 @@ public class Parser
 				toker.next();
 				break;
 			case Keyword.IDENT:
-				ident = toker.text;
+				ident = toker.Text;
 				toker.next();
 				tag = parseTypeTag();
 				if(toker.curr == Keyword.ParenOpen && !arrayDecls.ContainsKey(ident))

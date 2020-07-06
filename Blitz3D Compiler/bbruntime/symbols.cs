@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 public static class symbols
 {
 	public delegate void LinkSymbol(string sym);
@@ -723,7 +725,7 @@ public static class symbols
 		linkSymbol("%api_GlobalAlloc%a%b");
 	}
 
-	public static void linkSymbols(LinkSymbol linkSymbol)
+	private static void linkSymbols(LinkSymbol linkSymbol)
 	{
 		runtime_link(linkSymbol);
 		basic_link(linkSymbol);
@@ -741,5 +743,12 @@ public static class symbols
 		userlibs_link(linkSymbol);
 
 		dllFunctions(linkSymbol);
+	}
+
+	public static List<string> GetLinkSymbols()
+	{
+		List<string> ret = new List<string>();
+		linkSymbols(ret.Add);
+		return ret;
 	}
 }

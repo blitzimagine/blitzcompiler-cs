@@ -14,11 +14,11 @@ public enum DECL
 
 public class Decl
 {
-	public string name;
-	public Type type; //type
-	public DECL kind;
+	public readonly string name;
+	public readonly Type type; //type
+	public readonly DECL kind;
 	public int offset;
-	public ConstType defType; //default value
+	public readonly ConstType defType; //default value
 	public Decl(string s, Type t, DECL k, ConstType d = null)
 	{
 		name = s;
@@ -35,7 +35,7 @@ public class Decl
 
 public class DeclSeq
 {
-	public List<Decl> decls = new List<Decl>();
+	public readonly List<Decl> decls = new List<Decl>();
 
 	public Decl findDecl(string s)
 	{

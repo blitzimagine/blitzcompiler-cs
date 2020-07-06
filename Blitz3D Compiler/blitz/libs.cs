@@ -3,9 +3,6 @@ using System.IO;
 
 public static class libs
 {
-	//openLibs
-	private static Runtime runtimeLib;
-
 	//linkLibs
 	public static Environ runtimeEnviron;
 	public static List<string> keyWords = new List<string>();
@@ -13,8 +10,6 @@ public static class libs
 
 	public static void openLibs()
 	{
-		runtimeLib = Runtime.runtimeGetRuntime();
-
 		runtimeEnviron = new Environ("", Type.int_type, 0, null);
 
 		keyWords.Clear();
@@ -23,34 +18,17 @@ public static class libs
 
 	public static string linkLibs()
 	{
-		if(linkRuntime() is string p1) return p1;
-
-		if(linkUserLibs() is string p2) return p2;
-
-		return null;
+		linkRuntime();
+		return linkUserLibs();
 	}
 
-	public static void closeLibs()
+	private static Type @typeof(int c) => c switch
 	{
-		runtimeEnviron = null;
-		if(runtimeLib!=null)
-		{
-			runtimeLib.shutdown();
-		}
-
-		runtimeEnviron = null;
-	}
-
-	private static Type @typeof(int c)
-	{
-		switch(c)
-		{
-			case '%': return Type.int_type;
-			case '#': return Type.float_type;
-			case '$': return Type.string_type;
-		}
-		return Type.void_type;
-	}
+		'%' => Type.int_type,
+		'#' => Type.float_type,
+		'$' => Type.string_type,
+		_ => Type.void_type
+	};
 
 	private static int curr;
 	private static string text;
@@ -98,13 +76,11 @@ public static class libs
 		return curr;
 	}
 
-	private static string linkRuntime()
+	private static void linkRuntime()
 	{
-		while(runtimeLib.nextSym() is string sym)
+		foreach(string sym in symbols.GetLinkSymbols())
 		{
 			string s = sym;
-
-			int pc = runtimeLib.symValue(sym);
 
 			//internal?
 			if(s[0] == '_')
@@ -178,7 +154,6 @@ public static class libs
 			n = n.ToLowerInvariant();
 			runtimeEnviron.funcDecls.insertDecl(n, f, DECL.FUNC);
 		}
-		return null;
 	}
 
 	private static HashSet<string> _ulibkws = new HashSet<string>();

@@ -1,0 +1,462 @@
+using System;
+using System.Collections.Generic;
+
+public class DeclNode:Node
+{
+	public int pos;
+	public string file;
+	public DeclNode() { pos = -1; }
+	public virtual void proto(DeclSeq d, Environ e) { }
+	public virtual void semant(Environ e) { }
+	public virtual void translate(Codegen g) { }
+	public virtual void transdata(Codegen g) { }
+}
+
+//////////////////////////////
+// Sequence of declarations //
+//////////////////////////////
+public class DeclSeqNode:Node
+{
+	public List<DeclNode> decls = new List<DeclNode>();
+	public DeclSeqNode() { }
+
+	//~DeclSeqNode()
+	//{
+	//    for (; !decls.empty(); decls.pop_back())delete decls.back();
+	//}
+
+	public void proto(DeclSeq d, Environ e)
+	{
+		for(int k = 0; k < decls.Count; ++k)
+		{
+			try
+			{
+				decls[k].proto(d, e);
+			}
+			catch(Ex x)
+			{
+				if(x.pos < 0) x.pos = decls[k].pos;
+				if(x.file.Length==0) x.file = decls[k].file;
+				throw;
+			}
+		}
+	}
+	public void semant(Environ e)
+	{
+		for(int k = 0; k < (int)decls.Count; ++k)
+		{
+			try
+			{
+				decls[k].semant(e);
+			}
+			catch(Ex x)
+			{
+				if(x.pos < 0) x.pos = decls[k].pos;
+				if(x.file.Length==0) x.file = decls[k].file;
+				throw;
+			}
+		}
+	}
+	public void translate(Codegen g)
+	{
+		for(int k = 0; k < (int)decls.Count; ++k)
+		{
+			try
+			{
+				decls[k].translate(g);
+			}
+			catch(Ex x)
+			{
+				if(x.pos < 0) x.pos = decls[k].pos;
+				if(x.file.Length==0) x.file = decls[k].file;
+				throw;
+			}
+		}
+	}
+	public void transdata(Codegen g)
+	{
+		for(int k = 0; k < (int)decls.Count; ++k)
+		{
+			try
+			{
+				decls[k].transdata(g);
+			}
+			catch(Ex x)
+			{
+				if(x.pos < 0) x.pos = decls[k].pos;
+				if(x.file.Length==0) x.file = decls[k].file;
+				throw;
+			}
+		}
+	}
+
+	public void push_back(DeclNode d)
+	{
+		decls.Add(d);
+	}
+
+	public int size()
+	{
+		return decls.Count;
+	}
+}
+
+//#include "exprnode.h"
+//#include "stmtnode.h"
+
+//'kind' shouldn't really be in Parser...
+//should probably be LocalDeclNode,GlobalDeclNode,ParamDeclNode
+////////////////////////////
+// Simple var declaration //
+////////////////////////////
+public class VarDeclNode:DeclNode
+{
+	public string ident, tag;
+	public DECL kind;
+	public bool constant;
+	public ExprNode expr;
+	public DeclVarNode sem_var;
+
+	public VarDeclNode(string i, string t, DECL k, bool c, ExprNode e)
+	{
+		ident = i;
+		tag = t;
+		kind = k;
+		constant = c;
+		expr = e;
+		sem_var = null;
+	}
+
+	//~VarDeclNode()
+	//{
+	//    delete expr;
+	//    delete sem_var;
+	//}
+
+	public override void proto(DeclSeq d, Environ e)
+	{
+		Type ty = tagType(tag, e);
+		if(ty is null) ty = Type.int_type;
+		ConstType defType = null;
+
+		if(expr!=null)
+		{
+			expr = expr.semant(e);
+			expr = expr.castTo(ty, e);
+			if(constant || (kind & DECL.PARAM)!=0)
+			{
+				ConstNode c = expr.constNode();
+				if(c is null) ex("Expression must be constant");
+				if(ty == Type.int_type) ty = new ConstType(c.intValue());
+
+				else if(ty == Type.float_type) ty = new ConstType(c.floatValue());
+
+				else ty = new ConstType(c.stringValue());
+				e.types.Add(ty);
+				//delete expr;
+				expr = null;
+			}
+			if((kind & DECL.PARAM)!=0)
+			{
+				defType = ty.constType();
+				ty = defType.valueType;
+			}
+		}
+		else if(constant) ex("Constants must be initialized");
+
+		Decl decl = d.insertDecl(ident, ty, kind, defType);
+		if(decl is null) ex("Duplicate variable name");
+		if(expr!=null) sem_var = new DeclVarNode(decl);
+	}
+	public override void semant(Environ e) { }
+	public override void translate(Codegen g)
+	{
+		if((kind & DECL.GLOBAL)!=0)
+		{
+			g.align_data(4);
+			g.i_data(0, "_v" + ident);
+		}
+		if(expr!=null) g.code(sem_var.store(g, expr.translate(g)));
+	}
+}
+
+//////////////////////////
+// Function Declaration //
+//////////////////////////
+public class FuncDeclNode:DeclNode
+{
+	public string ident, tag;
+	public DeclSeqNode @params;
+	public StmtSeqNode stmts;
+	public FuncType sem_type;
+	public Environ sem_env;
+
+	public FuncDeclNode(string i, string t, DeclSeqNode p, StmtSeqNode ss)
+	{
+		ident = i;
+		tag = t;
+		@params = p;
+		stmts = ss;
+	}
+
+	//~FuncDeclNode()
+	//{
+	//    delete params;
+	//    delete stmts;
+	//}
+
+	public override void proto(DeclSeq d, Environ e)
+	{
+		Type t = tagType(tag, e);
+		if(t is null) t = Type.int_type;
+		DeclSeq decls = new DeclSeq();//a_ptr<DeclSeq>
+		@params.proto(decls, e);
+		sem_type = new FuncType(t, decls/*.release()*/, false, false);
+		if(d.insertDecl(ident, sem_type, DECL.FUNC) is null)
+		{
+			//delete sem_type;
+			ex("duplicate identifier");
+		}
+		e.types.Add(sem_type);
+	}
+	public override void semant(Environ e)
+	{
+		sem_env = new Environ(genLabel(), sem_type.returnType, 1, e);
+		DeclSeq decls = sem_env.decls;
+
+		int k;
+		for(k = 0; k < sem_type.@params.size(); ++k)
+		{
+			Decl d = sem_type.@params.decls[k];
+			if(decls.insertDecl(d.name, d.type, d.kind) is null) ex("duplicate identifier");
+		}
+
+		stmts.semant(sem_env);
+	}
+	public override void translate(Codegen g)
+	{
+		//var offsets
+		int size = enumVars(sem_env);
+
+		//enter function
+		g.enter("_f" + ident, size);
+
+		//initialize locals
+		TNode t = createVars(sem_env);
+		if(t!=null) g.code(t);
+		if(g.debug)
+		{
+			string t2 = genLabel();
+			g.s_data(ident, t2);
+			g.code(call("__bbDebugEnter", local(0), iconst(sem_env.GetHashCode()), global(t2)));//Hash was originally casting ptr to int
+		}
+
+		//translate statements
+		stmts.translate(g);
+
+		for(int k = 0; k < (int)sem_env.labels.Count; ++k)
+		{
+			if(sem_env.labels[k].def < 0) ex("Undefined label", sem_env.labels[k].@ref);
+		}
+
+		//leave the function
+		g.label(sem_env.funcLabel + "_leave");
+		t = deleteVars(sem_env);
+		if(g.debug) t = new TNode(IR.SEQ, call("__bbDebugLeave"), t);
+		g.leave(t, sem_type.@params.size() * 4);
+	}
+}
+
+//////////////////////
+// Type Declaration //
+//////////////////////
+public class StructDeclNode:DeclNode
+{
+	public string ident;
+	public DeclSeqNode fields;
+	public StructType sem_type;
+	public StructDeclNode(string i, DeclSeqNode f)
+	{
+		ident = i;
+		fields = f;
+	}
+
+	//~StructDeclNode()
+	//{
+	//    delete fields;
+	//}
+
+	public override void proto(DeclSeq d, Environ e)
+	{
+		sem_type = new StructType(ident, new DeclSeq());
+		if(d.insertDecl(ident, sem_type, DECL.STRUCT) is null)
+		{
+			//delete sem_type;
+			ex("Duplicate identifier");
+		}
+		e.types.Add(sem_type);
+	}
+	public override void semant(Environ e)
+	{
+		fields.proto(sem_type.fields, e);
+		for(int k = 0; k < sem_type.fields.size(); ++k) sem_type.fields.decls[k].offset = k * 4;
+	}
+	public override void translate(Codegen g)
+	{
+		//translate fields
+		fields.translate(g);
+
+		//type ID
+		g.align_data(4);
+		g.i_data(5, "_t" + ident);
+
+		//used and free lists for type
+		int k;
+		for(k = 0; k < 2; ++k)
+		{
+			string lab = genLabel();
+			g.i_data(0, lab); //fields
+			g.p_data(lab); //next
+			g.p_data(lab); //prev
+			g.i_data(0); //type
+			g.i_data(-1); //ref_cnt
+		}
+
+		//number of fields
+		g.i_data(sem_type.fields.size());
+
+		//type of each field
+		for(k = 0; k < sem_type.fields.size(); ++k)
+		{
+			Decl field = sem_type.fields.decls[k];
+			Type type = field.type;
+			string t = null;
+			if(type == Type.int_type) t = "__bbIntType";
+			else if(type == Type.float_type) t = "__bbFltType";
+			else if(type == Type.string_type) t = "__bbStrType";
+			else if(type.structType() is StructType s) t = "_t" + s.ident;
+
+			else if(type.vectorType() is VectorType v) t = v.label;
+			g.p_data(t);
+		}
+	}
+}
+
+//////////////////////
+// Data declaration //
+//////////////////////
+public class DataDeclNode:DeclNode
+{
+	public ExprNode expr;
+	public string str_label;
+	public DataDeclNode(ExprNode e){expr = e;}
+
+	//~DataDeclNode()
+	//{
+	//    delete expr;
+	//}
+
+	public override void proto(DeclSeq d, Environ e)
+	{
+		expr = expr.semant(e);
+		ConstNode c = expr.constNode();
+		if(c is null) ex("Data expression must be constant");
+		if(expr.sem_type == Type.string_type) str_label = genLabel();
+	}
+	public override void semant(Environ e) { }
+	public override void translate(Codegen g)
+	{
+		if(expr.sem_type != Type.string_type) return;
+		ConstNode c = expr.constNode();
+		g.s_data(c.stringValue(), str_label);
+	}
+	public override void transdata(Codegen g)
+	{
+		ConstNode c = expr.constNode();
+		if(expr.sem_type == Type.int_type)
+		{
+			g.i_data(1);
+			g.i_data(c.intValue());
+		}
+		else if(expr.sem_type == Type.float_type)
+		{
+			float n = c.floatValue();
+			g.i_data(2);
+			g.i_data(BitConverter.SingleToInt32Bits(n));
+		}
+		else
+		{
+			g.i_data(4);
+			g.p_data(str_label);
+		}
+	}
+}
+
+////////////////////////
+// Vector declaration //
+////////////////////////
+public class VectorDeclNode:DeclNode
+{
+	public string ident, tag;
+	public ExprSeqNode exprs;
+	public DECL kind;
+	public VectorType sem_type;
+	public VectorDeclNode(string i, string t, ExprSeqNode e, DECL k)
+	{
+		ident = i;
+		tag = t;
+		exprs = e;
+		kind = k;
+	}
+
+	//~VectorDeclNode()
+	//{
+	//    delete exprs;
+	//}
+
+	public override void proto(DeclSeq d, Environ env)
+	{
+		Type ty = tagType(tag, env);
+		if(ty is null) ty = Type.int_type;
+
+		List<int> sizes = new List<int>();
+		for(int k = 0; k < exprs.size(); ++k)
+		{
+			ExprNode e = exprs.exprs[k] = exprs.exprs[k].semant(env);
+			ConstNode c = e.constNode();
+			if(c is null) ex("Blitz array sizes must be constant");
+			int n = c.intValue();
+			if(n < 0) ex("Blitz array sizes must not be negative");
+			sizes.Add(n + 1);
+		}
+		string label = genLabel();
+		sem_type = new VectorType(label, ty, sizes);
+		if(d.insertDecl(ident, sem_type, kind) is null)
+		{
+			//delete sem_type;
+			ex("Duplicate identifier");
+		}
+		env.types.Add(sem_type);
+	}
+	public override void translate(Codegen g)
+	{
+		//type tag!
+		g.align_data(4);
+		VectorType v = sem_type.vectorType();
+		g.i_data(6, v.label);
+		int sz = 1;
+		for(int k = 0; k < v.sizes.Count; ++k) sz *= v.sizes[k];
+		g.i_data(sz);
+		string t = null;
+		Type type = v.elementType;
+		if(type == Type.int_type) t = "__bbIntType";
+		else if(type == Type.float_type) t = "__bbFltType";
+		else if(type == Type.string_type) t = "__bbStrType";
+		else if(type.structType() is StructType s) t = "_t" + s.ident;
+
+		else if(type.vectorType() is VectorType v2) t = v2.label;
+		g.p_data(t);
+
+		if(kind == DECL.GLOBAL) g.i_data(0, "_v" + ident);
+	}
+}

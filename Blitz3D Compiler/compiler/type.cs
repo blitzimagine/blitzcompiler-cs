@@ -110,8 +110,8 @@ public class VectorType:Type
 {
 	public string label;
 	public Type elementType;
-	public List<int> sizes = new List<int>();
-	public VectorType(string l, Type t, List<int> szs)
+	public int[] sizes;
+	public VectorType(string l, Type t, int[] szs)
 	{
 		label = l;
 		elementType = t;
@@ -126,8 +126,8 @@ public class VectorType:Type
 		if (t.vectorType() is VectorType v)
 		{
 			if (elementType != v.elementType) return false;
-			if (sizes.Count != v.sizes.Count) return false;
-			for (int k = 0; k < sizes.Count; ++k)
+			if (sizes.Length != v.sizes.Length) return false;
+			for (int k = 0; k < sizes.Length; ++k)
 			{
 				if (sizes[k] != v.sizes[k]) return false;
 			}

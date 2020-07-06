@@ -15,7 +15,7 @@ public class Parser
 		LINE
 	}
 
-	private static bool isTerm(Keyword c) => c == (Keyword)':' || c == (Keyword)'\n';
+	private static bool isTerm(Keyword c) => c == (Keyword)':' || c == Keyword.NEWLINE;
 
 	public Parser(Toker t)
 	{
@@ -33,7 +33,7 @@ public class Parser
 		try
 		{
 			StmtSeqNode stmts = parseStmtSeq(STMTS.PROG);
-			if(toker.curr != (Keyword)(-1)/*EOF*/)
+			if(toker.curr != Keyword.EOF)
 			{
 				throw exp("end-of-file");
 			}
@@ -61,15 +61,15 @@ public class Parser
 
 	private StmtSeqNode parseStmtSeq(STMTS scope)
 	{
-		StmtSeqNode stmts = new StmtSeqNode(incfile);//a_ptr<StmtSeqNode>
+		StmtSeqNode stmts = new StmtSeqNode(incfile);
 		parseStmtSeq(stmts, scope);
-		return stmts/*.release()*/;
+		return stmts;
 	}
 	private void parseStmtSeq(StmtSeqNode stmts, STMTS scope)
 	{
 		for(;;)
 		{
-			while(toker.curr == (Keyword)':' || (scope != STMTS.LINE && toker.curr == (Keyword)'\n'))
+			while(toker.curr == (Keyword)':' || (scope != STMTS.LINE && toker.curr == Keyword.NEWLINE))
 			{
 				toker.next();
 			}
@@ -107,13 +107,13 @@ public class Parser
 
 					included.Add(incfile);
 
-					StmtSeqNode ss = parseStmtSeq(scope);//a_ptr<StmtSeqNode>
-					if(toker.curr != (Keyword)(-1))//EOF
+					StmtSeqNode ss = parseStmtSeq(scope);
+					if(toker.curr != Keyword.EOF)
 					{
 						throw exp("end-of-file");
 					}
 
-					result = new IncludeNode(incfile, ss/*.release()*/);
+					result = new IncludeNode(incfile, ss);
 
 					toker = t_toker;
 					incfile = t_inc;
@@ -124,11 +124,11 @@ public class Parser
 					string ident = toker.text;
 					toker.next();
 					string tag = parseTypeTag();
-					if(!arrayDecls.ContainsKey(ident) && toker.curr != (Keyword)'=' && toker.curr != (Keyword)'\\' && toker.curr != (Keyword)'[')
+					if(!arrayDecls.ContainsKey(ident) && toker.curr != Keyword.EQ && toker.curr != Keyword.Backslash && toker.curr != Keyword.BracketOpen)
 					{
 						//must be a function
 						ExprSeqNode exprs;
-						if(toker.curr == (Keyword)'(')
+						if(toker.curr == Keyword.ParenOpen)
 						{
 							//ugly lookahead for optional '()' around statement params
 							int nest = 1, k;
@@ -136,14 +136,14 @@ public class Parser
 							{
 								Keyword c = toker.lookAhead(k);
 								if(isTerm(c)) throw ex("Mismatched brackets");
-								else if(c == (Keyword)'(') ++nest;
-								else if(c == (Keyword)')' && (--nest)==0) break;
+								else if(c == Keyword.ParenOpen) ++nest;
+								else if(c == Keyword.ParenClose && (--nest)==0) break;
 							}
 							if(isTerm(toker.lookAhead(++k)))
 							{
 								toker.next();
 								exprs = parseExprSeq();
-								if(toker.curr != (Keyword)')') throw exp("')'");
+								if(toker.curr != Keyword.ParenClose) throw exp("')'");
 								toker.next();
 							}
 							else exprs = parseExprSeq();
@@ -155,11 +155,11 @@ public class Parser
 					else
 					{
 						//must be a var
-						VarNode var = parseVar(ident, tag);//a_ptr<VarNode>
-						if(toker.curr != (Keyword)'=') throw exp("variable assignment");
+						VarNode var = parseVar(ident, tag);
+						if(toker.curr != Keyword.EQ) throw exp("variable assignment");
 						toker.next();
 						ExprNode expr = parseExpr(false);
-						result = new AssNode(var/*.release()*/, expr);
+						result = new AssNode(var, expr);
 					}
 				}
 				break;
@@ -173,50 +173,50 @@ public class Parser
 				case Keyword.WHILE:
 				{
 					toker.next();
-					ExprNode expr = parseExpr(false);//a_ptr<ExprNode>
-					StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);//a_ptr<StmtSeqNode>
+					ExprNode expr = parseExpr(false);
+					StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
 					int pos2 = toker.Pos;
 					if(toker.curr != Keyword.WEND) throw exp("'Wend'");
 					toker.next();
-					result = new WhileNode(expr/*.release()*/, stmts2/*.release()*/, pos2);
+					result = new WhileNode(expr, stmts2, pos2);
 				}
 				break;
 				case Keyword.REPEAT:
 				{
 					toker.next();
 					ExprNode expr = null;
-					StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);//a_ptr<StmtSeqNode>
-					Keyword curr = (Keyword)toker.curr;
+					StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
+					Keyword curr = toker.curr;
 					int pos2 = toker.Pos;
 					if(curr != Keyword.UNTIL && curr != Keyword.FOREVER) throw exp("'Until' or 'Forever'");
 					toker.next();
 					if(curr == Keyword.UNTIL) expr = parseExpr(false);
-					result = new RepeatNode(stmts2/*.release()*/, expr, pos2);
+					result = new RepeatNode(stmts2, expr, pos2);
 				}
 				break;
 				case Keyword.SELECT:
 				{
 					toker.next();
 					ExprNode expr = parseExpr(false);
-					SelectNode selNode = new SelectNode(expr);//a_ptr<SelectNode>
+					SelectNode selNode = new SelectNode(expr);
 					for(;;)
 					{
 						while(isTerm(toker.curr)) toker.next();
 						if(toker.curr == Keyword.CASE)
 						{
 							toker.next();
-							ExprSeqNode exprs = parseExprSeq();//a_ptr<ExprSeqNode>
-							if(exprs.size()==0) throw exp("expression sequence");
-							StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);//a_ptr<StmtSeqNode>
-							selNode.push_back(new CaseNode(exprs/*.release()*/, stmts2/*.release()*/));
+							ExprSeqNode exprs = parseExprSeq();
+							if(exprs.Count==0) throw exp("expression sequence");
+							StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
+							selNode.push_back(new CaseNode(exprs, stmts2));
 							continue;
 						}
 						if(toker.curr == Keyword.DEFAULT)
 						{
 							toker.next();
-							StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);//a_ptr<StmtSeqNode>
+							StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
 							if(toker.curr != Keyword.ENDSELECT) throw exp("'End Select'");
-							selNode.defStmts = stmts2/*.release()*/;
+							selNode.defStmts = stmts2;
 							break;
 						}
 						if(toker.curr == Keyword.ENDSELECT)
@@ -226,16 +226,16 @@ public class Parser
 						throw exp("'Case', 'Default' or 'End Select'");
 					}
 					toker.next();
-					result = selNode/*.release()*/;
+					result = selNode;
 				}
 				break;
 				case Keyword.FOR:
 				{
-					VarNode var;//a_ptr<VarNode>
-					StmtSeqNode stmts2;//a_ptr<StmtSeqNode>
+					VarNode var;
+					StmtSeqNode stmts2;
 					toker.next();
 					var = parseVar();
-					if(toker.curr != (Keyword)'=') throw exp("variable assignment");
+					if(toker.curr != Keyword.EQ) throw exp("variable assignment");
 					if(toker.next() == Keyword.EACH)
 					{
 						toker.next();
@@ -244,11 +244,11 @@ public class Parser
 						int pos2 = toker.Pos;
 						if(toker.curr != Keyword.NEXT) throw exp("'Next'");
 						toker.next();
-						result = new ForEachNode(var/*.release()*/, ident, stmts2/*.release()*/, pos2);
+						result = new ForEachNode(var, ident, stmts2, pos2);
 					}
 					else
 					{
-						ExprNode from, to, step;//a_ptr<ExprNode>
+						ExprNode from, to, step;
 						from = parseExpr(false);
 						if(toker.curr != Keyword.TO) throw exp("'TO'");
 						toker.next();
@@ -264,7 +264,7 @@ public class Parser
 						int pos2 = toker.Pos;
 						if(toker.curr != Keyword.NEXT) throw exp("'Next'");
 						toker.next();
-						result = new ForNode(var/*.release()*/, from/*.release()*/, to/*.release()*/, step/*.release()*/, stmts2/*.release()*/, pos2);
+						result = new ForNode(var, from, to, step, stmts2, pos2);
 					}
 				}
 				break;
@@ -312,12 +312,12 @@ public class Parser
 				case Keyword.INSERT:
 				{
 					toker.next();
-					ExprNode expr1 = parseExpr(false);//a_ptr<ExprNode>
+					ExprNode expr1 = parseExpr(false);
 					if(toker.curr != Keyword.BEFORE && toker.curr != Keyword.AFTER) throw exp("'Before' or 'After'");
 					bool before = toker.curr == Keyword.BEFORE;
 					toker.next();
-					ExprNode expr2 = parseExpr(false);//a_ptr<ExprNode>
-					result = new InsertNode(expr1/*.release()*/, expr2/*.release()*/, before);
+					ExprNode expr2 = parseExpr(false);
+					result = new InsertNode(expr1, expr2, before);
 				}
 				break;
 				case Keyword.READ:
@@ -329,7 +329,7 @@ public class Parser
 						stmt.pos = pos;
 						pos = toker.Pos;
 						stmts.push_back(stmt);
-					} while(toker.curr == (Keyword)',');
+					} while(toker.curr == Keyword.COMMA);
 					break;
 				case Keyword.RESTORE:
 					if(toker.next() == Keyword.IDENT)
@@ -346,7 +346,7 @@ public class Parser
 						toker.next();
 						ExprNode expr = parseExpr(false);
 						datas.push_back(new DataDeclNode(expr));
-					} while(toker.curr == (Keyword)',');
+					} while(toker.curr == Keyword.COMMA);
 					break;
 				case Keyword.TYPE:
 					if(scope != STMTS.PROG) throw ex("'Type' can only appear in main program");
@@ -359,7 +359,7 @@ public class Parser
 					{
 						toker.next();
 						consts.push_back(parseVarDecl(DECL.GLOBAL, true));
-					} while(toker.curr == (Keyword)',');
+					} while(toker.curr == Keyword.COMMA);
 					break;
 				case Keyword.FUNCTION:
 					if(scope != STMTS.PROG) throw ex("'Function' can only appear in main program");
@@ -374,7 +374,7 @@ public class Parser
 						stmt.pos = pos;
 						pos = toker.Pos;
 						stmts.push_back(stmt);
-					} while(toker.curr == (Keyword)',');
+					} while(toker.curr == Keyword.COMMA);
 					break;
 				case Keyword.LOCAL:
 					do
@@ -385,7 +385,7 @@ public class Parser
 						stmt.pos = pos;
 						pos = toker.Pos;
 						stmts.push_back(stmt);
-					} while(toker.curr == (Keyword)',');
+					} while(toker.curr == Keyword.COMMA);
 					break;
 				case Keyword.GLOBAL:
 					if(scope != STMTS.PROG) throw ex("'Global' can only appear in main program");
@@ -397,13 +397,13 @@ public class Parser
 						stmt.pos = pos;
 						pos = toker.Pos;
 						stmts.push_back(stmt);
-					} while(toker.curr == (Keyword)',');
+					} while(toker.curr == Keyword.COMMA);
 					break;
 				case (Keyword)'.':
 				{
 					toker.next();
 					string t = parseIdent();
-					result = new LabelNode(t, datas.size());
+					result = new LabelNode(t, datas.Count);
 				}
 				break;
 				default:
@@ -462,48 +462,48 @@ public class Parser
 	}
 	private VarNode parseVar(string ident, string tag)
 	{
-		VarNode var;//a_ptr<VarNode>
-		if(toker.curr == (Keyword)'(')
+		VarNode var;
+		if(toker.curr == Keyword.ParenOpen)
 		{
 			toker.next();
-			ExprSeqNode exprs = parseExprSeq();//a_ptr<ExprSeqNode>
-			if(toker.curr != (Keyword)')') throw exp("')'");
+			ExprSeqNode exprs = parseExprSeq();
+			if(toker.curr != Keyword.ParenClose) throw exp("')'");
 			toker.next();
-			var = new ArrayVarNode(ident, tag, exprs/*.release()*/);
+			var = new ArrayVarNode(ident, tag, exprs);
 		}
 		else var = new IdentVarNode(ident, tag);
 
 		for(; ; )
 		{
-			if(toker.curr == (Keyword)'\\')
+			if(toker.curr == Keyword.Backslash)
 			{
 				toker.next();
 				string ident2 = parseIdent();
 				string tag2 = parseTypeTag();
-				ExprNode expr = new VarExprNode(var/*.release()*/);
+				ExprNode expr = new VarExprNode(var);
 				var = new FieldVarNode(expr, ident2, tag2);
 			}
-			else if(toker.curr == (Keyword)'[')
+			else if(toker.curr == Keyword.BracketOpen)
 			{
 				toker.next();
-				ExprSeqNode exprs = parseExprSeq();//a_ptr<ExprSeqNode>
-				if(exprs.exprs.Count != 1 || toker.curr != (Keyword)']') throw exp("']'");
+				ExprSeqNode exprs = parseExprSeq();
+				if(exprs.exprs.Count != 1 || toker.curr != Keyword.BracketClose) throw exp("']'");
 				toker.next();
-				ExprNode expr = new VarExprNode(var/*.release()*/);
-				var = new VectorVarNode(expr, exprs/*.release()*/);
+				ExprNode expr = new VarExprNode(var);
+				var = new VectorVarNode(expr, exprs);
 			}
 			else
 			{
 				break;
 			}
 		}
-		return var/*.release()*/;
+		return var;
 	}
 	//private CallNode parseCall(string ident, string tag);
 	private IfNode parseIf()
 	{
-		ExprNode expr;//a_ptr<ExprNode>
-		StmtSeqNode stmts, elseOpt = null;//a_ptr<StmtSeqNode>
+		ExprNode expr;
+		StmtSeqNode stmts, elseOpt = null;
 
 		expr = parseExpr(false);
 		if(toker.curr == Keyword.THEN) toker.next();
@@ -529,9 +529,9 @@ public class Parser
 		{
 			if(toker.curr != Keyword.ENDIF) throw exp("'EndIf'");
 		}
-		else if(toker.curr != (Keyword)'\n') throw exp("end-of-line");
+		else if(toker.curr != Keyword.NEWLINE) throw exp("end-of-line");
 
-		return new IfNode(expr/*.release()*/, stmts/*.release()*/, elseOpt/*.release()*/);
+		return new IfNode(expr, stmts, elseOpt);
 	}
 
 	private DeclNode parseVarDecl(DECL kind, bool constant)
@@ -540,19 +540,19 @@ public class Parser
 		string ident = parseIdent();
 		string tag = parseTypeTag();
 		DeclNode d;
-		if(toker.curr == (Keyword)'[')
+		if(toker.curr == Keyword.BracketOpen)
 		{
 			if(constant) throw ex("Blitz arrays may not be constant");
 			toker.next();
-			ExprSeqNode exprs = parseExprSeq();//a_ptr<ExprSeqNode>
-			if(exprs.size() != 1 || toker.curr != (Keyword)']') throw exp("']'");
+			ExprSeqNode exprs = parseExprSeq();
+			if(exprs.Count != 1 || toker.curr != Keyword.BracketClose) throw exp("']'");
 			toker.next();
-			d = new VectorDeclNode(ident, tag, exprs/*.release()*/, kind);
+			d = new VectorDeclNode(ident, tag, exprs, kind);
 		}
 		else
 		{
 			ExprNode expr = null;
-			if(toker.curr == (Keyword)'=')
+			if(toker.curr == Keyword.EQ)
 			{
 				toker.next();
 				expr = parseExpr(false);
@@ -569,13 +569,13 @@ public class Parser
 		int pos = toker.Pos;
 		string ident = parseIdent();
 		string tag = parseTypeTag();
-		if(toker.curr != (Keyword)'(') throw exp("'('");
+		if(toker.curr != Keyword.ParenOpen) throw exp("'('");
 		toker.next();
-		ExprSeqNode exprs = parseExprSeq();//a_ptr<ExprSeqNode>
-		if(toker.curr != (Keyword)')') throw exp("')'");
-		if(exprs.size()==0) throw ex("can't have a 0 dimensional array");
+		ExprSeqNode exprs = parseExprSeq();
+		if(toker.curr != Keyword.ParenClose) throw exp("')'");
+		if(exprs.Count==0) throw ex("can't have a 0 dimensional array");
 		toker.next();
-		DimNode d = new DimNode(ident, tag, exprs/*.release()*/);
+		DimNode d = new DimNode(ident, tag, exprs);
 		arrayDecls[ident] = d;
 		d.pos = pos;
 		return d;
@@ -585,26 +585,26 @@ public class Parser
 		int pos = toker.Pos;
 		string ident = parseIdent();
 		string tag = parseTypeTag();
-		if(toker.curr != (Keyword)'(') throw exp("'('");
-		DeclSeqNode @params = new DeclSeqNode();//a_ptr<DeclSeqNode>
-		if(toker.next() != (Keyword)')')
+		if(toker.curr != Keyword.ParenOpen) throw exp("'('");
+		DeclSeqNode @params = new DeclSeqNode();
+		if(toker.next() != Keyword.ParenClose)
 		{
 			for(; ; )
 			{
 				@params.push_back(parseVarDecl(DECL.PARAM, false));
-				if(toker.curr != (Keyword)',') break;
+				if(toker.curr != Keyword.COMMA) break;
 				toker.next();
 			}
-			if(toker.curr != (Keyword)')') throw exp("')'");
+			if(toker.curr != Keyword.ParenClose) throw exp("')'");
 		}
 		toker.next();
-		StmtSeqNode stmts = parseStmtSeq(STMTS.BLOCK);//a_ptr<StmtSeqNode>
+		StmtSeqNode stmts = parseStmtSeq(STMTS.BLOCK);
 		if(toker.curr != Keyword.ENDFUNCTION) throw exp("'End Function'");
 		StmtNode ret = new ReturnNode(null);
 		ret.pos = toker.Pos;
 		stmts.push_back(ret);
 		toker.next();
-		DeclNode d = new FuncDeclNode(ident, tag, @params/*.release()*/, stmts/*.release()*/);
+		DeclNode d = new FuncDeclNode(ident, tag, @params, stmts);
 		d.pos = pos;
 		d.file = incfile;
 		return d;
@@ -613,20 +613,20 @@ public class Parser
 	{
 		int pos = toker.Pos;
 		string ident = parseIdent();
-		while(toker.curr == (Keyword)'\n') toker.next();
-		DeclSeqNode fields = new DeclSeqNode();//a_ptr<DeclSeqNode>
+		while(toker.curr == Keyword.NEWLINE) toker.next();
+		DeclSeqNode fields = new DeclSeqNode();
 		while(toker.curr == Keyword.FIELD)
 		{
 			do
 			{
 				toker.next();
 				fields.push_back(parseVarDecl(DECL.FIELD, false));
-			} while(toker.curr == (Keyword)',');
-			while(toker.curr == (Keyword)'\n') toker.next();
+			} while(toker.curr == Keyword.COMMA);
+			while(toker.curr == Keyword.NEWLINE) toker.next();
 		}
 		if(toker.curr != Keyword.ENDTYPE) throw exp("'Field' or 'End Type'");
 		toker.next();
-		DeclNode d = new StructDeclNode(ident, fields/*.release()*/);
+		DeclNode d = new StructDeclNode(ident, fields);
 		d.pos = pos;
 		d.file = incfile;
 		return d;
@@ -634,16 +634,16 @@ public class Parser
 
 	private ExprSeqNode parseExprSeq()
 	{
-		ExprSeqNode exprs = new ExprSeqNode();//a_ptr<ExprSeqNode>
+		ExprSeqNode exprs = new ExprSeqNode();
 		bool opt = true;
 		while(parseExpr(opt) is ExprNode e)
         {
 			exprs.push_back(e);
-			if(toker.curr != (Keyword)',') break;
+			if(toker.curr != Keyword.COMMA) break;
 			toker.next();
 			opt = false;
 		}
-		return exprs/*.release()*/;
+		return exprs;
 	}
 
 	private ExprNode parseExpr(bool opt)
@@ -652,94 +652,93 @@ public class Parser
 		{
 			toker.next();
 			ExprNode expr = parseExpr1(false);
-			return new RelExprNode((Keyword)'=', expr, new IntConstNode(0));
+			return new RelExprNode(Keyword.EQ, expr, new IntConstNode(0));
 		}
 		return parseExpr1(opt);
 	}
 	private ExprNode parseExpr1(bool opt) //And, Or, Eor
 	{
-		ExprNode lhs = parseExpr2(opt);//a_ptr<ExprNode>
+		ExprNode lhs = parseExpr2(opt);
 		if(lhs is null) return null;
 		for(; ; )
 		{
 			Keyword c = toker.curr;
-			if(c != Keyword.AND && c != Keyword.OR && c != Keyword.XOR) return lhs/*.release()*/;
+			if(c != Keyword.AND && c != Keyword.OR && c != Keyword.XOR) return lhs;
 			toker.next();
 			ExprNode rhs = parseExpr2(false);
-			lhs = new BinExprNode(c, lhs/*.release()*/, rhs);
+			lhs = new BinExprNode(c, lhs, rhs);
 		}
 	}
 	private ExprNode parseExpr2(bool opt) //<,=,>,<=,<>,>=
 	{
-		ExprNode lhs = parseExpr3(opt);//a_ptr<ExprNode>
+		ExprNode lhs = parseExpr3(opt);
 		if(lhs is null) return null;
-		for(; ; )
+		for(;;)
 		{
 			Keyword c = toker.curr;
-			if(c != (Keyword)'<' && c != (Keyword)'>' && c != (Keyword)'=' && c != Keyword.LE && c != Keyword.GE && c != Keyword.NE) return lhs/*.release()*/;
+			if(c != Keyword.LT && c != Keyword.GT && c != Keyword.EQ && c != Keyword.LE && c != Keyword.GE && c != Keyword.NE) return lhs;
 			toker.next();
 			ExprNode rhs = parseExpr3(false);
-			lhs = new RelExprNode(c, lhs/*.release()*/, rhs);
+			lhs = new RelExprNode(c, lhs, rhs);
 		}
 	}
 	private ExprNode parseExpr3(bool opt) //+,-
 	{
-		ExprNode lhs = parseExpr4(opt);//a_ptr<ExprNode>
+		ExprNode lhs = parseExpr4(opt);
 		if(lhs is null) return null;
-		for(; ; )
+		for(;;)
 		{
 			Keyword c = toker.curr;
-			if(c != (Keyword)'+' && c != (Keyword)'-') return lhs/*.release()*/;
+			if(c != Keyword.ADD && c != Keyword.SUB) return lhs;
 			toker.next();
 			ExprNode rhs = parseExpr4(false);
-			lhs = new ArithExprNode(c, lhs/*.release()*/, rhs);
+			lhs = new ArithExprNode(c, lhs, rhs);
 		}
 	}
 	private ExprNode parseExpr4(bool opt) //Lsr,Lsr,Asr
 	{
-		ExprNode lhs = parseExpr5(opt);//a_ptr<ExprNode>
+		ExprNode lhs = parseExpr5(opt);
 		if(lhs is null) return null;
-		for(; ; )
+		for(;;)
 		{
 			Keyword c = toker.curr;
-			if(c != Keyword.SHL && c != Keyword.SHR && c != Keyword.SAR) return lhs/*.release()*/;
+			if(c != Keyword.SHL && c != Keyword.SHR && c != Keyword.SAR) return lhs;
 			toker.next();
 			ExprNode rhs = parseExpr5(false);
-			lhs = new BinExprNode(c, lhs/*.release()*/, rhs);
+			lhs = new BinExprNode(c, lhs, rhs);
 		}
 	}
 	private ExprNode parseExpr5(bool opt) //*,/,Mod
 	{
-		ExprNode lhs = parseExpr6(opt);//a_ptr<ExprNode>
+		ExprNode lhs = parseExpr6(opt);
 		if(lhs is null) return null;
-		for(; ; )
+		for(;;)
 		{
 			Keyword c = toker.curr;
-			if(c != (Keyword)'*' && c != (Keyword)'/' && c != Keyword.MOD) return lhs/*.release()*/;
+			if(c != Keyword.MUL && c != Keyword.DIV && c != Keyword.MOD) return lhs;
 			toker.next();
 			ExprNode rhs = parseExpr6(false);
-			lhs = new ArithExprNode(c, lhs/*.release()*/, rhs);
+			lhs = new ArithExprNode(c, lhs, rhs);
 		}
 	}
 	private ExprNode parseExpr6(bool opt) //^
 	{
-		ExprNode lhs = parseUniExpr(opt);//a_ptr<ExprNode>
+		ExprNode lhs = parseUniExpr(opt);
 		if(lhs is null) return null;
 		for(; ; )
 		{
 			Keyword c = toker.curr;
-			if(c != (Keyword)'^') return lhs/*.release()*/;
+			if(c != Keyword.POW) return lhs;
 			toker.next();
 			ExprNode rhs = parseUniExpr(false);
-			lhs = new ArithExprNode(c, lhs/*.release()*/, rhs);
+			lhs = new ArithExprNode(c, lhs, rhs);
 		}
 	}
 	private ExprNode parseUniExpr(bool opt) //+,-,Not,~
 	{
-		ExprNode result = null;
-		string t;
+		ExprNode result;
 
-		Keyword c = (Keyword)toker.curr;
+		Keyword c = toker.curr;
 		switch(c)
 		{
 			case Keyword.BBINT:
@@ -759,7 +758,7 @@ public class Parser
 				break;
 			case Keyword.OBJECT:
 				if(toker.next() == (Keyword)'.') toker.next();
-				t = parseIdent();
+				string t = parseIdent();
 				result = parseUniExpr(false);
 				result = new ObjectCastNode(result, t);
 				break;
@@ -778,14 +777,14 @@ public class Parser
 				result = parseUniExpr(false);
 				result = new AfterNode(result);
 				break;
-			case (Keyword)'+':
-			case (Keyword)'-':
-			case (Keyword)'~':
+			case Keyword.POSITIVE:
+			case Keyword.NEGATIVE:
+			case Keyword.BITNOT:
 			case Keyword.ABS:
 			case Keyword.SGN:
 				toker.next();
 				result = parseUniExpr(false);
-				if(c == (Keyword)'~')
+				if(c == Keyword.BITNOT)
 				{
 					result = new BinExprNode(Keyword.XOR, result, new IntConstNode(-1));
 				}
@@ -802,19 +801,19 @@ public class Parser
 	}
 	private ExprNode parsePrimary(bool opt)
 	{
-		ExprNode expr;//a_ptr<ExprNode>
+		ExprNode expr;
 		string t, ident, tag;
 		ExprNode result = null;
 		int n, k;
 
 		switch(toker.curr)
 		{
-			case (Keyword)'(':
+			case Keyword.ParenOpen:
 				toker.next();
 				expr = parseExpr(false);
-				if(toker.curr != (Keyword)')') throw exp("')'");
+				if(toker.curr != Keyword.ParenClose) throw exp("')'");
 				toker.next();
-				result = expr/*.release()*/;
+				result = expr;
 				break;
 			case Keyword.BBNEW:
 				toker.next();
@@ -878,14 +877,14 @@ public class Parser
 				ident = toker.text;
 				toker.next();
 				tag = parseTypeTag();
-				if(toker.curr == (Keyword)'(' && !arrayDecls.ContainsKey(ident))
+				if(toker.curr == Keyword.ParenOpen && !arrayDecls.ContainsKey(ident))
 				{
 					//must be a func
 					toker.next();
-					ExprSeqNode exprs = parseExprSeq();//a_ptr<ExprSeqNode>
-					if(toker.curr != (Keyword)')') throw exp("')'");
+					ExprSeqNode exprs = parseExprSeq();
+					if(toker.curr != Keyword.ParenClose) throw exp("')'");
 					toker.next();
-					result = new CallNode(ident, tag, exprs/*.release()*/);
+					result = new CallNode(ident, tag, exprs);
 				}
 				else
 				{

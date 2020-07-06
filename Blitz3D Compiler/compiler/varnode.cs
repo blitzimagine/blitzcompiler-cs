@@ -127,13 +127,13 @@ public class ArrayVarNode : VarNode
         if (sem_decl is null || (sem_decl.kind & DECL.ARRAY)==0) ex("Array not found");
         ArrayType a = sem_decl.type.arrayType();
         if (t!=null && t != a.elementType) ex("array type mismtach");
-        if (a.dims != exprs.size()) ex("incorrect number of dimensions");
+        if (a.dims != exprs.Count) ex("incorrect number of dimensions");
         sem_type = a.elementType;
     }
     public override TNode translate(Codegen g)
     {
         TNode t = null;
-        for (int k = 0; k < exprs.size(); ++k)
+        for (int k = 0; k < exprs.Count; ++k)
         {
             TNode e = exprs.exprs[k].translate(g);
             if (k!=0)
@@ -205,10 +205,10 @@ public class VectorVarNode : VarNode
         expr = expr.semant(e);
         vec_type = expr.sem_type.vectorType();
         if (vec_type is null) ex("Variable must be a Blitz array");
-        if (vec_type.sizes.Count != exprs.size()) ex("Incorrect number of subscripts");
+        if (vec_type.sizes.Length != exprs.Count) ex("Incorrect number of subscripts");
         exprs.semant(e);
         exprs.castTo(Type.int_type, e);
-        for (int k = 0; k < exprs.size(); ++k)
+        for (int k = 0; k < exprs.Count; ++k)
         {
             ConstNode t = exprs.exprs[k].constNode();
             if (t!=null)
@@ -225,7 +225,7 @@ public class VectorVarNode : VarNode
     {
         int sz = 4;
         TNode t = null;
-        for (int k = 0; k < exprs.size(); ++k)
+        for (int k = 0; k < exprs.Count; ++k)
         {
             TNode p;
             ExprNode e = exprs.exprs[k];

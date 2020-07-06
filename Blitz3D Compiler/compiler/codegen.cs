@@ -1,5 +1,3 @@
-//#include "../stdutil/std.h"
-
 using System.IO;
 
 public enum IR
@@ -90,7 +88,7 @@ public class TNode
     public void log(){}
 }
 
-public class Codegen
+public abstract class Codegen
 {
     public TextWriter @out;//ostream
     public bool debug;
@@ -101,13 +99,13 @@ public class Codegen
         this.debug = debug;
     }
 
-    public virtual void enter(string l, int frameSize){}
-    public virtual void code(TNode code){}
-    public virtual void leave(TNode cleanup, int pop_sz){}
-    public virtual void label(string l){}
-    public virtual void i_data(int i, string l = ""){}
-    public virtual void s_data(string s, string l = ""){}
-    public virtual void p_data(string p, string l = ""){}
-    public virtual void align_data(int n){}
-    public virtual void flush(){}
+    public abstract void enter(string l, int frameSize);
+    public abstract void code(TNode code);
+    public abstract void leave(TNode cleanup, int pop_sz);
+    public abstract void label(string l);
+    public abstract void i_data(int i, string l = "");
+    public abstract void s_data(string s, string l = "");
+    public abstract void p_data(string p, string l = "");
+    public abstract void align_data(int n);
+    public abstract void flush();
 }

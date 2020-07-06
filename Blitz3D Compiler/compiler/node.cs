@@ -49,13 +49,13 @@ public class Node
         {
             switch (op)
             {
-            case (Keyword)'=': n = IR.FSETEQ;
+            case Keyword.EQ: n = IR.FSETEQ;
                 break;
             case Keyword.NE: n = IR.FSETNE;
                 break;
-            case (Keyword)'<': n = IR.FSETLT;
+            case Keyword.LT: n = IR.FSETLT;
                 break;
-            case (Keyword)'>': n = IR.FSETGT;
+            case Keyword.GT: n = IR.FSETGT;
                 break;
             case Keyword.LE: n = IR.FSETLE;
                 break;
@@ -67,13 +67,13 @@ public class Node
         {
             switch (op)
             {
-            case (Keyword)'=': n = IR.SETEQ;
+            case Keyword.EQ: n = IR.SETEQ;
                 break;
             case Keyword.NE: n = IR.SETNE;
                 break;
-            case (Keyword)'<': n = IR.SETLT;
+            case Keyword.LT: n = IR.SETLT;
                 break;
-            case (Keyword)'>': n = IR.SETGT;
+            case Keyword.GT: n = IR.SETGT;
                 break;
             case Keyword.LE: n = IR.SETLE;
                 break;
@@ -114,7 +114,7 @@ public class Node
 	{
 		//calc offsets
 		int p_size = 0, l_size = 0;
-		for(int k = 0; k < e.decls.size(); ++k)
+		for(int k = 0; k < e.decls.Count; ++k)
 		{
 			Decl d = e.decls.decls[k];
 			if((d.kind & DECL.PARAM)!=0)
@@ -153,7 +153,7 @@ public class Node
 		int k;
 		TNode t = null;
 		//initialize locals
-		for(k = 0; k < e.decls.size(); ++k)
+		for(k = 0; k < e.decls.Count; ++k)
 		{
 			Decl d = e.decls.decls[k];
 			if(d.kind != DECL.LOCAL) continue;
@@ -164,7 +164,7 @@ public class Node
 			t = new TNode(IR.MOVE, t, p);
 		}
 		//initialize vectors
-		for(k = 0; k < e.decls.size(); ++k)
+		for(k = 0; k < e.decls.Count; ++k)
 		{
 			Decl d = e.decls.decls[k];
 			if(d.kind == DECL.PARAM) continue;
@@ -185,7 +185,7 @@ public class Node
 	public static TNode deleteVars(Environ e)
 	{
 		TNode t = null, l = null, p = null, p1 = null, p2 = null;
-		for(int k = 0; k < e.decls.size(); ++k)
+		for(int k = 0; k < e.decls.Count; ++k)
 		{
 			Decl d = e.decls.decls[k];
 			Type type = d.type;

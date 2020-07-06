@@ -7,12 +7,35 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using static Keyword;
 
 public enum Keyword:int
 {
 	//Not actually a keyword, this is end of file
 	EOF = -1,
+
+	EQ = '=',
+	LT = '<',
+	GT = '>',
+	COMMA = ',',
+	NEWLINE = '\n',
+
+	POSITIVE = '+',
+	NEGATIVE = '-',
+	ADD = '+',
+	SUB = '-',
+	MUL = '*',
+	DIV = '/',
+	POW = '^',
+
+	BITNOT = '~',
+
+	ParenOpen = '(',
+	ParenClose = ')',
+
+	BracketOpen = '[',
+	BracketClose = ']',
+
+	Backslash = '\\',
 
 	DIM=0x8000,
 	GOTO,
@@ -70,6 +93,7 @@ public enum Keyword:int
 	BBNULL,
 	OBJECT,
 	BBHANDLE,
+
 	AND,
 	OR,
 	XOR,
@@ -101,72 +125,72 @@ public class Toker
 	{
 		if(makeKeywords_made) return;
 
-		alphaTokes["Dim"] = DIM;
-		alphaTokes["Goto"] = GOTO;
-		alphaTokes["Gosub"] = GOSUB;
-		alphaTokes["Return"] = RETURN;
-		alphaTokes["Exit"] = EXIT;
-		alphaTokes["If"] = IF;
-		alphaTokes["Then"] = THEN;
-		alphaTokes["Else"] = ELSE;
-		alphaTokes["EndIf"] = ENDIF;
-		alphaTokes["End If"] = ENDIF;
-		alphaTokes["ElseIf"] = ELSEIF;
-		alphaTokes["Else If"] = ELSEIF;
-		alphaTokes["While"] = WHILE;
-		alphaTokes["Wend"] = WEND;
-		alphaTokes["For"] = FOR;
-		alphaTokes["To"] = TO;
-		alphaTokes["Step"] = STEP;
-		alphaTokes["Next"] = NEXT;
-		alphaTokes["Function"] = FUNCTION;
-		alphaTokes["End Function"] = ENDFUNCTION;
-		alphaTokes["Type"] = TYPE;
-		alphaTokes["End Type"] = ENDTYPE;
-		alphaTokes["Each"] = EACH;
-		alphaTokes["Local"] = LOCAL;
-		alphaTokes["Global"] = GLOBAL;
-		alphaTokes["Field"] = FIELD;
-		alphaTokes["Const"] = BBCONST;
-		alphaTokes["Select"] = SELECT;
-		alphaTokes["Case"] = CASE;
-		alphaTokes["Default"] = DEFAULT;
-		alphaTokes["End Select"] = ENDSELECT;
-		alphaTokes["Repeat"] = REPEAT;
-		alphaTokes["Until"] = UNTIL;
-		alphaTokes["Forever"] = FOREVER;
-		alphaTokes["Data"] = DATA;
-		alphaTokes["Read"] = READ;
-		alphaTokes["Restore"] = RESTORE;
-		alphaTokes["Abs"] = ABS;
-		alphaTokes["Sgn"] = SGN;
-		alphaTokes["Mod"] = MOD;
-		alphaTokes["Pi"] = PI;
-		alphaTokes["True"] = BBTRUE;
-		alphaTokes["False"] = BBFALSE;
-		alphaTokes["Int"] = BBINT;
-		alphaTokes["Float"] = BBFLOAT;
-		alphaTokes["Str"] = BBSTR;
-		alphaTokes["Include"] = INCLUDE;
+		alphaTokes["Dim"] = Keyword.DIM;
+		alphaTokes["Goto"] = Keyword.GOTO;
+		alphaTokes["Gosub"] = Keyword.GOSUB;
+		alphaTokes["Return"] = Keyword.RETURN;
+		alphaTokes["Exit"] = Keyword.EXIT;
+		alphaTokes["If"] = Keyword.IF;
+		alphaTokes["Then"] = Keyword.THEN;
+		alphaTokes["Else"] = Keyword.ELSE;
+		alphaTokes["EndIf"] = Keyword.ENDIF;
+		alphaTokes["End If"] = Keyword.ENDIF;
+		alphaTokes["ElseIf"] = Keyword.ELSEIF;
+		alphaTokes["Else If"] = Keyword.ELSEIF;
+		alphaTokes["While"] = Keyword.WHILE;
+		alphaTokes["Wend"] = Keyword.WEND;
+		alphaTokes["For"] = Keyword.FOR;
+		alphaTokes["To"] = Keyword.TO;
+		alphaTokes["Step"] = Keyword.STEP;
+		alphaTokes["Next"] = Keyword.NEXT;
+		alphaTokes["Function"] = Keyword.FUNCTION;
+		alphaTokes["End Function"] = Keyword.ENDFUNCTION;
+		alphaTokes["Type"] = Keyword.TYPE;
+		alphaTokes["End Type"] = Keyword.ENDTYPE;
+		alphaTokes["Each"] = Keyword.EACH;
+		alphaTokes["Local"] = Keyword.LOCAL;
+		alphaTokes["Global"] = Keyword.GLOBAL;
+		alphaTokes["Field"] = Keyword.FIELD;
+		alphaTokes["Const"] = Keyword.BBCONST;
+		alphaTokes["Select"] = Keyword.SELECT;
+		alphaTokes["Case"] = Keyword.CASE;
+		alphaTokes["Default"] = Keyword.DEFAULT;
+		alphaTokes["End Select"] = Keyword.ENDSELECT;
+		alphaTokes["Repeat"] = Keyword.REPEAT;
+		alphaTokes["Until"] = Keyword.UNTIL;
+		alphaTokes["Forever"] = Keyword.FOREVER;
+		alphaTokes["Data"] = Keyword.DATA;
+		alphaTokes["Read"] = Keyword.READ;
+		alphaTokes["Restore"] = Keyword.RESTORE;
+		alphaTokes["Abs"] = Keyword.ABS;
+		alphaTokes["Sgn"] = Keyword.SGN;
+		alphaTokes["Mod"] = Keyword.MOD;
+		alphaTokes["Pi"] = Keyword.PI;
+		alphaTokes["True"] = Keyword.BBTRUE;
+		alphaTokes["False"] = Keyword.BBFALSE;
+		alphaTokes["Int"] = Keyword.BBINT;
+		alphaTokes["Float"] = Keyword.BBFLOAT;
+		alphaTokes["Str"] = Keyword.BBSTR;
+		alphaTokes["Include"] = Keyword.INCLUDE;
 
-		alphaTokes["New"] = BBNEW;
-		alphaTokes["Delete"] = BBDELETE;
-		alphaTokes["First"] = FIRST;
-		alphaTokes["Last"] = LAST;
-		alphaTokes["Insert"] = INSERT;
-		alphaTokes["Before"] = BEFORE;
-		alphaTokes["After"] = AFTER;
-		alphaTokes["Null"] = BBNULL;
-		alphaTokes["Object"] = OBJECT;
-		alphaTokes["Handle"] = BBHANDLE;
+		alphaTokes["New"] = Keyword.BBNEW;
+		alphaTokes["Delete"] = Keyword.BBDELETE;
+		alphaTokes["First"] = Keyword.FIRST;
+		alphaTokes["Last"] = Keyword.LAST;
+		alphaTokes["Insert"] = Keyword.INSERT;
+		alphaTokes["Before"] = Keyword.BEFORE;
+		alphaTokes["After"] = Keyword.AFTER;
+		alphaTokes["Null"] = Keyword.BBNULL;
+		alphaTokes["Object"] = Keyword.OBJECT;
+		alphaTokes["Handle"] = Keyword.BBHANDLE;
 
-		alphaTokes["And"] = AND;
-		alphaTokes["Or"] = OR;
-		alphaTokes["Xor"] = XOR;
-		alphaTokes["Not"] = NOT;
-		alphaTokes["Shl"] = SHL;
-		alphaTokes["Shr"] = SHR;
-		alphaTokes["Sar"] = SAR;
+		alphaTokes["And"] = Keyword.AND;
+		alphaTokes["Or"] = Keyword.OR;
+		alphaTokes["Xor"] = Keyword.XOR;
+		alphaTokes["Not"] = Keyword.NOT;
+		alphaTokes["Shl"] = Keyword.SHL;
+		alphaTokes["Shr"] = Keyword.SHR;
+		alphaTokes["Sar"] = Keyword.SAR;
 
 		foreach(var entry in alphaTokes)
 		{
@@ -230,7 +254,7 @@ public class Toker
 		if(input.EndOfStream)
 		{
 			line = unchecked((char)-1).ToString();//EOF
-			tokes.Add(new Toke((Keyword)(-1)/*EOF*/, 0, 1, line));
+			tokes.Add(new Toke(Keyword.EOF, 0, 1, line));
 			return;
 		}
 
@@ -259,7 +283,7 @@ public class Toker
 			if(c == '.' && char.IsDigit(line[k + 1]))
 			{
 				for(k += 2; char.IsDigit(line[k]); ++k) { }
-				tokes.Add(new Toke(FLOATCONST, from, k, line));
+				tokes.Add(new Toke(Keyword.FLOATCONST, from, k, line));
 				continue;
 			}
 			if(char.IsDigit(c))
@@ -268,22 +292,22 @@ public class Toker
 				if(line[k] == '.')
 				{
 					for(++k; char.IsDigit(line[k]); ++k) { }
-					tokes.Add(new Toke(FLOATCONST, from, k, line));
+					tokes.Add(new Toke(Keyword.FLOATCONST, from, k, line));
 					continue;
 				}
-				tokes.Add(new Toke(INTCONST, from, k, line));
+				tokes.Add(new Toke(Keyword.INTCONST, from, k, line));
 				continue;
 			}
 			if(c == '%' && (line[k + 1] == '0' || line[k + 1] == '1'))
 			{
 				for(k += 2; line[k] == '0' || line[k] == '1'; ++k) { }
-				tokes.Add(new Toke(BINCONST, from, k, line));
+				tokes.Add(new Toke(Keyword.BINCONST, from, k, line));
 				continue;
 			}
 			if(c == '$' && IsHexDigit(line[k + 1]))
 			{
 				for(k += 2; IsHexDigit(line[k]); ++k) { }
-				tokes.Add(new Toke(HEXCONST, from, k, line));
+				tokes.Add(new Toke(Keyword.HEXCONST, from, k, line));
 				continue;
 			}
 			if(char.IsLetter(c))
@@ -312,7 +336,7 @@ public class Toker
 						builder[i] = char.ToLower(builder[i]);
 					}
 					line = builder.ToString();
-					tokes.Add(new Toke(IDENT, from, k, line));
+					tokes.Add(new Toke(Keyword.IDENT, from, k, line));
 					continue;
 				}
 
@@ -323,23 +347,23 @@ public class Toker
 			{
 				for(++k; line[k] != '\"' && line[k] != '\n'; ++k) { }
 				if(line[k] == '\"') ++k;
-				tokes.Add(new Toke(STRINGCONST, from, k, line));
+				tokes.Add(new Toke(Keyword.STRINGCONST, from, k, line));
 				continue;
 			}
 			int n = line[k + 1];
 			if((c == '<' && n == '>') || (c == '>' && n == '<'))
 			{
-				tokes.Add(new Toke(NE, from, k += 2, line));
+				tokes.Add(new Toke(Keyword.NE, from, k += 2, line));
 				continue;
 			}
 			if((c == '<' && n == '=') || (c == '=' && n == '<'))
 			{
-				tokes.Add(new Toke(LE, from, k += 2, line));
+				tokes.Add(new Toke(Keyword.LE, from, k += 2, line));
 				continue;
 			}
 			if((c == '>' && n == '=') || (c == '=' && n == '>'))
 			{
-				tokes.Add(new Toke(GE, from, k += 2, line));
+				tokes.Add(new Toke(Keyword.GE, from, k += 2, line));
 				continue;
 			}
 			tokes.Add(new Toke((Keyword)c, from, ++k, line));

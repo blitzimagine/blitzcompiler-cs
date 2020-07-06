@@ -57,7 +57,7 @@ public static class main
 
 		if(f.returnType != Type.void_type) t += "( ";
 
-		for(int k = 0; k < f.@params.size(); ++k)
+		for(int k = 0; k < f.@params.Count; ++k)
 		{
 			string s = string.Empty;
 			if(k!=0) s += ',';
@@ -72,7 +72,7 @@ public static class main
 
 		if(f.returnType != Type.void_type)
 		{
-			t += f.@params.size()!=0 ? " )" : ")";
+			t += f.@params.Count!=0 ? " )" : ")";
 		}
 		return t;
 	}

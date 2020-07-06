@@ -59,5 +59,5 @@ public class DeclSeq
 		decls.Add(n);
 		return n;
 	}
-	public int size() => decls.Count;
+	public int Count => decls.Count;
 }

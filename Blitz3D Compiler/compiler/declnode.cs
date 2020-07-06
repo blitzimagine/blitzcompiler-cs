@@ -90,10 +90,7 @@ public class DeclSeqNode:Node
 		decls.Add(d);
 	}
 
-	public int size()
-	{
-		return decls.Count;
-	}
+	public int Count => decls.Count;
 }
 
 //'kind' shouldn't really be in Parser...
@@ -205,7 +202,7 @@ public class FuncDeclNode:DeclNode
 		DeclSeq decls = sem_env.decls;
 
 		int k;
-		for(k = 0; k < sem_type.@params.size(); ++k)
+		for(k = 0; k < sem_type.@params.Count; ++k)
 		{
 			Decl d = sem_type.@params.decls[k];
 			if(decls.insertDecl(d.name, d.type, d.kind) is null) ex("duplicate identifier");
@@ -243,7 +240,7 @@ public class FuncDeclNode:DeclNode
 		g.label(sem_env.funcLabel + "_leave");
 		t = deleteVars(sem_env);
 		if(g.debug) t = new TNode(IR.SEQ, call("__bbDebugLeave"), t);
-		g.leave(t, sem_type.@params.size() * 4);
+		g.leave(t, sem_type.@params.Count * 4);
 	}
 }
 
@@ -274,7 +271,7 @@ public class StructDeclNode:DeclNode
 	public override void semant(Environ e)
 	{
 		fields.proto(sem_type.fields, e);
-		for(int k = 0; k < sem_type.fields.size(); ++k) sem_type.fields.decls[k].offset = k * 4;
+		for(int k = 0; k < sem_type.fields.Count; ++k) sem_type.fields.decls[k].offset = k * 4;
 	}
 	public override void translate(Codegen g)
 	{
@@ -298,10 +295,10 @@ public class StructDeclNode:DeclNode
 		}
 
 		//number of fields
-		g.i_data(sem_type.fields.size());
+		g.i_data(sem_type.fields.Count);
 
 		//type of each field
-		for(k = 0; k < sem_type.fields.size(); ++k)
+		for(k = 0; k < sem_type.fields.Count; ++k)
 		{
 			Decl field = sem_type.fields.decls[k];
 			Type type = field.type;
@@ -384,15 +381,15 @@ public class VectorDeclNode:DeclNode
 		Type ty = tagType(tag, env);
 		if(ty is null) ty = Type.int_type;
 
-		List<int> sizes = new List<int>();
-		for(int k = 0; k < exprs.size(); ++k)
+		int[] sizes = new int[exprs.Count];
+		for(int k = 0; k < exprs.Count; ++k)
 		{
 			ExprNode e = exprs.exprs[k] = exprs.exprs[k].semant(env);
 			ConstNode c = e.constNode();
 			if(c is null) ex("Blitz array sizes must be constant");
 			int n = c.intValue();
 			if(n < 0) ex("Blitz array sizes must not be negative");
-			sizes.Add(n + 1);
+			sizes[k] = n + 1;
 		}
 		string label = genLabel();
 		sem_type = new VectorType(label, ty, sizes);
@@ -410,7 +407,7 @@ public class VectorDeclNode:DeclNode
 		VectorType v = sem_type.vectorType();
 		g.i_data(6, v.label);
 		int sz = 1;
-		for(int k = 0; k < v.sizes.Count; ++k) sz *= v.sizes[k];
+		for(int k = 0; k < v.sizes.Length; ++k) sz *= v.sizes[k];
 		g.i_data(sz);
 		string t = null;
 		Type type = v.elementType;

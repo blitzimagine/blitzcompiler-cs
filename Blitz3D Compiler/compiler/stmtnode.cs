@@ -6,10 +6,10 @@ public abstract class _StmtNode : Node
 	protected static Dictionary<string,string> fileMap = new Dictionary<string, string>();
 }
 
-public class StmtNode: _StmtNode
+public abstract class StmtNode: _StmtNode
 {
-	public int pos; //offset in source stream
-	public StmtNode(){pos = -1;}
+	public int pos = -1; //offset in source stream
+	
 	public void debug(int pos,Codegen g)
 	{
 		if(g.debug)
@@ -19,8 +19,8 @@ public class StmtNode: _StmtNode
 		}
 	}
 
-	public virtual void semant(Environ e) {}
-	public virtual void translate(Codegen g) {}
+	public abstract void semant(Environ e);
+	public abstract void translate(Codegen g);
 }
 
 ////////////////////////
@@ -75,10 +75,7 @@ public class StmtSeqNode: _StmtNode
 		stmts.Add(s);
 	}
 
-	public int size()
-	{
-		return stmts.Count;
-	}
+	public int Count => stmts.Count;
 
 	public static void reset(string file,string lab)
 	{
@@ -166,7 +163,7 @@ public class DimNode: StmtNode
 		if(e.findDecl(ident) is Decl d)
 		{
 			ArrayType a = d.type.arrayType();
-			if(a is null || a.dims != exprs.size() || (t!=null && a.elementType != t))
+			if(a is null || a.dims != exprs.Count || (t!=null && a.elementType != t))
 			{
 				ex("Duplicate identifier");
 			}
@@ -177,7 +174,7 @@ public class DimNode: StmtNode
 		{
 			if(e.level > 0) ex("Array not found in main program");
 			if(t is null) t = Type.int_type;
-			sem_type = new ArrayType(t,exprs.size());
+			sem_type = new ArrayType(t,exprs.Count);
 			sem_decl = e.decls.insertDecl(ident,sem_type,DECL.ARRAY);
 			e.types.Add(sem_type);
 		}
@@ -188,7 +185,7 @@ public class DimNode: StmtNode
 	{
 		TNode t;
 		g.code(call("__bbUndimArray",global("_a" + ident)));
-		for(int k = 0; k < exprs.size(); ++k)
+		for(int k = 0; k < exprs.Count; ++k)
 		{
 			t = add(global("_a" + ident),iconst(k * 4 + 12));
 			t = move(exprs.exprs[k].translate(g),mem(t));
@@ -208,8 +205,8 @@ public class DimNode: StmtNode
 		g.align_data(4);
 		g.i_data(0,"_a" + ident);
 		g.i_data(et);
-		g.i_data(exprs.size());
-		for(int k = 0; k < exprs.size(); ++k) g.i_data(0);
+		g.i_data(exprs.Count);
+		for(int k = 0; k < exprs.Count; ++k) g.i_data(0);
 	}
 }
 
@@ -508,7 +505,7 @@ public class ForNode: StmtNode
 
 		//test for loop cond
 		g.label(cond);
-		Keyword kw = stepExpr.constNode().floatValue() > 0 ? (Keyword)'>' : (Keyword)'<';
+		Keyword kw = stepExpr.constNode().floatValue() > 0 ? Keyword.GT : Keyword.LT;
 		t = compare(kw,var.load(g),toExpr.translate(g),ty);
 		g.code(jumpf(t,loop));
 
@@ -783,10 +780,10 @@ public class SelectNode: StmtNode
 		{
 			CaseNode c = cases[k];
 			labs.Add(genLabel());
-			for(int j = 0; j < c.exprs.size(); ++j)
+			for(int j = 0; j < c.exprs.Count; ++j)
 			{
 				ExprNode e = c.exprs.exprs[j];
-				TNode t = compare((Keyword)'=',sem_temp.load(g),e.translate(g),ty);
+				TNode t = compare(Keyword.EQ,sem_temp.load(g),e.translate(g),ty);
 				g.code(jumpt(t,labs[labs.Count-1]));
 			}
 		}

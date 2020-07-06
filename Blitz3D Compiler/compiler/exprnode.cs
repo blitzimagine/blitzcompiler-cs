@@ -40,7 +40,7 @@ public class ExprSeqNode:Node
 
 	public void push_back(ExprNode e) => exprs.Add(e);
 
-	public int size() => exprs.Count;
+	public int Count => exprs.Count;
 
 	public void semant(Environ e)
 	{
@@ -86,8 +86,8 @@ public class ExprSeqNode:Node
 	}
 	public void castTo(DeclSeq decls, Environ e, bool userlib)
 	{
-		if((int)exprs.Count > decls.size()) ex("Too many parameters");
-		for(int k = 0; k < decls.size(); ++k)
+		if((int)exprs.Count > decls.Count) ex("Too many parameters");
+		for(int k = 0; k < decls.Count; ++k)
 		{
 			Decl d = decls.decls[k];
 			if(k < exprs.Count && exprs[k]!=null)
@@ -257,11 +257,11 @@ public class CallNode:ExprNode
 
 		if(sem_type == Type.float_type)
 		{
-			t = new TNode(IR.FCALL, l, r, exprs.size() * 4);
+			t = new TNode(IR.FCALL, l, r, exprs.Count * 4);
 		}
 		else
 		{
-			t = new TNode(IR.CALL, l, r, exprs.size() * 4);
+			t = new TNode(IR.CALL, l, r, exprs.Count * 4);
 		}
 
 		if(f.returnType.stringType())
@@ -400,10 +400,10 @@ public class UniExprNode:ExprNode
 			{
 				switch(op)
 				{
-					case (Keyword)'+':
+					case Keyword.POSITIVE:
 						e2 = new IntConstNode(+c.intValue());
 						break;
-					case (Keyword)'-':
+					case Keyword.NEGATIVE:
 						e2 = new IntConstNode(-c.intValue());
 						break;
 					case Keyword.ABS:
@@ -418,17 +418,17 @@ public class UniExprNode:ExprNode
 			{
 				switch(op)
 				{
-					case (Keyword)'+':
+					case Keyword.POSITIVE:
 						e2 = new FloatConstNode(+c.floatValue());
 						break;
-					case (Keyword)'-':
+					case Keyword.NEGATIVE:
 						e2 = new FloatConstNode(-c.floatValue());
 						break;
 					case Keyword.ABS:
 						e2 = new FloatConstNode(c.floatValue() >= 0 ? c.floatValue() : -c.floatValue());
 						break;
 					case Keyword.SGN:
-						e2 = new FloatConstNode((float)(c.floatValue() > 0 ? 1 : (c.floatValue() < 0 ? -1 : 0)));
+						e2 = new FloatConstNode(c.floatValue() > 0 ? 1 : (c.floatValue() < 0 ? -1 : 0));
 						break;
 				}
 			}
@@ -445,8 +445,8 @@ public class UniExprNode:ExprNode
 		{
 			switch(op)
 			{
-				case (Keyword)'+': return l;
-				case (Keyword)'-':
+				case Keyword.POSITIVE: return l;
+				case Keyword.NEGATIVE:
 					n = IR.NEG;
 					break;
 				case Keyword.ABS: return call("__bbAbs", l);
@@ -457,8 +457,8 @@ public class UniExprNode:ExprNode
 		{
 			switch(op)
 			{
-				case (Keyword)'+': return l;
-				case (Keyword)'-':
+				case Keyword.POSITIVE: return l;
+				case Keyword.NEGATIVE:
 					n = IR.FNEG;
 					break;
 				case Keyword.ABS: return fcall("__bbFAbs", l);
@@ -577,10 +577,10 @@ public class ArithExprNode:ExprNode
 		if(lhs.sem_type == Type.string_type || rhs.sem_type == Type.string_type)
 		{
 			//one side is a string - only + operator...
-			if(op != (Keyword)'+') ex("Operator cannot be applied to strings");
+			if(op != Keyword.POSITIVE) ex("Operator cannot be applied to strings");
 			sem_type = Type.string_type;
 		}
-		else if(op == (Keyword)'^' || lhs.sem_type == Type.float_type || rhs.sem_type == Type.float_type)
+		else if(op == Keyword.POW || lhs.sem_type == Type.float_type || rhs.sem_type == Type.float_type)
 		{
 			//It's ^, or one side is a float
 			sem_type = Type.float_type;
@@ -593,7 +593,7 @@ public class ArithExprNode:ExprNode
 		lhs = lhs.castTo(sem_type, e);
 		rhs = rhs.castTo(sem_type, e);
 		ConstNode lc = lhs.constNode(), rc = rhs.constNode();
-		if(rc!=null && (op == (Keyword)'/' || op == Keyword.MOD))
+		if(rc!=null && (op == Keyword.DIV || op == Keyword.MOD))
 		{
 			if((sem_type == Type.int_type && rc.intValue()==0) || (sem_type == Type.float_type && rc.floatValue()==0.0))
 			{
@@ -611,16 +611,16 @@ public class ArithExprNode:ExprNode
 			{
 				switch(op)
 				{
-					case (Keyword)'+':
+					case Keyword.ADD:
 						expr = new IntConstNode(lc.intValue() + rc.intValue());
 						break;
-					case (Keyword)'-':
+					case Keyword.SUB:
 						expr = new IntConstNode(lc.intValue() - rc.intValue());
 						break;
-					case (Keyword)'*':
+					case Keyword.MUL:
 						expr = new IntConstNode(lc.intValue() * rc.intValue());
 						break;
-					case (Keyword)'/':
+					case Keyword.DIV:
 						expr = new IntConstNode(lc.intValue() / rc.intValue());
 						break;
 					case Keyword.MOD:
@@ -632,22 +632,22 @@ public class ArithExprNode:ExprNode
 			{
 				switch(op)
 				{
-					case (Keyword)'+':
+					case Keyword.ADD:
 						expr = new FloatConstNode(lc.floatValue() + rc.floatValue());
 						break;
-					case (Keyword)'-':
+					case Keyword.SUB:
 						expr = new FloatConstNode(lc.floatValue() - rc.floatValue());
 						break;
-					case (Keyword)'*':
+					case Keyword.MUL:
 						expr = new FloatConstNode(lc.floatValue() * rc.floatValue());
 						break;
-					case (Keyword)'/':
+					case Keyword.DIV:
 						expr = new FloatConstNode(lc.floatValue() / rc.floatValue());
 						break;
 					case Keyword.MOD:
 						expr = new FloatConstNode(lc.floatValue() % rc.floatValue());
 						break;
-					case (Keyword)'^':
+					case Keyword.POW:
 						expr = new FloatConstNode(MathF.Pow(lc.floatValue(), rc.floatValue()));
 						break;
 				}
@@ -670,16 +670,16 @@ public class ArithExprNode:ExprNode
 		{
 			switch(op)
 			{
-				case (Keyword)'+':
+				case Keyword.ADD:
 					n = IR.ADD;
 					break;
-				case (Keyword)'-':
+				case Keyword.SUB:
 					n = IR.SUB;
 					break;
-				case (Keyword)'*':
+				case Keyword.MUL:
 					n = IR.MUL;
 					break;
-				case (Keyword)'/':
+				case Keyword.DIV:
 					n = IR.DIV;
 					break;
 				case Keyword.MOD: return call("__bbMod", l, r);
@@ -689,20 +689,20 @@ public class ArithExprNode:ExprNode
 		{
 			switch(op)
 			{
-				case (Keyword)'+':
+				case Keyword.ADD:
 					n = IR.FADD;
 					break;
-				case (Keyword)'-':
+				case Keyword.SUB:
 					n = IR.FSUB;
 					break;
-				case (Keyword)'*':
+				case Keyword.MUL:
 					n = IR.FMUL;
 					break;
-				case (Keyword)'/':
+				case Keyword.DIV:
 					n = IR.FDIV;
 					break;
 				case Keyword.MOD: return fcall("__bbFMod", l, r);
-				case (Keyword)'^': return fcall("__bbFPow", l, r);
+				case Keyword.POW: return fcall("__bbFPow", l, r);
 			}
 		}
 		return new TNode(n, l, r);
@@ -731,7 +731,7 @@ public class RelExprNode:ExprNode
 		rhs = rhs.semant(e);
 		if(lhs.sem_type.structType()!=null || rhs.sem_type.structType()!=null)
 		{
-			if(op != (Keyword)'=' && op != Keyword.NE) ex("Illegal operator for custom type objects");
+			if(op != Keyword.EQ && op != Keyword.NE) ex("Illegal operator for custom type objects");
 			opType = lhs.sem_type != Type.null_type ? lhs.sem_type : rhs.sem_type;
 		}
 		else if(lhs.sem_type == Type.string_type || rhs.sem_type == Type.string_type)
@@ -757,13 +757,13 @@ public class RelExprNode:ExprNode
 			{
 				switch(op)
 				{
-					case (Keyword)'<':
+					case Keyword.LT:
 						expr = new IntConstNode(lc.stringValue().CompareTo(rc.stringValue())<0 ? 1 : 0);
 						break;
-					case (Keyword)'=':
+					case Keyword.EQ:
 						expr = new IntConstNode(lc.stringValue().CompareTo(rc.stringValue()) == 0 ? 1 : 0);
 						break;
-					case (Keyword)'>':
+					case Keyword.GT:
 						expr = new IntConstNode(lc.stringValue().CompareTo(rc.stringValue()) > 0 ? 1 : 0);
 						break;
 					case Keyword.LE:
@@ -781,13 +781,13 @@ public class RelExprNode:ExprNode
 			{
 				switch(op)
 				{
-					case (Keyword)'<':
+					case Keyword.LT:
 						expr = new IntConstNode(lc.floatValue().CompareTo(rc.floatValue()) < 0 ? 1 : 0);
 						break;
-					case (Keyword)'=':
+					case Keyword.EQ:
 						expr = new IntConstNode(lc.floatValue().CompareTo(rc.floatValue()) == 0 ? 1 : 0);
 						break;
-					case (Keyword)'>':
+					case Keyword.GT:
 						expr = new IntConstNode(lc.floatValue().CompareTo(rc.floatValue()) > 0 ? 1 : 0);
 						break;
 					case Keyword.LE:
@@ -805,13 +805,13 @@ public class RelExprNode:ExprNode
 			{
 				switch(op)
 				{
-					case (Keyword)'<':
+					case Keyword.LT:
 						expr = new IntConstNode(lc.intValue().CompareTo(rc.intValue()) < 0 ? 1 : 0);
 						break;
-					case (Keyword)'=':
+					case Keyword.EQ:
 						expr = new IntConstNode(lc.intValue().CompareTo(rc.intValue()) == 0 ? 1 : 0);
 						break;
-					case (Keyword)'>':
+					case Keyword.GT:
 						expr = new IntConstNode(lc.intValue().CompareTo(rc.intValue()) > 0 ? 1 : 0);
 						break;
 					case Keyword.LE:

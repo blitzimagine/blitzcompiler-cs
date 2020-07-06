@@ -12,7 +12,7 @@ namespace codegen_86
 		private static List<string> dataFrags = new List<string>();
 
 		//name of function
-		internal static string funcLabel;
+		private static string funcLabel;
 
 		public Codegen_x86(TextWriter @out, bool debug) : base(@out, debug)//ostream
 		{
@@ -32,8 +32,6 @@ namespace codegen_86
 			Tile q = munch(stmt);
 			q.label();
 			q.eval(0);
-			q = null;
-			stmt = null;
 		}
 
 		public override void leave(TNode cleanup, int pop_sz)
@@ -45,7 +43,6 @@ namespace codegen_86
 				Tile q = munch(cleanup);
 				q.label();
 				q.eval(0);
-				q = null;
 			}
 			@out.WriteLine("\t.align\t16");
 
@@ -100,11 +97,11 @@ namespace codegen_86
 			else
 				dataFrags.Add(t);
 		}
-		public override void i_data(int i, string l)
+		public override void i_data(int i, string label)
 		{
-			if(l.Length>0)
+			if(label.Length>0)
 			{
-				dataFrags.Add($"{l}:\t.dd\t{i}");
+				dataFrags.Add($"{label}:\t.dd\t{i}");
 			}
 			else
 			{

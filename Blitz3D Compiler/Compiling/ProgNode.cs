@@ -143,7 +143,12 @@ namespace Blitz3D.Compiling
 
 				if(!usedfuncs.Contains(fn.ident)) continue;
 
-				libFuncs[fn.lib].Add(k);
+				if(!libFuncs.TryGetValue(fn.lib, out var value))
+				{
+					value = new List<int>();
+					libFuncs.Add(fn.lib, value);
+				}
+				value.Add(k);
 
 				g.i_data(0, "_f" + fn.ident);
 			}

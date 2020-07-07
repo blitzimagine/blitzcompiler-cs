@@ -743,7 +743,7 @@ namespace Blitz3D.Compiling
 			blitz3d_link(linkSymbol);
 			userlibs_link(linkSymbol);
 
-			dllFunctions(linkSymbol);
+			//dllFunctions(linkSymbol);
 		}
 
 		public static List<string> GetLinkSymbols()

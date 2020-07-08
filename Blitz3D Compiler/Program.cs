@@ -2,16 +2,29 @@
 using System.IO;
 using System.Linq;
 using Blitz3D.Compiling;
+using Blitz3D.Compiling.ASM.x86;
+using Blitz3D.Parsing;
 
 namespace Blitz3D
 {
 	public static class Program
 	{
+		private static void showInfo()
+		{
+			const int BASE_VER = 1108;
+			const int PRO_F = 0x010000;
+			const int VERSION = BASE_VER|PRO_F;
+			const int major = (VERSION & 0xffff) / 100;
+			const int minor = (VERSION & 0xffff) % 100;
+
+			Console.WriteLine($"BlitzCC V{major}.{minor}");
+			Console.WriteLine("(C)opyright 2000-2003 Blitz Research Ltd");
+		}
+
 		private static readonly (string flag,string description)[] flags =
 		{
 			("-h","show this help"),
 			("-q","quiet mode"),
-			("-d","debug compile"),
 		};
 
 		private static void showUsage(bool help = false)
@@ -36,7 +49,7 @@ namespace Blitz3D
 			FileInfo in_file = null;
 			FileInfo out_file = null;
 
-			bool debug = false, quiet = false;
+			bool quiet = false;
 			bool showhelp = false;
 
 			for(int k = 0; k < args.Length; ++k)
@@ -45,7 +58,7 @@ namespace Blitz3D
 
 				t = t.ToLowerInvariant();
 
-				if(t[0] == '-' || t[0] == '+')
+				if(t[0] == '-')
 				{
 					switch(t)
 					{
@@ -54,9 +67,6 @@ namespace Blitz3D
 							break;
 						case "-q":
 							quiet = true;
-							break;
-						case "-d":
-							debug = true;
 							break;
 						default:
 							showUsage();
@@ -90,8 +100,62 @@ namespace Blitz3D
 
 			Directory.SetCurrentDirectory(in_file.Directory.FullName);
 
-			Compiler compiler = new Compiler(in_file, out_file, debug, quiet);
-			compiler.Compile();
+			if(!quiet)
+			{
+				showInfo();
+				Console.WriteLine($"Compiling \"{in_file}\"");
+			}
+
+			Libs libs = Libs.InitLibs();
+
+			try
+			{
+				using StreamReader input = new StreamReader(in_file.OpenRead());
+				StringWriter asmcode = new StringWriter{NewLine = "\n"};
+
+				//parse
+				if(!quiet)
+				{
+					Console.WriteLine("Parsing...");
+				}
+				Toker toker = new Toker(input);
+				Parser parser = new Parser(toker);
+				ProgNode prog = parser.parse(in_file.FullName);
+
+				//semant
+				if(!quiet)
+				{
+					Console.WriteLine("Generating...");
+				}
+				Environ environ_ = prog.Semant(libs.runtimeEnviron);
+
+				//translate
+				if(!quiet)
+				{
+					Console.WriteLine("Translating...");
+				}
+				Codegen_x86 codegen = new Codegen_x86(asmcode);
+				prog.Translate(codegen, libs.userFuncs);
+
+				try
+				{
+					File.WriteAllText(out_file.FullName, asmcode.ToString());
+				}
+				catch(Exception e)
+				{
+					Console.Error.WriteLine($"Failed to write output to '{out_file}'.");
+					Console.Error.WriteLine(e);
+					return;
+				}
+			}
+			catch(Ex x)
+			{
+				string file = $"\"{x.file}\"";
+				int row = ((x.pos >> 16) & 65535) + 1;
+				int col = (x.pos & 65535) + 1;
+				Console.WriteLine($"{file}:{row}:{col}:{x.ex}");
+				throw;
+			}
 		}
 	}
 }

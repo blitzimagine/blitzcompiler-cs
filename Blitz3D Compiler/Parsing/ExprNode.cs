@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Blitz3D.Compiling.ASM;
+using Blitz3D.Compiling;
 
-namespace Blitz3D.Compiling
+namespace Blitz3D.Parsing
 {
 	//////////////////////////////////
 	// Cast an expression to a type //
@@ -24,12 +24,12 @@ namespace Blitz3D.Compiling
 			}
 
 			ExprNode cast = new CastNode(this, ty);
-			return cast.semant(e);
+			return cast.Semant(e);
 		}
 
 
-		public abstract ExprNode semant(Environ e);
-		public abstract TNode translate(Codegen g);
+		public abstract ExprNode Semant(Environ e);
+		public abstract TNode Translate(Codegen g);
 
 		public virtual ConstNode constNode() => null;
 	}
@@ -41,7 +41,7 @@ namespace Blitz3D.Compiling
 	{
 		public List<ExprNode> exprs = new List<ExprNode>();
 
-		public void push_back(ExprNode e) => exprs.Add(e);
+		public void Add(ExprNode e) => exprs.Add(e);
 
 		public int Count => exprs.Count;
 
@@ -49,7 +49,7 @@ namespace Blitz3D.Compiling
 		{
 			for(int k = 0; k < exprs.Count; ++k)
 			{
-				if(exprs[k]!=null) exprs[k] = exprs[k].semant(e);
+				if(exprs[k]!=null) exprs[k] = exprs[k].Semant(e);
 			}
 		}
 		public TNode translate(Codegen g, bool userlib)
@@ -57,7 +57,7 @@ namespace Blitz3D.Compiling
 			TNode t = null, l = null;
 			for(int k = 0; k < exprs.Count; ++k)
 			{
-				TNode q = exprs[k].translate(g);
+				TNode q = exprs[k].Translate(g);
 
 				if(userlib)
 				{
@@ -146,11 +146,11 @@ namespace Blitz3D.Compiling
 			type = ty;
 		}
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
 			if(expr.sem_type is null)
 			{
-				expr = expr.semant(e);
+				expr = expr.Semant(e);
 			}
 
 			if(expr.constNode() is ConstNode c)
@@ -175,9 +175,9 @@ namespace Blitz3D.Compiling
 			sem_type = type;
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
-			TNode t = expr.translate(g);
+			TNode t = expr.Translate(g);
 			if(expr.sem_type == Type.float_type && sem_type == Type.int_type)
 			{
 				//float->int
@@ -232,7 +232,7 @@ namespace Blitz3D.Compiling
 			exprs = e;
 		}
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
 			Type t = e.findType(tag);
 			sem_decl = e.findFunc(ident);
@@ -244,7 +244,7 @@ namespace Blitz3D.Compiling
 			sem_type = f.returnType;
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			FuncType f = sem_decl.type.funcType();
 
@@ -289,7 +289,7 @@ namespace Blitz3D.Compiling
 			var = v;
 		}
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
 			var.semant(e);
 			sem_type = var.sem_type;
@@ -299,7 +299,7 @@ namespace Blitz3D.Compiling
 			//delete this;
 			return expr;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			return var.load(g);
 		}
@@ -307,7 +307,7 @@ namespace Blitz3D.Compiling
 
 	public abstract class ConstNode:ExprNode
 	{
-		public override ExprNode semant(Environ e) => this;
+		public override ExprNode Semant(Environ e) => this;
 		public override ConstNode constNode() => this;
 
 		public abstract int intValue();
@@ -326,7 +326,7 @@ namespace Blitz3D.Compiling
 			value = n;
 			sem_type = Type.int_type;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			return new TNode(IR.CONST, null, null, value);
 		}
@@ -347,7 +347,7 @@ namespace Blitz3D.Compiling
 			value = f;
 			sem_type = Type.float_type;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			return new TNode(IR.CONST, null, null, BitConverter.SingleToInt32Bits(value));// *(int*)&value
 		}
@@ -367,7 +367,7 @@ namespace Blitz3D.Compiling
 			value = s;
 			sem_type = Type.string_type;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			string lab = genLabel();
 			g.s_data(value, lab);
@@ -391,9 +391,9 @@ namespace Blitz3D.Compiling
 			this.expr = expr;
 		}
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			sem_type = expr.sem_type;
 			if(sem_type != Type.int_type && sem_type != Type.float_type) ex("Illegal operator for type");
 			if(expr.constNode() is ConstNode c)
@@ -440,10 +440,10 @@ namespace Blitz3D.Compiling
 			}
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			IR n = 0;
-			TNode l = expr.translate(g);
+			TNode l = expr.Translate(g);
 			if(sem_type == Type.int_type)
 			{
 				switch(op)
@@ -487,11 +487,11 @@ namespace Blitz3D.Compiling
 			this.rhs = rhs;
 		}
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
-			lhs = lhs.semant(e);
+			lhs = lhs.Semant(e);
 			lhs = lhs.castTo(Type.int_type, e);
-			rhs = rhs.semant(e);
+			rhs = rhs.Semant(e);
 			rhs = rhs.castTo(Type.int_type, e);
 			ConstNode lc = lhs.constNode(), rc = rhs.constNode();
 			if(lc!=null && rc!=null)
@@ -524,10 +524,10 @@ namespace Blitz3D.Compiling
 			sem_type = Type.int_type;
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
-			TNode l = lhs.translate(g);
-			TNode r = rhs.translate(g);
+			TNode l = lhs.Translate(g);
+			TNode r = rhs.Translate(g);
 			IR n = 0;
 			switch(op)
 			{
@@ -569,10 +569,10 @@ namespace Blitz3D.Compiling
 			this.rhs = rhs;
 		}
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
-			lhs = lhs.semant(e);
-			rhs = rhs.semant(e);
+			lhs = lhs.Semant(e);
+			rhs = rhs.Semant(e);
 			if(lhs.sem_type.structType()!=null || rhs.sem_type.structType()!=null)
 			{
 				ex("Arithmetic operator cannot be applied to custom type objects");
@@ -660,10 +660,10 @@ namespace Blitz3D.Compiling
 			}
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
-			TNode l = lhs.translate(g);
-			TNode r = rhs.translate(g);
+			TNode l = lhs.Translate(g);
+			TNode r = rhs.Translate(g);
 			if(sem_type == Type.string_type)
 			{
 				return call("__bbStrConcat", l, r);
@@ -728,10 +728,10 @@ namespace Blitz3D.Compiling
 			this.rhs = rhs;
 		}
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
-			lhs = lhs.semant(e);
-			rhs = rhs.semant(e);
+			lhs = lhs.Semant(e);
+			rhs = rhs.Semant(e);
 			if(lhs.sem_type.structType()!=null || rhs.sem_type.structType()!=null)
 			{
 				if(op != Keyword.EQ && op != Keyword.NE) ex("Illegal operator for custom type objects");
@@ -833,10 +833,10 @@ namespace Blitz3D.Compiling
 			}
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
-			TNode l = lhs.translate(g);
-			TNode r = rhs.translate(g);
+			TNode l = lhs.Translate(g);
+			TNode r = rhs.Translate(g);
 			return compare(op, l, r, opType);
 		}
 	}
@@ -851,14 +851,14 @@ namespace Blitz3D.Compiling
 		{
 			ident = i;
 		}
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
 			sem_type = e.findType(ident);
 			if(sem_type is null) ex("custom type name not found");
 			if(sem_type.structType() == null) ex("type is not a custom type");
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			return call("__bbObjNew", global("_t" + ident));
 		}
@@ -871,13 +871,13 @@ namespace Blitz3D.Compiling
 	{
 		public string ident;
 		public FirstNode(string i) { ident = i; }
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
 			sem_type = e.findType(ident);
 			if(sem_type is null) ex("custom type name name not found");
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			return call("__bbObjFirst", global("_t" + ident));
 		}
@@ -893,13 +893,13 @@ namespace Blitz3D.Compiling
 		{
 			ident = i;
 		}
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
 			sem_type = e.findType(ident);
 			if(sem_type is null) ex("custom type name not found");
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			return call("__bbObjLast", global("_t" + ident));
 		}
@@ -913,18 +913,17 @@ namespace Blitz3D.Compiling
 		public ExprNode expr;
 		public AfterNode(ExprNode e) { expr = e; }
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			if(expr.sem_type == Type.null_type) ex("'After' cannot be used on 'Null'");
 			if(expr.sem_type.structType() == null) ex("'After' must be used with a custom type object");
 			sem_type = expr.sem_type;
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
-			TNode t = expr.translate(g);
-			if(g.debug) t = jumpf(t, "__bbNullObjEx");
+			TNode t = expr.Translate(g);
 			return call("__bbObjNext", t);
 		}
 	}
@@ -937,18 +936,17 @@ namespace Blitz3D.Compiling
 		public ExprNode expr;
 		public BeforeNode(ExprNode e) { expr = e; }
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			if(expr.sem_type == Type.null_type) ex("'Before' cannot be used with 'Null'");
 			if(expr.sem_type.structType() == null) ex("'Before' must be used with a custom type object");
 			sem_type = expr.sem_type;
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
-			TNode t = expr.translate(g);
-			if(g.debug) t = jumpf(t, "__bbNullObjEx");
+			TNode t = expr.Translate(g);
 			return call("__bbObjPrev", t);
 		}
 	}
@@ -958,12 +956,12 @@ namespace Blitz3D.Compiling
 	/////////////////
 	public class NullNode:ExprNode
 	{
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
 			sem_type = Type.null_type;
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			return new TNode(IR.CONST, null, null, 0);
 		}
@@ -982,18 +980,18 @@ namespace Blitz3D.Compiling
 			type_ident = t;
 		}
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			expr = expr.castTo(Type.int_type, e);
 			sem_type = e.findType(type_ident);
 			if(sem_type is null) ex("custom type name not found");
 			if(sem_type.structType() is null) ex("type is not a custom type");
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
-			TNode t = expr.translate(g);
+			TNode t = expr.Translate(g);
 			t = call("__bbObjFromHandle", t, global("_t" + sem_type.structType().ident));
 			return t;
 		}
@@ -1007,16 +1005,16 @@ namespace Blitz3D.Compiling
 		public ExprNode expr;
 		public ObjectHandleNode(ExprNode e) { expr = e; }
 
-		public override ExprNode semant(Environ e)
+		public override ExprNode Semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			if(expr.sem_type.structType() is null) ex("'ObjectHandle' must be used with an object");
 			sem_type = Type.int_type;
 			return this;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
-			TNode t = expr.translate(g);
+			TNode t = expr.Translate(g);
 			return call("__bbObjToHandle", t);
 		}
 	}

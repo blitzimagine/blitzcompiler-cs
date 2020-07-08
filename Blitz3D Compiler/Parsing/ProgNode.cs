@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Blitz3D.Compiling.ASM;
+using Blitz3D.Compiling;
 
-namespace Blitz3D.Compiling
+namespace Blitz3D.Parsing
 {
 	public class UserFunc
 	{
@@ -44,32 +44,29 @@ namespace Blitz3D.Compiling
 		//////////////////
 		// The program! //
 		//////////////////
-		public Environ semant(Environ e)
+		public Environ Semant(Environ e)
 		{
 			file_lab = genLabel();
 
-			StmtSeqNode.reset(stmts.file, file_lab);
+			StmtSeqNode.Reset(stmts.file, file_lab);
 
-			Environ env = new Environ(genLabel(), Type.int_type, 0, e);//a_ptr<Environ>
+			Environ env = new Environ(genLabel(), Type.int_type, 0, e);
 
-			consts.proto(env.decls, env);
-			structs.proto(env.typeDecls, env);
-			structs.semant(env);
-			funcs.proto(env.funcDecls, env);
-			stmts.semant(env);
-			funcs.semant(env);
-			datas.proto(env.decls, env);
-			datas.semant(env);
+			consts.Proto(env.decls, env);
+			structs.Proto(env.typeDecls, env);
+			structs.Semant(env);
+			funcs.Proto(env.funcDecls, env);
+			stmts.Semant(env);
+			funcs.Semant(env);
+			datas.Proto(env.decls, env);
+			datas.Semant(env);
 
-			sem_env = env/*.release()*/;
+			sem_env = env;
 			return sem_env;
 		}
-		public void translate(Codegen g, List<UserFunc> userfuncs)
+		public void Translate(Codegen g, List<UserFunc> userfuncs)
 		{
 			int k;
-
-			if(g.debug)
-				g.s_data(stmts.file, file_lab);
 
 			//enumerate locals
 			int size = enumVars(sem_env);
@@ -92,18 +89,12 @@ namespace Blitz3D.Compiling
 			TNode t = createVars(sem_env);
 			if(t!=null)
 				g.code(t);
-			if(g.debug)
-			{
-				string t2 = genLabel();
-				g.s_data("<main program>", t2);
-				g.code(call("__bbDebugEnter", local(0), iconst(sem_env.GetHashCode()), global(t2)));//Hash was originally casting ptr to int
-			}
 
 			//no user funcs used!
 			usedfuncs.Clear();
 
 			//program statements
-			stmts.translate(g);
+			stmts.Translate(g);
 
 			//emit return
 			g.code(ret());
@@ -119,17 +110,16 @@ namespace Blitz3D.Compiling
 			//leave main program
 			g.label(sem_env.funcLabel + "_leave");
 			t = deleteVars(sem_env);
-			if(g.debug) t = new TNode(IR.SEQ, call("__bbDebugLeave"), t);
 			g.leave(t, 0);
 
 			//structs
-			structs.translate(g);
+			structs.Translate(g);
 
 			//non-main functions
-			funcs.translate(g);
+			funcs.Translate(g);
 
 			//data
-			datas.translate(g);
+			datas.Translate(g);
 
 			//library functions
 			Dictionary<string, List<int>> libFuncs = new Dictionary<string, List<int>>();

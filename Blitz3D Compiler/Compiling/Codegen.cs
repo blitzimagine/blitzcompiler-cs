@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace Blitz3D.Compiling.ASM
+namespace Blitz3D.Compiling
 {
 	public enum IR
 	{
@@ -91,12 +91,10 @@ namespace Blitz3D.Compiling.ASM
 	public abstract class Codegen
 	{
 		protected readonly TextWriter @out;
-		public readonly bool debug;
 
-		public Codegen(TextWriter @out, bool debug)
+		public Codegen(TextWriter @out)
 		{
 			this.@out = @out;
-			this.debug = debug;
 		}
 
 		public abstract void enter(string l, int frameSize);

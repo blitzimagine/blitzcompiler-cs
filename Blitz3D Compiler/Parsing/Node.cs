@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Blitz3D.Compiling.ASM;
+using Blitz3D.Compiling;
 
-namespace Blitz3D.Compiling
+namespace Blitz3D.Parsing
 {
 	public class Node
 	{

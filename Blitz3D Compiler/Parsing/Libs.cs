@@ -2,24 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Blitz3D.Compiling
+using Blitz3D.Compiling;
+
+namespace Blitz3D.Parsing
 {
-	public static class Libs
+	public class Libs
 	{
 		//linkLibs
-		public static Environ runtimeEnviron;
-		public static List<string> keyWords = new List<string>();
-		public static List<UserFunc> userFuncs = new List<UserFunc>();
+		public Environ runtimeEnviron = new Environ("", Type.int_type, 0, null);
+		public List<string> keyWords = new List<string>();
+		public List<UserFunc> userFuncs = new List<UserFunc>();
 
-		public static void openLibs()
-		{
-			runtimeEnviron = new Environ("", Type.int_type, 0, null);
-
-			keyWords.Clear();
-			userFuncs.Clear();
-		}
-
-		private static Type @typeof(int c) => c switch
+		private Type @typeof(int c) => c switch
 		{
 			'%' => Type.int_type,
 			'#' => Type.float_type,
@@ -27,44 +21,60 @@ namespace Blitz3D.Compiling
 			_ => Type.void_type
 		};
 
-		private static int curr;
-		private static string text;
+		private int curr;
+		private string text;
 
-		private static int bnext(StreamReader @in)//istream
+		private Libs(){}
+
+		public static Libs InitLibs()
+		{
+			Libs libs = new Libs();
+			libs.linkRuntime();
+			libs.linkUserLibs();
+			return libs;
+		}
+
+		private int bnext(StreamReader input)//istream
 		{
 			text = "";
 
 			int t;
 			for(; ; )
 			{
-				while(char.IsWhiteSpace((char)@in.Peek()))
+				while(char.IsWhiteSpace((char)input.Peek()))
 				{
-					@in.Read();
+					input.Read();
 				}
-				if(@in.EndOfStream)
+				if(input.EndOfStream)
 				{
 					curr = 0;
 					return curr;
 				}
-				t = @in.Read();
+				t = input.Read();
 				if(t != ';')
 				{
 					break;
 				}
-				while(!@in.EndOfStream && @in.Read() != '\n') { }
+				while(!input.EndOfStream && input.Read() != '\n'){}
 			}
 
 			if(char.IsLetter((char)t))
 			{
 				text += (char)t;
-				while(char.IsLetterOrDigit((char)@in.Peek()) || @in.Peek() == '_') text += (char)@in.Read();
+				while(char.IsLetterOrDigit((char)input.Peek()) || input.Peek() == '_')
+				{
+					text += (char)input.Read();
+				}
 				curr = -1;
 				return curr;
 			}
 			if(t == '\"')
 			{
-				while(@in.Peek() != '\"') text += (char)@in.Read();
-				@in.Read();
+				while(input.Peek() != '\"')
+				{
+					text += (char)input.Read();
+				}
+				input.Read();
 				curr = -2;
 				return curr;
 			}
@@ -73,7 +83,7 @@ namespace Blitz3D.Compiling
 			return curr;
 		}
 
-		public static void linkRuntime()
+		private void linkRuntime()
 		{
 			foreach(string sym in Symbols.GetLinkSymbols())
 			{
@@ -106,7 +116,10 @@ namespace Blitz3D.Compiling
 				int k;
 				for(k = 1; k < s.Length; ++k)
 				{
-					if(!char.IsLetterOrDigit(s[k]) && s[k] != '_') break;
+					if(!char.IsLetterOrDigit(s[k]) && s[k] != '_')
+					{
+						break;
+					}
 				}
 				end = k;
 				DeclSeq @params = new DeclSeq();
@@ -153,7 +166,16 @@ namespace Blitz3D.Compiling
 			}
 		}
 
-		private static (FileInfo file, string err)? loadUserLib(FileInfo[] userlibs)
+		private void linkUserLibs()
+		{
+			DirectoryInfo dir = new DirectoryInfo("userlibs");
+			if(dir.Exists && loadUserLib(dir.GetFiles("*.decls")) is (FileInfo file, string err))
+			{
+				throw new Exception($"Error in userlib '{file.Name}' - {err}");
+			}
+		}
+
+		private (FileInfo file, string err)? loadUserLib(FileInfo[] userlibs)
 		{
 			HashSet<string> _ulibkws = new HashSet<string>();
 			foreach(FileInfo userlib in userlibs)
@@ -161,25 +183,25 @@ namespace Blitz3D.Compiling
 				string t = "userlibs/" + userlib.Name;
 
 				string lib = "";
-				StreamReader @in = new StreamReader(t);//ifstream
+				StreamReader input = new StreamReader(t);
 
-				bnext(@in);
+				bnext(input);
 				while(curr!=0)
 				{
 					if(curr == '.')
 					{
-						if(bnext(@in) != -1) return (userlib,"expecting identifier after '.'");
+						if(bnext(input) != -1) return (userlib,"expecting identifier after '.'");
 
 						if(text == "lib")
 						{
-							if(bnext(@in) != -2) return (userlib,"expecting string after lib directive");
+							if(bnext(input) != -2) return (userlib,"expecting string after lib directive");
 							lib = text;
 						}
 						else
 						{
 							return (userlib,"unknown decl directive");
 						}
-						bnext(@in);
+						bnext(input);
 					}
 					else if(curr == -1)
 					{
@@ -188,30 +210,29 @@ namespace Blitz3D.Compiling
 						string id = text;
 						string lower_id = id.ToLowerInvariant();
 
-						if(_ulibkws.Contains(lower_id)) return (userlib,"duplicate identifier");
+						if(_ulibkws.Contains(lower_id))
+						{
+							return (userlib,"duplicate identifier");
+						}
 
 						_ulibkws.Add(lower_id);
 
-						Type ty = null;
-						switch(bnext(@in))
+						Type ty = bnext(input) switch
 						{
-							case '%':
-								ty = Type.int_type;
-								break;
-							case '#':
-								ty = Type.float_type;
-								break;
-							case '$':
-								ty = Type.string_type;
-								break;
+							'%' => Type.int_type,
+							'#' => Type.float_type,
+							'$' => Type.string_type,
+							_ => Type.void_type,
+						};
+						if(ty != Type.void_type)
+						{
+							bnext(input);
 						}
-						if(ty!=null) bnext(@in);
-						else ty = Type.void_type;
 
 						DeclSeq @params = new DeclSeq();
 
 						if(curr != '(') return (userlib,"expecting '(' after function identifier");
-						bnext(@in);
+						bnext(input);
 						if(curr != ')')
 						{
 							for(; ; )
@@ -220,7 +241,7 @@ namespace Blitz3D.Compiling
 								string arg = text;
 
 								Type ty2 = null;
-								switch(bnext(@in))
+								switch(bnext(input))
 								{
 									case '%':
 										ty2 = Type.int_type;
@@ -235,7 +256,7 @@ namespace Blitz3D.Compiling
 										ty2 = Type.null_type;
 										break;
 								}
-								if(ty2!=null) bnext(@in);
+								if(ty2!=null) bnext(input);
 								else ty2 = Type.int_type;
 
 								ConstType defType = null;
@@ -243,7 +264,7 @@ namespace Blitz3D.Compiling
 								Decl d = @params.insertDecl(arg, ty2, DECL.PARAM, defType);
 
 								if(curr != ',') break;
-								bnext(@in);
+								bnext(input);
 							}
 						}
 						if(curr != ')') return (userlib,"expecting ')' after function decl");
@@ -254,13 +275,13 @@ namespace Blitz3D.Compiling
 
 						runtimeEnviron.funcDecls.insertDecl(lower_id, fn, DECL.FUNC);
 
-						if(bnext(@in) == ':')
+						if(bnext(input) == ':')
 						{
 							//real name?
-							bnext(@in);
+							bnext(input);
 							if(curr != -1 && curr != -2) return (userlib,"expecting identifier or string after alias");
 							id = text;
-							bnext(@in);
+							bnext(input);
 						}
 
 						userFuncs.Add(new UserFunc(lower_id, id, lib));
@@ -268,15 +289,6 @@ namespace Blitz3D.Compiling
 				}
 			}
 			return null;
-		}
-
-		public static void linkUserLibs()
-		{
-			DirectoryInfo dir = new DirectoryInfo("userlibs");
-			if(dir.Exists && loadUserLib(dir.GetFiles("*.decls")) is (FileInfo file, string err))
-			{
-				throw new Exception($"Error in userlib '{file.Name}' - {err}");
-			}
 		}
 	}
 }

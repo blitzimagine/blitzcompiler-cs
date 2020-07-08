@@ -6,7 +6,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace Blitz3D.Compiling
+namespace Blitz3D.Parsing
 {
 	public class Parser
 	{
@@ -29,10 +29,7 @@ namespace Blitz3D.Compiling
 
 		private static bool isTerm(Keyword c) => c == (Keyword)':' || c == Keyword.NEWLINE;
 
-		public Parser(Toker t)
-		{
-			toker = t;
-		}
+		public Parser(Toker t) => toker = t;
 
 		public ProgNode parse(string main)
 		{
@@ -61,17 +58,10 @@ namespace Blitz3D.Compiling
 			}
 		}
 
-
-
 		private StmtSeqNode parseStmtSeq(STMTS scope)
 		{
 			StmtSeqNode stmts = new StmtSeqNode(incfile);
-			parseStmtSeq(stmts, scope);
-			return stmts;
-		}
-		private void parseStmtSeq(StmtSeqNode stmts, STMTS scope)
-		{
-			for(; ; )
+			for(;;)
 			{
 				while(toker.curr == (Keyword)':' || (scope != STMTS.LINE && toker.curr == Keyword.NEWLINE))
 				{
@@ -212,7 +202,7 @@ namespace Blitz3D.Compiling
 								ExprSeqNode exprs = parseExprSeq();
 								if(exprs.Count==0) throw exp("expression sequence");
 								StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
-								selNode.push_back(new CaseNode(exprs, stmts2));
+								selNode.Add(new CaseNode(exprs, stmts2));
 								continue;
 							}
 							if(toker.curr == Keyword.DEFAULT)
@@ -330,7 +320,7 @@ namespace Blitz3D.Compiling
 							StmtNode stmt = new ReadNode(var);
 							stmt.pos = pos;
 							pos = toker.Pos;
-							stmts.push_back(stmt);
+							stmts.Add(stmt);
 						} while(toker.curr == Keyword.COMMA);
 						break;
 					case Keyword.RESTORE:
@@ -347,26 +337,26 @@ namespace Blitz3D.Compiling
 						{
 							toker.next();
 							ExprNode expr = parseExpr(false);
-							datas.push_back(new DataDeclNode(expr));
+							datas.Add(new DataDeclNode(expr));
 						} while(toker.curr == Keyword.COMMA);
 						break;
 					case Keyword.TYPE:
 						if(scope != STMTS.PROG) throw ex("'Type' can only appear in main program");
 						toker.next();
-						structs.push_back(parseStructDecl());
+						structs.Add(parseStructDecl());
 						break;
 					case Keyword.BBCONST:
 						if(scope != STMTS.PROG) throw ex("'Const' can only appear in main program");
 						do
 						{
 							toker.next();
-							consts.push_back(parseVarDecl(DECL.GLOBAL, true));
+							consts.Add(parseVarDecl(DECL.GLOBAL, true));
 						} while(toker.curr == Keyword.COMMA);
 						break;
 					case Keyword.FUNCTION:
 						if(scope != STMTS.PROG) throw ex("'Function' can only appear in main program");
 						toker.next();
-						funcs.push_back(parseFuncDecl());
+						funcs.Add(parseFuncDecl());
 						break;
 					case Keyword.DIM:
 						do
@@ -375,7 +365,7 @@ namespace Blitz3D.Compiling
 							StmtNode stmt = parseArrayDecl();
 							stmt.pos = pos;
 							pos = toker.Pos;
-							stmts.push_back(stmt);
+							stmts.Add(stmt);
 						} while(toker.curr == Keyword.COMMA);
 						break;
 					case Keyword.LOCAL:
@@ -386,7 +376,7 @@ namespace Blitz3D.Compiling
 							StmtNode stmt = new DeclStmtNode(d);
 							stmt.pos = pos;
 							pos = toker.Pos;
-							stmts.push_back(stmt);
+							stmts.Add(stmt);
 						} while(toker.curr == Keyword.COMMA);
 						break;
 					case Keyword.GLOBAL:
@@ -398,7 +388,7 @@ namespace Blitz3D.Compiling
 							StmtNode stmt = new DeclStmtNode(d);
 							stmt.pos = pos;
 							pos = toker.Pos;
-							stmts.push_back(stmt);
+							stmts.Add(stmt);
 						} while(toker.curr == Keyword.COMMA);
 						break;
 					case (Keyword)'.':
@@ -409,13 +399,13 @@ namespace Blitz3D.Compiling
 					}
 					break;
 					default:
-						return;
+						return stmts;
 				}
 
 				if(result!=null)
 				{
 					result.pos = pos;
-					stmts.push_back(result);
+					stmts.Add(result);
 				}
 			}
 		}
@@ -438,7 +428,10 @@ namespace Blitz3D.Compiling
 
 		private string parseIdent()
 		{
-			if(toker.curr != Keyword.IDENT) throw exp("identifier");
+			if(toker.curr != Keyword.IDENT)
+			{
+				throw exp("identifier");
+			}
 			string t = toker.Text;
 			toker.next();
 			return t;
@@ -520,7 +513,7 @@ namespace Blitz3D.Compiling
 				IfNode ifnode = parseIf();
 				ifnode.pos = pos;
 				elseOpt = new StmtSeqNode(incfile);
-				elseOpt.push_back(ifnode);
+				elseOpt.Add(ifnode);
 			}
 			else if(toker.curr == Keyword.ELSE)
 			{
@@ -587,13 +580,16 @@ namespace Blitz3D.Compiling
 			int pos = toker.Pos;
 			string ident = parseIdent();
 			string tag = parseTypeTag();
-			if(toker.curr != Keyword.ParenOpen) throw exp("'('");
+			if(toker.curr != Keyword.ParenOpen)
+			{
+				throw exp("'('");
+			}
 			DeclSeqNode @params = new DeclSeqNode();
 			if(toker.next() != Keyword.ParenClose)
 			{
-				for(; ; )
+				for(;;)
 				{
-					@params.push_back(parseVarDecl(DECL.PARAM, false));
+					@params.Add(parseVarDecl(DECL.PARAM, false));
 					if(toker.curr != Keyword.COMMA) break;
 					toker.next();
 				}
@@ -601,10 +597,13 @@ namespace Blitz3D.Compiling
 			}
 			toker.next();
 			StmtSeqNode stmts = parseStmtSeq(STMTS.BLOCK);
-			if(toker.curr != Keyword.ENDFUNCTION) throw exp("'End Function'");
+			if(toker.curr != Keyword.ENDFUNCTION)
+			{
+				throw exp("'End Function'");
+			}
 			StmtNode ret = new ReturnNode(null);
 			ret.pos = toker.Pos;
-			stmts.push_back(ret);
+			stmts.Add(ret);
 			toker.next();
 			DeclNode d = new FuncDeclNode(ident, tag, @params, stmts);
 			d.pos = pos;
@@ -622,7 +621,7 @@ namespace Blitz3D.Compiling
 				do
 				{
 					toker.next();
-					fields.push_back(parseVarDecl(DECL.FIELD, false));
+					fields.Add(parseVarDecl(DECL.FIELD, false));
 				} while(toker.curr == Keyword.COMMA);
 				while(toker.curr == Keyword.NEWLINE) toker.next();
 			}
@@ -640,7 +639,7 @@ namespace Blitz3D.Compiling
 			bool opt = true;
 			while(parseExpr(opt) is ExprNode e)
 			{
-				exprs.push_back(e);
+				exprs.Add(e);
 				if(toker.curr != Keyword.COMMA) break;
 				toker.next();
 				opt = false;

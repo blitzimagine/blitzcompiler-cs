@@ -1,17 +1,18 @@
 using System;
 using System.Collections.Generic;
-using Blitz3D.Compiling.ASM;
+using Blitz3D.Compiling;
+using Blitz3D.Compiling;
 
-namespace Blitz3D.Compiling
+namespace Blitz3D.Parsing
 {
 	public class DeclNode:Node
 	{
 		public int pos;
 		public string file;
 		public DeclNode() { pos = -1; }
-		public virtual void proto(DeclSeq d, Environ e) { }
-		public virtual void semant(Environ e) { }
-		public virtual void translate(Codegen g) { }
+		public virtual void Proto(DeclSeq d, Environ e) { }
+		public virtual void Semant(Environ e) { }
+		public virtual void Translate(Codegen g) { }
 		public virtual void transdata(Codegen g) { }
 	}
 
@@ -23,13 +24,13 @@ namespace Blitz3D.Compiling
 		public readonly List<DeclNode> decls = new List<DeclNode>();
 		public DeclSeqNode() { }
 
-		public void proto(DeclSeq d, Environ e)
+		public void Proto(DeclSeq d, Environ e)
 		{
 			for(int k = 0; k < decls.Count; ++k)
 			{
 				try
 				{
-					decls[k].proto(d, e);
+					decls[k].Proto(d, e);
 				}
 				catch(Ex x)
 				{
@@ -39,13 +40,13 @@ namespace Blitz3D.Compiling
 				}
 			}
 		}
-		public void semant(Environ e)
+		public void Semant(Environ e)
 		{
-			for(int k = 0; k < (int)decls.Count; ++k)
+			for(int k = 0; k < decls.Count; ++k)
 			{
 				try
 				{
-					decls[k].semant(e);
+					decls[k].Semant(e);
 				}
 				catch(Ex x)
 				{
@@ -55,13 +56,13 @@ namespace Blitz3D.Compiling
 				}
 			}
 		}
-		public void translate(Codegen g)
+		public void Translate(Codegen g)
 		{
-			for(int k = 0; k < (int)decls.Count; ++k)
+			for(int k = 0; k < decls.Count; ++k)
 			{
 				try
 				{
-					decls[k].translate(g);
+					decls[k].Translate(g);
 				}
 				catch(Ex x)
 				{
@@ -73,7 +74,7 @@ namespace Blitz3D.Compiling
 		}
 		public void transdata(Codegen g)
 		{
-			for(int k = 0; k < (int)decls.Count; ++k)
+			for(int k = 0; k < decls.Count; ++k)
 			{
 				try
 				{
@@ -88,10 +89,7 @@ namespace Blitz3D.Compiling
 			}
 		}
 
-		public void push_back(DeclNode d)
-		{
-			decls.Add(d);
-		}
+		public void Add(DeclNode d) => decls.Add(d);
 
 		public int Count => decls.Count;
 	}
@@ -119,7 +117,7 @@ namespace Blitz3D.Compiling
 			sem_var = null;
 		}
 
-		public override void proto(DeclSeq d, Environ e)
+		public override void Proto(DeclSeq d, Environ e)
 		{
 			Type ty = tagType(tag, e);
 			if(ty is null) ty = Type.int_type;
@@ -127,7 +125,7 @@ namespace Blitz3D.Compiling
 
 			if(expr!=null)
 			{
-				expr = expr.semant(e);
+				expr = expr.Semant(e);
 				expr = expr.castTo(ty, e);
 				if(constant || (kind & DECL.PARAM)!=0)
 				{
@@ -139,7 +137,6 @@ namespace Blitz3D.Compiling
 
 					else ty = new ConstType(c.stringValue());
 					e.types.Add(ty);
-					//delete expr;
 					expr = null;
 				}
 				if((kind & DECL.PARAM)!=0)
@@ -154,15 +151,15 @@ namespace Blitz3D.Compiling
 			if(decl is null) ex("Duplicate variable name");
 			if(expr!=null) sem_var = new DeclVarNode(decl);
 		}
-		public override void semant(Environ e) { }
-		public override void translate(Codegen g)
+		public override void Semant(Environ e) { }
+		public override void Translate(Codegen g)
 		{
 			if((kind & DECL.GLOBAL)!=0)
 			{
 				g.align_data(4);
 				g.i_data(0, "_v" + ident);
 			}
-			if(expr!=null) g.code(sem_var.store(g, expr.translate(g)));
+			if(expr!=null) g.code(sem_var.store(g, expr.Translate(g)));
 		}
 	}
 
@@ -171,7 +168,9 @@ namespace Blitz3D.Compiling
 	//////////////////////////
 	public class FuncDeclNode:DeclNode
 	{
-		public string ident, tag;
+		public readonly string ident;
+		/// <summary>Return type</summary>
+		public readonly string tag;
 		public DeclSeqNode @params;
 		public StmtSeqNode stmts;
 		public FuncType sem_type;
@@ -185,21 +184,21 @@ namespace Blitz3D.Compiling
 			stmts = ss;
 		}
 
-		public override void proto(DeclSeq d, Environ e)
+		public override void Proto(DeclSeq d, Environ e)
 		{
 			Type t = tagType(tag, e);
 			if(t is null) t = Type.int_type;
-			DeclSeq decls = new DeclSeq();//a_ptr<DeclSeq>
-			@params.proto(decls, e);
-			sem_type = new FuncType(t, decls/*.release()*/, false, false);
+			DeclSeq decls = new DeclSeq();
+			@params.Proto(decls, e);
+			sem_type = new FuncType(t, decls, false, false);
 			if(d.insertDecl(ident, sem_type, DECL.FUNC) is null)
 			{
-				//delete sem_type;
+				sem_type = null;
 				ex("duplicate identifier");
 			}
 			e.types.Add(sem_type);
 		}
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			sem_env = new Environ(genLabel(), sem_type.returnType, 1, e);
 			DeclSeq decls = sem_env.decls;
@@ -211,9 +210,9 @@ namespace Blitz3D.Compiling
 				if(decls.insertDecl(d.name, d.type, d.kind) is null) ex("duplicate identifier");
 			}
 
-			stmts.semant(sem_env);
+			stmts.Semant(sem_env);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			//var offsets
 			int size = enumVars(sem_env);
@@ -224,17 +223,11 @@ namespace Blitz3D.Compiling
 			//initialize locals
 			TNode t = createVars(sem_env);
 			if(t!=null) g.code(t);
-			if(g.debug)
-			{
-				string t2 = genLabel();
-				g.s_data(ident, t2);
-				g.code(call("__bbDebugEnter", local(0), iconst(sem_env.GetHashCode()), global(t2)));//Hash was originally casting ptr to int
-			}
 
 			//translate statements
-			stmts.translate(g);
+			stmts.Translate(g);
 
-			for(int k = 0; k < (int)sem_env.labels.Count; ++k)
+			for(int k = 0; k < sem_env.labels.Count; ++k)
 			{
 				if(sem_env.labels[k].def < 0) ex("Undefined label", sem_env.labels[k].@ref);
 			}
@@ -242,7 +235,6 @@ namespace Blitz3D.Compiling
 			//leave the function
 			g.label(sem_env.funcLabel + "_leave");
 			t = deleteVars(sem_env);
-			if(g.debug) t = new TNode(IR.SEQ, call("__bbDebugLeave"), t);
 			g.leave(t, sem_type.@params.Count * 4);
 		}
 	}
@@ -261,25 +253,25 @@ namespace Blitz3D.Compiling
 			fields = f;
 		}
 
-		public override void proto(DeclSeq d, Environ e)
+		public override void Proto(DeclSeq d, Environ e)
 		{
 			sem_type = new StructType(ident, new DeclSeq());
 			if(d.insertDecl(ident, sem_type, DECL.STRUCT) is null)
 			{
-				//delete sem_type;
+				sem_type = null;
 				ex("Duplicate identifier");
 			}
 			e.types.Add(sem_type);
 		}
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			fields.proto(sem_type.fields, e);
+			fields.Proto(sem_type.fields, e);
 			for(int k = 0; k < sem_type.fields.Count; ++k) sem_type.fields.decls[k].offset = k * 4;
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			//translate fields
-			fields.translate(g);
+			fields.Translate(g);
 
 			//type ID
 			g.align_data(4);
@@ -326,15 +318,15 @@ namespace Blitz3D.Compiling
 		public string str_label;
 		public DataDeclNode(ExprNode e) { expr = e; }
 
-		public override void proto(DeclSeq d, Environ e)
+		public override void Proto(DeclSeq d, Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			ConstNode c = expr.constNode();
 			if(c is null) ex("Data expression must be constant");
 			if(expr.sem_type == Type.string_type) str_label = genLabel();
 		}
-		public override void semant(Environ e) { }
-		public override void translate(Codegen g)
+		public override void Semant(Environ e) { }
+		public override void Translate(Codegen g)
 		{
 			if(expr.sem_type != Type.string_type) return;
 			ConstNode c = expr.constNode();
@@ -379,7 +371,7 @@ namespace Blitz3D.Compiling
 			kind = k;
 		}
 
-		public override void proto(DeclSeq d, Environ env)
+		public override void Proto(DeclSeq d, Environ env)
 		{
 			Type ty = tagType(tag, env);
 			if(ty is null) ty = Type.int_type;
@@ -387,7 +379,7 @@ namespace Blitz3D.Compiling
 			int[] sizes = new int[exprs.Count];
 			for(int k = 0; k < exprs.Count; ++k)
 			{
-				ExprNode e = exprs.exprs[k] = exprs.exprs[k].semant(env);
+				ExprNode e = exprs.exprs[k] = exprs.exprs[k].Semant(env);
 				ConstNode c = e.constNode();
 				if(c is null) ex("Blitz array sizes must be constant");
 				int n = c.intValue();
@@ -398,12 +390,12 @@ namespace Blitz3D.Compiling
 			sem_type = new VectorType(label, ty, sizes);
 			if(d.insertDecl(ident, sem_type, kind) is null)
 			{
-				//delete sem_type;
+				sem_type = null;
 				ex("Duplicate identifier");
 			}
 			env.types.Add(sem_type);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			//type tag!
 			g.align_data(4);

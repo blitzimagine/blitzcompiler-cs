@@ -1,5 +1,6 @@
-using Blitz3D.Compiling.ASM;
-namespace Blitz3D.Compiling
+using Blitz3D.Compiling;
+
+namespace Blitz3D.Parsing
 {
 	public abstract class VarNode:Node
 	{
@@ -139,18 +140,13 @@ namespace Blitz3D.Compiling
 			TNode t = null;
 			for(int k = 0; k < exprs.Count; ++k)
 			{
-				TNode e = exprs.exprs[k].translate(g);
+				TNode e = exprs.exprs[k].Translate(g);
 				if(k!=0)
 				{
 					TNode s = mem(add(global("_a" + ident), iconst(k * 4 + 8)));
 					e = add(t, mul(e, s));
 				}
-				if(g.debug)
-				{
-					TNode s = mem(add(global("_a" + ident), iconst(k * 4 + 12)));
-					t = jumpge(e, s, "__bbArrayBoundsEx");
-				}
-				else t = e;
+				t = e;
 			}
 			t = add(mem(global("_a" + ident)), mul(t, iconst(4)));
 			return t;
@@ -174,7 +170,7 @@ namespace Blitz3D.Compiling
 
 		public override void semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			StructType s = expr.sem_type.structType();
 			if(s is null) ex("Variable must be a Type");
 			sem_field = s.fields.findDecl(ident);
@@ -183,10 +179,8 @@ namespace Blitz3D.Compiling
 		}
 		public override TNode translate(Codegen g)
 		{
-			TNode t = expr.translate(g);
-			if(g.debug) t = jumpf(t, "__bbNullObjEx");
+			TNode t = expr.Translate(g);
 			t = mem(t);
-			if(g.debug) t = jumpf(t, "__bbNullObjEx");
 			return add(t, iconst(sem_field.offset));
 		}
 	}
@@ -207,7 +201,7 @@ namespace Blitz3D.Compiling
 
 		public override void semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			vec_type = expr.sem_type.vectorType();
 			if(vec_type is null) ex("Variable must be a Blitz array");
 			if(vec_type.sizes.Length != exprs.Count) ex("Incorrect number of subscripts");
@@ -240,17 +234,13 @@ namespace Blitz3D.Compiling
 				}
 				else
 				{
-					p = e.translate(g);
-					if(g.debug)
-					{
-						p = jumpge(p, iconst(vec_type.sizes[k]), "__bbVecBoundsEx");
-					}
+					p = e.Translate(g);
 					p = mul(p, iconst(sz));
 				}
 				sz *= vec_type.sizes[k];
 				t = t!=null ? add(t, p) : p;
 			}
-			return add(t, expr.translate(g));
+			return add(t, expr.Translate(g));
 		}
 	}
 }

@@ -1,13 +1,13 @@
 using System.Collections.Generic;
-namespace Blitz3D.Compiling
+namespace Blitz3D.Parsing
 {
 	///<summary>An environ represent a stack frame block.</summary>
 	public class Environ
 	{
 		public int level;
-		public DeclSeq decls;
-		public DeclSeq funcDecls;
-		public DeclSeq typeDecls;
+		public DeclSeq decls = new DeclSeq();
+		public DeclSeq funcDecls = new DeclSeq();
+		public DeclSeq typeDecls = new DeclSeq();
 
 		public List<Type> types = new List<Type>();
 
@@ -22,10 +22,6 @@ namespace Blitz3D.Compiling
 			globals = gs;
 			returnType = r;
 			funcLabel = f;
-
-			decls = new DeclSeq();
-			typeDecls = new DeclSeq();
-			funcDecls = new DeclSeq();
 		}
 
 		public Decl findDecl(string s)

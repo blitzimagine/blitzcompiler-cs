@@ -11,9 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Converting\" />
     <Folder Include="Generating\" />
-    <Folder Include="Parsing\" />
   </ItemGroup>
 
 </Project>

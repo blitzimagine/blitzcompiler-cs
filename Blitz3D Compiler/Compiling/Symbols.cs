@@ -726,7 +726,7 @@ namespace Blitz3D.Compiling
 			linkSymbol("%api_GlobalAlloc%a%b");
 		}
 
-		private static void linkSymbols(LinkSymbol linkSymbol)
+		public static void linkSymbols(LinkSymbol linkSymbol)
 		{
 			runtime_link(linkSymbol);
 			basic_link(linkSymbol);

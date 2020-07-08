@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Blitz3D.Compiling
+namespace Blitz3D.Parsing
 {
 	public enum Keyword:int
 	{
@@ -272,7 +272,6 @@ namespace Blitz3D.Compiling
 		private void nextline()
 		{
 			curr_row++;
-			//curr_toke = 0;
 			tokes.Clear();
 			if(input.EndOfStream)
 			{

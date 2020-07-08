@@ -1,5 +1,5 @@
 using System;
-namespace Blitz3D.Compiling
+namespace Blitz3D
 {
 	public class Ex:Exception
 	{

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Blitz3D.Compiling
+namespace Blitz3D.Parsing
 {
 	public enum DECL
 	{

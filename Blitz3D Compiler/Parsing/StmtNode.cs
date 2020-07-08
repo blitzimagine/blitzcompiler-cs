@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Blitz3D.Compiling.ASM;
+using Blitz3D.Compiling;
 
-namespace Blitz3D.Compiling
+namespace Blitz3D.Parsing
 {
 	public abstract class _StmtNode:Node
 	{
@@ -13,17 +13,8 @@ namespace Blitz3D.Compiling
 	{
 		public int pos = -1; //offset in source stream
 
-		public void debug(int pos, Codegen g)
-		{
-			if(g.debug)
-			{
-				TNode t = fileLabel.Length>0 ? global(fileLabel) : iconst(0);
-				g.code(call("__bbDebugStmt", iconst(pos), t));
-			}
-		}
-
-		public abstract void semant(Environ e);
-		public abstract void translate(Codegen g);
+		public abstract void Semant(Environ e);
+		public abstract void Translate(Codegen g);
 	}
 
 	////////////////////////
@@ -35,13 +26,13 @@ namespace Blitz3D.Compiling
 		private List<StmtNode> stmts = new List<StmtNode>();
 		public StmtSeqNode(string f) { file = f; }
 
-		public void semant(Environ e)
+		public void Semant(Environ e)
 		{
 			for(int k = 0; k < stmts.Count; ++k)
 			{
 				try
 				{
-					stmts[k].semant(e);
+					stmts[k].Semant(e);
 				}
 				catch(Ex x)
 				{
@@ -51,17 +42,16 @@ namespace Blitz3D.Compiling
 				}
 			}
 		}
-		public void translate(Codegen g)
+		public void Translate(Codegen g)
 		{
 			string t = fileLabel;
 			fileLabel = file.Length>0 ? fileMap[file] : "";
 			for(int k = 0; k < stmts.Count; ++k)
 			{
 				StmtNode stmt = stmts[k];
-				stmt.debug(stmts[k].pos, g);
 				try
 				{
-					stmt.translate(g);
+					stmt.Translate(g);
 				}
 				catch(Ex x)
 				{
@@ -73,14 +63,11 @@ namespace Blitz3D.Compiling
 			fileLabel = t;
 		}
 
-		public void push_back(StmtNode s)
-		{
-			stmts.Add(s);
-		}
+		public void Add(StmtNode s) => stmts.Add(s);
 
 		public int Count => stmts.Count;
 
-		public static void reset(string file, string lab)
+		public static void Reset(string file, string lab)
 		{
 			fileLabel = "";
 			fileMap.Clear();
@@ -105,18 +92,16 @@ namespace Blitz3D.Compiling
 			stmts = ss;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			label = genLabel();
 			fileMap[file] = label;
 
-			stmts.semant(e);
+			stmts.Semant(e);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
-			if(g.debug) g.s_data(file, label);
-
-			stmts.translate(g);
+			stmts.Translate(g);
 		}
 	}
 
@@ -133,14 +118,14 @@ namespace Blitz3D.Compiling
 			pos = d.pos;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			decl.proto(e.decls, e);
-			decl.semant(e);
+			decl.Proto(e.decls, e);
+			decl.Semant(e);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
-			decl.translate(g);
+			decl.Translate(g);
 		}
 	}
 
@@ -160,7 +145,7 @@ namespace Blitz3D.Compiling
 			exprs = e;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			Type t = tagType(tag,e);
 			if(e.findDecl(ident) is Decl d)
@@ -184,14 +169,13 @@ namespace Blitz3D.Compiling
 			exprs.semant(e);
 			exprs.castTo(Type.int_type, e);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
-			TNode t;
 			g.code(call("__bbUndimArray", global("_a" + ident)));
 			for(int k = 0; k < exprs.Count; ++k)
 			{
-				t = add(global("_a" + ident), iconst(k * 4 + 12));
-				t = move(exprs.exprs[k].translate(g), mem(t));
+				TNode t = add(global("_a" + ident), iconst(k * 4 + 12));
+				t = move(exprs.exprs[k].Translate(g), mem(t));
 				g.code(t);
 			}
 			g.code(call("__bbDimArray", global("_a" + ident)));
@@ -226,17 +210,17 @@ namespace Blitz3D.Compiling
 			this.expr = expr;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			var.semant(e);
 			if(var.sem_type.constType()!=null) ex("Constants can not be assigned to");
 			if(var.sem_type.vectorType()!=null) ex("Blitz arrays can not be assigned to");
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			expr = expr.castTo(var.sem_type, e);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
-			g.code(var.store(g, expr.translate(g)));
+			g.code(var.store(g, expr.Translate(g)));
 		}
 	}
 
@@ -251,13 +235,13 @@ namespace Blitz3D.Compiling
 			expr = e;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
-			TNode t = expr.translate(g);
+			TNode t = expr.Translate(g);
 			if(expr.sem_type == Type.string_type) t = call("__bbStrRelease", t);
 			g.code(t);
 		}
@@ -275,7 +259,7 @@ namespace Blitz3D.Compiling
 			ident = s;
 			data_sz = sz;
 		}
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			if(e.findLabel(ident) is Label l)
 			{
@@ -286,7 +270,7 @@ namespace Blitz3D.Compiling
 			else e.insertLabel(ident, pos, -1, data_sz);
 			ident = e.funcLabel + ident;
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			g.label("_l" + ident);
 		}
@@ -299,7 +283,7 @@ namespace Blitz3D.Compiling
 	{
 		private string ident;
 		public GotoNode(string s) { ident=s; }
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			if(e.findLabel(ident) is null)
 			{
@@ -307,7 +291,7 @@ namespace Blitz3D.Compiling
 			}
 			ident = e.funcLabel + ident;
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			g.code(jump("_l" + ident));
 		}
@@ -320,13 +304,13 @@ namespace Blitz3D.Compiling
 	{
 		private string ident;
 		public GosubNode(string s) { ident = s; }
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			if(e.level > 0) ex("'Gosub' may not be used inside a function");
 			if(e.findLabel(ident) is null) e.insertLabel(ident, -1, pos, -1);
 			ident = e.funcLabel + ident;
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			g.code(jsr("_l" + ident));
 		}
@@ -346,31 +330,31 @@ namespace Blitz3D.Compiling
 			elseOpt=o;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			expr = expr.castTo(Type.int_type, e);
-			stmts.semant(e);
-			if(elseOpt!=null) elseOpt.semant(e);
+			stmts.Semant(e);
+			if(elseOpt!=null) elseOpt.Semant(e);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			if(expr.constNode() is ConstNode c)
 			{
-				if(c.intValue()!=0) stmts.translate(g);
-				else if(elseOpt!=null) elseOpt.translate(g);
+				if(c.intValue()!=0) stmts.Translate(g);
+				else if(elseOpt!=null) elseOpt.Translate(g);
 			}
 			else
 			{
 				string _else = genLabel();
-				g.code(jumpf(expr.translate(g), _else));
-				stmts.translate(g);
+				g.code(jumpf(expr.Translate(g), _else));
+				stmts.Translate(g);
 				if(elseOpt!=null)
 				{
 					string _else2 = genLabel();
 					g.code(jump(_else2));
 					g.label(_else);
-					elseOpt.translate(g);
+					elseOpt.Translate(g);
 					_else = _else2;
 				}
 				g.label(_else);
@@ -384,12 +368,12 @@ namespace Blitz3D.Compiling
 	public class ExitNode:StmtNode
 	{
 		private string sem_brk;
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			sem_brk = e.breakLabel;
 			if(sem_brk.Length==0) ex("break must appear inside a loop");
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			g.code(new TNode(IR.JUMP, null, null, sem_brk));
 		}
@@ -411,22 +395,22 @@ namespace Blitz3D.Compiling
 			stmts = s;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			expr = expr.castTo(Type.int_type, e);
 			string brk = e.setBreak(sem_brk = genLabel());
-			stmts.semant(e);
+			stmts.Semant(e);
 			e.setBreak(brk);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			string loop = genLabel();
 			if(expr.constNode() is ConstNode c)
 			{
 				if(c.intValue() == 0) return;
 				g.label(loop);
-				stmts.translate(g);
+				stmts.Translate(g);
 				g.code(jump(loop));
 			}
 			else
@@ -434,10 +418,9 @@ namespace Blitz3D.Compiling
 				string cond = genLabel();
 				g.code(jump(cond));
 				g.label(loop);
-				stmts.translate(g);
-				debug(wendPos, g);
+				stmts.Translate(g);
 				g.label(cond);
-				g.code(jumpt(expr.translate(g), loop));
+				g.code(jumpt(expr.Translate(g), loop));
 			}
 			g.label(sem_brk);
 		}
@@ -463,7 +446,7 @@ namespace Blitz3D.Compiling
 			stmts = ss;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			var.semant(e);
 			Type ty = var.sem_type;
@@ -472,44 +455,43 @@ namespace Blitz3D.Compiling
 			{
 				ex("index variable must be integer or real");
 			}
-			fromExpr = fromExpr.semant(e);
+			fromExpr = fromExpr.Semant(e);
 			fromExpr = fromExpr.castTo(ty, e);
-			toExpr = toExpr.semant(e);
+			toExpr = toExpr.Semant(e);
 			toExpr = toExpr.castTo(ty, e);
-			stepExpr = stepExpr.semant(e);
+			stepExpr = stepExpr.Semant(e);
 			stepExpr = stepExpr.castTo(ty, e);
 
 			if(stepExpr.constNode() is null) ex("Step value must be constant");
 
 			string brk = e.setBreak(sem_brk = genLabel());
-			stmts.semant(e);
+			stmts.Semant(e);
 			e.setBreak(brk);
 		}
 
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			TNode t;
 			Type ty = var.sem_type;
 
 			//initial assignment
-			g.code(var.store(g, fromExpr.translate(g)));
+			g.code(var.store(g, fromExpr.Translate(g)));
 
 			string cond = genLabel();
 			string loop = genLabel();
 			g.code(jump(cond));
 			g.label(loop);
-			stmts.translate(g);
+			stmts.Translate(g);
 
 			//execute the step part
-			debug(nextPos, g);
 			IR op = ty == Type.int_type ? IR.ADD : IR.FADD;
-			t = new TNode(op, var.load(g), stepExpr.translate(g));
+			t = new TNode(op, var.load(g), stepExpr.Translate(g));
 			g.code(var.store(g, t));
 
 			//test for loop cond
 			g.label(cond);
 			Keyword kw = stepExpr.constNode().floatValue() > 0 ? Keyword.GT : Keyword.LT;
-			t = compare(kw, var.load(g), toExpr.translate(g), ty);
+			t = compare(kw, var.load(g), toExpr.Translate(g), ty);
 			g.code(jumpf(t, loop));
 
 			g.label(sem_brk);
@@ -534,7 +516,7 @@ namespace Blitz3D.Compiling
 			stmts = s;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			var.semant(e);
 			Type ty = var.sem_type;
@@ -545,10 +527,10 @@ namespace Blitz3D.Compiling
 			if(t != ty) ex("Type mismatch");
 
 			string brk = e.setBreak(sem_brk = genLabel());
-			stmts.semant(e);
+			stmts.Semant(e);
 			e.setBreak(brk);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			TNode t, l, r;
 			string _loop = genLabel();
@@ -572,9 +554,8 @@ namespace Blitz3D.Compiling
 			g.code(t);
 
 			g.label(_loop);
-			stmts.translate(g);
+			stmts.Translate(g);
 
-			debug(nextPos, g);
 			t = jumpt(call(objNext, var.translate(g)), _loop);
 			g.code(t);
 
@@ -594,7 +575,7 @@ namespace Blitz3D.Compiling
 			expr = e;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			if(e.level <= 0 && expr!=null)
 			{
@@ -621,12 +602,12 @@ namespace Blitz3D.Compiling
 						expr = new IntConstNode(0);
 					}
 				}
-				expr = expr.semant(e);
+				expr = expr.Semant(e);
 				expr = expr.castTo(e.returnType, e);
 				returnLabel = e.funcLabel + "_leave";
 			}
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			if(expr is null)
 			{
@@ -634,7 +615,7 @@ namespace Blitz3D.Compiling
 				return;
 			}
 
-			TNode t = expr.translate(g);
+			TNode t = expr.Translate(g);
 
 			if(expr.sem_type == Type.float_type)
 			{
@@ -655,14 +636,17 @@ namespace Blitz3D.Compiling
 		private ExprNode expr;
 		public DeleteNode(ExprNode e) { expr = e; }
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.semant(e);
-			if(expr.sem_type.structType() == null) ex("Can't delete non-Newtype");
+			expr = expr.Semant(e);
+			if(expr.sem_type.structType() == null)
+			{
+				ex("Can't delete non-Newtype");
+			}
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
-			TNode t = expr.translate(g);
+			TNode t = expr.Translate(g);
 			g.code(call("__bbObjDelete", t));
 		}
 	}
@@ -674,12 +658,12 @@ namespace Blitz3D.Compiling
 	{
 		private string typeIdent;
 		public DeleteEachNode(string t) { typeIdent=t; }
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			Type t = e.findType(typeIdent);
 			if(t is null || t.structType() == null) ex("Specified name is not a NewType name");
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			g.code(call("__bbObjDeleteEach", global("_t" + typeIdent)));
 		}
@@ -699,21 +683,19 @@ namespace Blitz3D.Compiling
 			before = b;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr1 = expr1.semant(e);
-			expr2 = expr2.semant(e);
+			expr1 = expr1.Semant(e);
+			expr2 = expr2.Semant(e);
 			StructType t1 = expr1.sem_type.structType();
 			StructType t2 = expr2.sem_type.structType();
 			if(t1 is null || t2 is null) ex("Illegal expression type");
 			if(t1 != t2) ex("Objects types are differnt");
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
-			TNode t1 = expr1.translate(g);
-			if(g.debug) t1 = jumpf(t1, "__bbNullObjEx");
-			TNode t2 = expr2.translate(g);
-			if(g.debug) t2 = jumpf(t2, "__bbNullObjEx");
+			TNode t1 = expr1.Translate(g);
+			TNode t2 = expr2.Translate(g);
 			string s = before ? "__bbObjInsBefore" : "__bbObjInsAfter";
 			g.code(call(s, t1, t2));
 		}
@@ -746,14 +728,11 @@ namespace Blitz3D.Compiling
 			sem_temp = null;
 		}
 
-		public void push_back(CaseNode c)
-		{
-			cases.Add(c);
-		}
+		public void Add(CaseNode c) => cases.Add(c);
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.semant(e);
+			expr = expr.Semant(e);
 			Type ty = expr.sem_type;
 			if(ty.structType()!=null) ex("Select cannot be used with objects");
 
@@ -766,15 +745,15 @@ namespace Blitz3D.Compiling
 				CaseNode c = cases[k];
 				c.exprs.semant(e);
 				c.exprs.castTo(ty, e);
-				c.stmts.semant(e);
+				c.stmts.Semant(e);
 			}
-			if(defStmts!=null) defStmts.semant(e);
+			if(defStmts!=null) defStmts.Semant(e);
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			Type ty = expr.sem_type;
 
-			g.code(sem_temp.store(g, expr.translate(g)));
+			g.code(sem_temp.store(g, expr.Translate(g)));
 
 			List<string> labs = new List<string>();
 			string brk = genLabel();
@@ -786,17 +765,17 @@ namespace Blitz3D.Compiling
 				for(int j = 0; j < c.exprs.Count; ++j)
 				{
 					ExprNode e = c.exprs.exprs[j];
-					TNode t = compare(Keyword.EQ,sem_temp.load(g),e.translate(g),ty);
+					TNode t = compare(Keyword.EQ,sem_temp.load(g),e.Translate(g),ty);
 					g.code(jumpt(t, labs[labs.Count-1]));
 				}
 			}
-			if(defStmts!=null) defStmts.translate(g);
+			if(defStmts!=null) defStmts.Translate(g);
 			g.code(jump(brk));
 			for(int k = 0; k < (int)cases.Count; ++k)
 			{
 				CaseNode c = cases[k];
 				g.label(labs[k]);
-				c.stmts.translate(g);
+				c.stmts.Translate(g);
 				g.code(jump(brk));
 			}
 
@@ -820,24 +799,23 @@ namespace Blitz3D.Compiling
 			expr = e;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			sem_brk = genLabel();
 			string brk = e.setBreak(sem_brk);
-			stmts.semant(e);
+			stmts.Semant(e);
 			e.setBreak(brk);
 			if(expr!=null)
 			{
-				expr = expr.semant(e);
+				expr = expr.Semant(e);
 				expr = expr.castTo(Type.int_type, e);
 			}
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			string loop = genLabel();
 			g.label(loop);
-			stmts.translate(g);
-			debug(untilPos, g);
+			stmts.Translate(g);
 
 			if(expr?.constNode() is ConstNode c)
 			{
@@ -845,7 +823,7 @@ namespace Blitz3D.Compiling
 			}
 			else
 			{
-				if(expr!=null) g.code(jumpf(expr.translate(g), loop));
+				if(expr!=null) g.code(jumpf(expr.Translate(g), loop));
 				else g.code(jump(loop));
 			}
 			g.label(sem_brk);
@@ -857,19 +835,19 @@ namespace Blitz3D.Compiling
 	///////////////
 	public class ReadNode:StmtNode
 	{
-		private VarNode var;
+		private readonly VarNode var;
 		public ReadNode(VarNode v)
 		{
 			var = v;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			var.semant(e);
 			if(var.sem_type.constType()!=null) ex("Constants can not be modified");
 			if(var.sem_type.structType()!=null) ex("Data can not be read into an object");
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			TNode t;
 			if(var.sem_type == Type.int_type) t = call("__bbReadInt");
@@ -890,7 +868,7 @@ namespace Blitz3D.Compiling
 		{
 			ident = i;
 		}
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			if(e.level > 0) e = e.globals;
 
@@ -901,7 +879,7 @@ namespace Blitz3D.Compiling
 				if(sem_label is null) sem_label = e.insertLabel(ident, -1, pos, -1);
 			}
 		}
-		public override void translate(Codegen g)
+		public override void Translate(Codegen g)
 		{
 			TNode t = global("__DATA");
 			if(sem_label != null) t = add(t, iconst(sem_label.data_sz * 8));

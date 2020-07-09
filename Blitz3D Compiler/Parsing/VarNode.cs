@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Blitz3D.Compiling;
 
 namespace Blitz3D.Parsing
@@ -68,6 +69,19 @@ namespace Blitz3D.Parsing
 			return base.store(g, n);
 		}
 		public override bool isObjParam() => sem_type.structType()!=null && sem_decl.kind == DECL.PARAM;
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return sem_decl.name;
+		}
+		//public override string WriteData() => sem_decl.kind switch
+		//{
+		//	DECL.GLOBAL => $"public static {sem_type.Name} {sem_decl.name};",
+		//	DECL.FIELD => $"public {sem_type.Name} {sem_decl.name};",
+		//	DECL.LOCAL => $"{sem_type.Name} {sem_decl.name};",
+		//	DECL.PARAM => $"{sem_type.Name} {sem_decl.name}",
+		//	_ => throw new NotImplementedException()
+		//};
 	}
 
 	///////////////
@@ -105,6 +119,11 @@ namespace Blitz3D.Parsing
 				sem_decl = e.decls.insertDecl(ident, t, DECL.LOCAL);
 			}
 			sem_type = sem_decl.type;
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return ident;
 		}
 	}
 
@@ -151,6 +170,11 @@ namespace Blitz3D.Parsing
 			t = add(mem(global("_a" + ident)), mul(t, iconst(4)));
 			return t;
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"{ident}[{exprs.JoinedWriteData()}]";
+		}
 	}
 
 	///////////////
@@ -182,6 +206,11 @@ namespace Blitz3D.Parsing
 			TNode t = expr.Translate(g);
 			t = mem(t);
 			return add(t, iconst(sem_field.offset));
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"this.{ident}";
 		}
 	}
 
@@ -241,6 +270,11 @@ namespace Blitz3D.Parsing
 				t = t!=null ? add(t, p) : p;
 			}
 			return add(t, expr.Translate(g));
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"{expr.JoinedWriteData()}[{exprs.JoinedWriteData()}]";
 		}
 	}
 }

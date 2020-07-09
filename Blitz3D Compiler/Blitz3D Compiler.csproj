@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="Compiling\CS\" />
     <Folder Include="Generating\" />
   </ItemGroup>
 

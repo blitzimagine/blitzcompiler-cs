@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using Blitz3D.Compiling;
+using System.Text;
 using Blitz3D.Compiling;
 
 namespace Blitz3D.Parsing
 {
-	public class DeclNode:Node
+	public abstract class DeclNode:Node
 	{
 		public int pos;
 		public string file;
@@ -89,6 +89,17 @@ namespace Blitz3D.Parsing
 			}
 		}
 
+		public override IEnumerable<string> WriteData()
+		{
+			foreach(var decl in decls)
+			{
+				foreach(string s in decl.WriteData())
+				{
+					yield return s;
+				}
+			}
+		}
+
 		public void Add(DeclNode d) => decls.Add(d);
 
 		public int Count => decls.Count;
@@ -160,6 +171,39 @@ namespace Blitz3D.Parsing
 				g.i_data(0, "_v" + ident);
 			}
 			if(expr!=null) g.code(sem_var.store(g, expr.Translate(g)));
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			StringBuilder builder = new StringBuilder();
+			string accessors = GetAccessors(kind, constant);
+			string typeName = Type.FromTag(tag).Name;
+			builder.Append($"{accessors}{typeName} {ident}");
+			if(expr != null)
+			{
+				builder.Append($" = {expr.JoinedWriteData()}");
+			}
+			if(kind != DECL.PARAM)
+			{
+				builder.Append(';');
+			}
+			yield return builder.ToString();
+		}
+
+		public string WriteData_InitStmtOnly()
+		{
+			if(expr != null)
+			{
+				return $"{ident} = {expr.JoinedWriteData()};";
+			}
+			return null;
+		}
+
+		public string WriteData_DeclStmtOnly()
+		{
+			string accessors = GetAccessors(kind, constant);
+			string typeName = Type.FromTag(tag).Name;
+			return $"{accessors}{typeName} {ident};";
 		}
 	}
 
@@ -237,6 +281,17 @@ namespace Blitz3D.Parsing
 			t = deleteVars(sem_env);
 			g.leave(t, sem_type.@params.Count * 4);
 		}
+		public override IEnumerable<string> WriteData()
+		{
+			Type ret = Type.FromTag(tag);
+			yield return $"public static {ret.Name} {ident}({@params.JoinedWriteData(", ")})";
+			yield return "{";
+			foreach(string s in stmts.WriteData())
+			{
+				yield return s;
+			}
+			yield return "}";
+		}
 	}
 
 	//////////////////////
@@ -307,6 +362,17 @@ namespace Blitz3D.Parsing
 				g.p_data(t);
 			}
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"public class {ident}";
+			yield return "{";
+			foreach(string s in fields.WriteData())
+			{
+				yield return s;
+			}
+			yield return "}";
+		}
 	}
 
 	//////////////////////
@@ -315,8 +381,14 @@ namespace Blitz3D.Parsing
 	public class DataDeclNode:DeclNode
 	{
 		public ExprNode expr;
-		public string str_label;
-		public DataDeclNode(ExprNode e) { expr = e; }
+		private string str_label;
+		public readonly string dataVarName;
+
+		public DataDeclNode(ExprNode e, string dataVarName)
+		{
+			expr = e;
+			this.dataVarName = dataVarName;
+		}
 
 		public override void Proto(DeclSeq d, Environ e)
 		{
@@ -352,6 +424,23 @@ namespace Blitz3D.Parsing
 				g.p_data(str_label);
 			}
 		}
+		public override IEnumerable<string> WriteData()
+		{
+			string ret = $"{dataVarName}.Add<{expr.sem_type.Name}>({expr.JoinedWriteData()});";
+			if(str_label.Length>0)
+			{
+				ret = $"/*{str_label}*/{ret}";
+			}
+			yield return ret;
+		}
+		public string WriteData_InstanceDeclaration() => $"public static readonly BlitzData {dataVarName} = new BlitzData();";
+
+		//Old genereic type ones
+		//public override IEnumerable<string> WriteData()
+		//{
+		//	yield return $"/*BlitzData<{expr.sem_type.Name}> {str_label}*/ {dataVarName}.Add({expr.JoinedWriteData()});";
+		//}
+		//public string GetDataInstanceDeclaration() => $"public static readonly BlitzData<{expr.sem_type.Name}> {dataVarName} = new BlitzData<{expr.sem_type.Name}>();";
 	}
 
 	////////////////////////
@@ -415,6 +504,25 @@ namespace Blitz3D.Parsing
 			g.p_data(t);
 
 			if(kind == DECL.GLOBAL) g.i_data(0, "_v" + ident);
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			string typeName = Type.FromTag(tag).Name;
+			yield return $"{GetAccessors(kind)}System.Collections.Generic.List<{typeName}> {ident} = new System.Collections.Generic.List<{typeName}>(new {typeName}[]{{{exprs.JoinedWriteData()}}});";
+		}
+
+		public string WriteData_InitStmtOnly()
+		{
+			string typeName = Type.FromTag(tag).Name;
+			return $"{ident} = new System.Collections.Generic.List<{typeName}>(new {typeName}[]{{{exprs.JoinedWriteData()}}});";
+		}
+
+		public string WriteData_DeclStmtOnly()
+		{
+			string accessors = GetAccessors(kind);
+			string typeName = Type.FromTag(tag).Name;
+			return $"{accessors}System.Collections.Generic.List<{typeName}> {ident};";
 		}
 	}
 }

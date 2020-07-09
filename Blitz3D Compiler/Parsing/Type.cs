@@ -1,7 +1,9 @@
 namespace Blitz3D.Parsing
 {
-	public class Type
+	public abstract class Type
 	{
+		public abstract string Name{get;}
+
 		public virtual bool intType() => false;
 
 		public virtual bool floatType() => false;
@@ -30,10 +32,20 @@ namespace Blitz3D.Parsing
 		public static Type float_type = f_type.f;
 		public static Type string_type = s_type.s;
 		public static Type null_type = n;
+
+		public static Type FromTag(string tag) => tag switch
+		{
+			"%" => int_type,
+			"#" => float_type,
+			"$" => string_type,
+			"" => int_type,
+			_ => int_type,/*throw new System.Exception("Unknown type")*/
+		};
 	};
 
 	public class FuncType:Type
 	{
+		public override string Name => "__Func__";
 		public readonly Type returnType;
 		public readonly DeclSeq @params;
 		public readonly bool userlib, cfunc;
@@ -50,6 +62,8 @@ namespace Blitz3D.Parsing
 
 	public class ArrayType:Type
 	{
+		public override string Name => $"{elementType.Name}[]";
+
 		public readonly Type elementType;
 		public readonly int dims;
 		public ArrayType(Type t, int n)
@@ -66,6 +80,8 @@ namespace Blitz3D.Parsing
 
 	public class StructType:Type
 	{
+		public override string Name => ident;
+
 		public readonly string ident;
 		public readonly DeclSeq fields;
 
@@ -82,6 +98,16 @@ namespace Blitz3D.Parsing
 
 	public class ConstType:Type
 	{
+		public override string Name
+		{
+			get
+			{
+				if(valueType.intType())return intValue.ToString();
+				if(valueType.floatType())return floatValue.ToString();
+				return stringValue;
+			}
+		}
+
 		public readonly Type valueType;
 		public readonly int intValue;
 		public readonly float floatValue;
@@ -107,6 +133,8 @@ namespace Blitz3D.Parsing
 
 	public class VectorType:Type
 	{
+		public override string Name => $"List<{elementType.Name}>";
+
 		public readonly string label;
 		public readonly Type elementType;
 		public readonly int[] sizes;
@@ -139,6 +167,8 @@ namespace Blitz3D.Parsing
 
 	public class v_type:Type
 	{
+		public override string Name => "void";
+
 		public static v_type v = new v_type();
 
 		public override bool canCastTo(Type t) => t == void_type;
@@ -146,6 +176,8 @@ namespace Blitz3D.Parsing
 
 	public class i_type:Type
 	{
+		public override string Name => "int";
+
 		public static i_type i = new i_type();
 
 		public override bool intType() => true;
@@ -155,6 +187,8 @@ namespace Blitz3D.Parsing
 
 	public class f_type:Type
 	{
+		public override string Name => "float";
+
 		public static f_type f = new f_type();
 
 		public override bool floatType() => true;
@@ -164,6 +198,8 @@ namespace Blitz3D.Parsing
 
 	public class s_type:Type
 	{
+		public override string Name => "string";
+
 		public static s_type s = new s_type();
 
 		public override bool stringType() => true;

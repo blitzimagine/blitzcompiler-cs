@@ -9,9 +9,9 @@ namespace Blitz3D.Parsing
 	public class Libs
 	{
 		//linkLibs
-		public Environ runtimeEnviron = new Environ("", Type.int_type, 0, null);
-		public List<string> keyWords = new List<string>();
-		public List<UserFunc> userFuncs = new List<UserFunc>();
+		public readonly Environ runtimeEnviron = new Environ("", Type.int_type, 0, null);
+		private readonly List<string> keyWords = new List<string>();
+		public readonly List<UserFunc> userFuncs = new List<UserFunc>();
 
 		private Type @typeof(int c) => c switch
 		{

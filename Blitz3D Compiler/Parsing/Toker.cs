@@ -259,12 +259,23 @@ namespace Blitz3D.Parsing
 			public Toke(Keyword n, int f, int t, string line)
 			{
 				this.line = line;
-				this.Keyword = n;
-				this.from = f;
-				this.to = t;
+				Keyword = n;
+				from = f;
+				to = t;
 			}
 
-			public string Text => line.Substring(from, to - from);
+			public string Text
+			{
+				get
+				{
+					string text = line.Substring(from, to - from);;
+					if(Keyword == Keyword.IDENT)
+					{
+						text = Utils.WrapIfCSharpKeyword(text);
+					}
+					return text;
+				}
+			}
 		}
 
 

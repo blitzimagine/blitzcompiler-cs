@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Blitz3D.Compiling;
 
 namespace Blitz3D.Parsing
@@ -39,7 +40,7 @@ namespace Blitz3D.Parsing
 	/////////////////////////////
 	public class ExprSeqNode:Node
 	{
-		public List<ExprNode> exprs = new List<ExprNode>();
+		public readonly List<ExprNode> exprs = new List<ExprNode>();
 
 		public void Add(ExprNode e) => exprs.Add(e);
 
@@ -129,6 +130,11 @@ namespace Blitz3D.Parsing
 				exprs[k] = exprs[k].castTo(t, e);
 			}
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return string.Join(", ", exprs.Select(e=>e.JoinedWriteData()));
+		}
 	}
 
 	//#include "varnode.h"
@@ -215,6 +221,11 @@ namespace Blitz3D.Parsing
 			}
 			return t;
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"({sem_type.Name})({expr.JoinedWriteData()})";
+		}
 	}
 
 	///////////////////
@@ -276,6 +287,11 @@ namespace Blitz3D.Parsing
 			}
 			return t;
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"{ident}({exprs.JoinedWriteData()})";
+		}
 	}
 
 	/////////////////////////
@@ -303,6 +319,8 @@ namespace Blitz3D.Parsing
 		{
 			return var.load(g);
 		}
+
+		public override IEnumerable<string> WriteData() => var.WriteData();
 	}
 
 	public abstract class ConstNode:ExprNode
@@ -334,6 +352,11 @@ namespace Blitz3D.Parsing
 		public override float floatValue() => value;
 
 		public override string stringValue() => /*itoa*/(value).ToString();
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return value.ToString();
+		}
 	}
 
 	////////////////////
@@ -354,6 +377,11 @@ namespace Blitz3D.Parsing
 		public override int intValue() => (int)MathF.Round(value);
 		public override float floatValue() => value;
 		public override string stringValue() => /*ftoa*/(value).ToString();
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return value.ToString()+'f';
+		}
 	}
 
 	/////////////////////
@@ -376,6 +404,11 @@ namespace Blitz3D.Parsing
 		public override int intValue() => /*atoi*/int.Parse(value);
 		public override float floatValue() => /*atof*/float.Parse(value);
 		public override string stringValue() => value;
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return '"'+value+'"';
+		}
 	}
 
 	////////////////////
@@ -470,6 +503,18 @@ namespace Blitz3D.Parsing
 			}
 			return new TNode(n, l, null);
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return op switch
+			{
+				Keyword.POSITIVE => $"+{expr.JoinedWriteData()}",
+				Keyword.NEGATIVE => $"-{expr.JoinedWriteData()}",
+				Keyword.ABS => $"Math.Abs({expr.JoinedWriteData()})",
+				Keyword.SGN => $"Math.Sign({expr.JoinedWriteData()})",
+				_ => throw new Exception("Invalid operation")
+			};
+		}
 	}
 
 	/////////////////////////////////////////////////////
@@ -551,6 +596,20 @@ namespace Blitz3D.Parsing
 					break;
 			}
 			return new TNode(n, l, r);
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return op switch
+			{
+				Keyword.AND => $"({lhs.JoinedWriteData()} & {rhs.JoinedWriteData()})",
+				Keyword.OR => $"({lhs.JoinedWriteData()} | {rhs.JoinedWriteData()})",
+				Keyword.XOR => $"({lhs.JoinedWriteData()} ^ {rhs.JoinedWriteData()})",
+				Keyword.SHL => $"({lhs.JoinedWriteData()} << {rhs.JoinedWriteData()})",
+				Keyword.SHR => $"(int)((uint){lhs.JoinedWriteData()} >> {rhs.JoinedWriteData()})",
+				Keyword.SAR => $"({lhs.JoinedWriteData()} >> {rhs.JoinedWriteData()})",
+				_ => throw new Exception("Invalid operation")
+			};
 		}
 	}
 
@@ -710,6 +769,20 @@ namespace Blitz3D.Parsing
 			}
 			return new TNode(n, l, r);
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return op switch
+			{
+				Keyword.ADD => $"({lhs.JoinedWriteData()} + {rhs.JoinedWriteData()})",
+				Keyword.SUB => $"({lhs.JoinedWriteData()} - {rhs.JoinedWriteData()})",
+				Keyword.MUL => $"({lhs.JoinedWriteData()} * {rhs.JoinedWriteData()})",
+				Keyword.DIV => $"({lhs.JoinedWriteData()} / {rhs.JoinedWriteData()})",
+				Keyword.MOD => $"({lhs.JoinedWriteData()} % {rhs.JoinedWriteData()})",
+				Keyword.POW => $"MathF.Pow({lhs.JoinedWriteData()}, {rhs.JoinedWriteData()})",
+				_ => throw new Exception("Invalid operation")
+			};
+		}
 	}
 
 	/////////////////////////
@@ -839,6 +912,20 @@ namespace Blitz3D.Parsing
 			TNode r = rhs.Translate(g);
 			return compare(op, l, r, opType);
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return op switch
+			{
+				Keyword.LT => $"({lhs.JoinedWriteData()} < {rhs.JoinedWriteData()})",
+				Keyword.EQ => $"({lhs.JoinedWriteData()} == {rhs.JoinedWriteData()})",
+				Keyword.GT => $"({lhs.JoinedWriteData()} > {rhs.JoinedWriteData()})",
+				Keyword.LE => $"({lhs.JoinedWriteData()} <= {rhs.JoinedWriteData()})",
+				Keyword.NE => $"({lhs.JoinedWriteData()} != {rhs.JoinedWriteData()})",
+				Keyword.GE => $"({lhs.JoinedWriteData()} >= {rhs.JoinedWriteData()})",
+				_ => throw new Exception("Invalid operation")
+			};
+		}
 	}
 
 	////////////////////
@@ -862,6 +949,11 @@ namespace Blitz3D.Parsing
 		{
 			return call("__bbObjNew", global("_t" + ident));
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"new {ident}()";
+		}
 	}
 
 	////////////////////
@@ -880,6 +972,11 @@ namespace Blitz3D.Parsing
 		public override TNode Translate(Codegen g)
 		{
 			return call("__bbObjFirst", global("_t" + ident));
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"__bbObjFirst<{ident}>()";
 		}
 	}
 
@@ -902,6 +999,11 @@ namespace Blitz3D.Parsing
 		public override TNode Translate(Codegen g)
 		{
 			return call("__bbObjLast", global("_t" + ident));
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"__bbObjLast<{ident}>()";
 		}
 	};
 
@@ -926,6 +1028,11 @@ namespace Blitz3D.Parsing
 			TNode t = expr.Translate(g);
 			return call("__bbObjNext", t);
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"__bbObjNext({expr.JoinedWriteData()})";
+		}
 	}
 
 	////////////////////
@@ -949,6 +1056,11 @@ namespace Blitz3D.Parsing
 			TNode t = expr.Translate(g);
 			return call("__bbObjPrev", t);
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"__bbObjPrev({expr.JoinedWriteData()})";
+		}
 	}
 
 	/////////////////
@@ -964,6 +1076,11 @@ namespace Blitz3D.Parsing
 		public override TNode Translate(Codegen g)
 		{
 			return new TNode(IR.CONST, null, null, 0);
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return "null";
 		}
 	}
 
@@ -995,6 +1112,11 @@ namespace Blitz3D.Parsing
 			t = call("__bbObjFromHandle", t, global("_t" + sem_type.structType().ident));
 			return t;
 		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"__bbObjFromHandle({expr.JoinedWriteData()}, {type_ident})";
+		}
 	}
 
 	///////////////////
@@ -1016,6 +1138,11 @@ namespace Blitz3D.Parsing
 		{
 			TNode t = expr.Translate(g);
 			return call("__bbObjToHandle", t);
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			yield return $"__bbObjToHandle({expr.JoinedWriteData()})";
 		}
 	}
 }

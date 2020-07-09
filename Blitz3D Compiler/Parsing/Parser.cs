@@ -61,6 +61,7 @@ namespace Blitz3D.Parsing
 		private StmtSeqNode parseStmtSeq(STMTS scope)
 		{
 			StmtSeqNode stmts = new StmtSeqNode(incfile);
+			string lastLabel = null;
 			for(;;)
 			{
 				while(toker.curr == (Keyword)':' || (scope != STMTS.LINE && toker.curr == Keyword.NEWLINE))
@@ -71,7 +72,8 @@ namespace Blitz3D.Parsing
 
 				int pos = toker.Pos;
 
-				switch(toker.curr)
+				Keyword currKeyWord = toker.curr;
+				switch(currKeyWord)
 				{
 					case Keyword.INCLUDE:
 					{
@@ -153,7 +155,7 @@ namespace Blitz3D.Parsing
 							if(toker.curr != Keyword.EQ) throw exp("variable assignment");
 							toker.next();
 							ExprNode expr = parseExpr(false);
-							result = new AssNode(var, expr);
+							result = new AsgnNode(var, expr);
 						}
 					}
 					break;
@@ -337,7 +339,7 @@ namespace Blitz3D.Parsing
 						{
 							toker.next();
 							ExprNode expr = parseExpr(false);
-							datas.Add(new DataDeclNode(expr));
+							datas.Add(new DataDeclNode(expr, lastLabel));
 						} while(toker.curr == Keyword.COMMA);
 						break;
 					case Keyword.TYPE:
@@ -396,6 +398,7 @@ namespace Blitz3D.Parsing
 						toker.next();
 						string t = parseIdent();
 						result = new LabelNode(t, datas.Count);
+						lastLabel = t;
 					}
 					break;
 					default:
@@ -406,6 +409,13 @@ namespace Blitz3D.Parsing
 				{
 					result.pos = pos;
 					stmts.Add(result);
+				}
+				if(lastLabel!=null)
+				{
+					if(currKeyWord!=Keyword.DATA && currKeyWord!=(Keyword)'.')
+					{
+						lastLabel = null;
+					}
 				}
 			}
 		}

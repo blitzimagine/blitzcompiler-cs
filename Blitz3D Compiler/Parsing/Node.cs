@@ -1,9 +1,10 @@
 using System.Collections.Generic;
+using System.Text;
 using Blitz3D.Compiling;
 
 namespace Blitz3D.Parsing
 {
-	public class Node
+	public abstract class Node
 	{
 		//used user funcs...
 		public static HashSet<string> usedfuncs = new HashSet<string>();
@@ -12,11 +13,11 @@ namespace Blitz3D.Parsing
 		///////////////////////////////
 		// generic exception thrower //
 		///////////////////////////////
-		public static void ex() => ex("INTERNAL COMPILER ERROR");
-		public static void ex(string e) => throw new Ex(e, -1, "");
-		public static void ex(string e, int pos) => throw new Ex(e, pos, "");
-		public static void ex(string e, int pos, string f) => throw new Ex(e, pos, f);
+		public static void ex(string e = "INTERNAL COMPILER ERROR", int pos = -1, string f = "") => throw new Ex(e, pos, f);
 
+		public abstract IEnumerable<string> WriteData();
+		public string JoinedWriteData() => string.Concat(WriteData());
+		public string JoinedWriteData(string separator) => string.Join(separator, WriteData());
 
 		private static int genLabel_cnt;
 		////////////////////////////////
@@ -306,6 +307,21 @@ namespace Blitz3D.Parsing
 			}
 			TNode l = new TNode(IR.GLOBAL, null, null, func);
 			return new TNode(IR.FCALL, l, t, size);
+		}
+
+		public static string GetAccessors(DECL kind, bool constant = false)
+		{
+			StringBuilder builder = new StringBuilder();
+			switch(kind)
+			{
+				case DECL.GLOBAL:builder.Append("public static ");break;
+				case DECL.FIELD:builder.Append("public ");break;
+			}
+			if(constant)
+			{
+				builder.Append("readonly ");
+			}
+			return builder.ToString();
 		}
 	}
 }

@@ -99,11 +99,11 @@ namespace Blitz3D.Parsing
 	public class IncludeNode:StmtNode
 	{
 		private string file,label;
-		private StmtSeqNode stmts;
-		public IncludeNode(string t, StmtSeqNode ss)
+		private IncludeFileNode include;
+		public IncludeNode(string t,IncludeFileNode ss)
 		{
 			file = t;
-			stmts = ss;
+			include = ss;
 		}
 
 		public override void Semant(Environ e)
@@ -111,11 +111,11 @@ namespace Blitz3D.Parsing
 			label = genLabel();
 			fileMap[file] = label;
 
-			stmts.Semant(e);
+			include.stmts.Semant(e);
 		}
 		public override void Translate(Codegen g)
 		{
-			stmts.Translate(g);
+			include.stmts.Translate(g);
 		}
 
 		public override IEnumerable<string> WriteData()
@@ -130,7 +130,7 @@ namespace Blitz3D.Parsing
 	///////////////////
 	public class DeclStmtNode:StmtNode
 	{
-		private DeclNode decl;
+		private readonly DeclNode decl;
 
 		public DeclStmtNode(DeclNode d)
 		{
@@ -239,7 +239,7 @@ namespace Blitz3D.Parsing
 
 		public override void Semant(Environ e)
 		{
-			var.semant(e);
+			var.Semant(e);
 			if(var.sem_type.constType()!=null) ex("Constants can not be assigned to");
 			if(var.sem_type.vectorType()!=null) ex("Blitz arrays can not be assigned to");
 			expr = expr.Semant(e);
@@ -534,7 +534,7 @@ namespace Blitz3D.Parsing
 
 		public override void Semant(Environ e)
 		{
-			var.semant(e);
+			var.Semant(e);
 			Type ty = var.sem_type;
 			if(ty.constType()!=null) ex("Index variable can not be constant");
 			if(ty != Type.int_type && ty != Type.float_type)
@@ -616,7 +616,7 @@ namespace Blitz3D.Parsing
 
 		public override void Semant(Environ e)
 		{
-			var.semant(e);
+			var.Semant(e);
 			Type ty = var.sem_type;
 
 			if(ty.structType() == null) ex("Index variable is not a NewType");
@@ -646,7 +646,7 @@ namespace Blitz3D.Parsing
 				objNext = "__bbObjEachNext";
 			}
 
-			l = var.translate(g);
+			l = var.Translate(g);
 			r = global("_t" + typeIdent);
 			t = jumpf(call(objFirst, l, r), sem_brk);
 			g.code(t);
@@ -654,7 +654,7 @@ namespace Blitz3D.Parsing
 			g.label(_loop);
 			stmts.Translate(g);
 
-			t = jumpt(call(objNext, var.translate(g)), _loop);
+			t = jumpt(call(objNext, var.Translate(g)), _loop);
 			g.code(t);
 
 			g.label(sem_brk);
@@ -1032,7 +1032,7 @@ namespace Blitz3D.Parsing
 
 		public override void Semant(Environ e)
 		{
-			var.semant(e);
+			var.Semant(e);
 			if(var.sem_type.constType()!=null) ex("Constants can not be modified");
 			if(var.sem_type.structType()!=null) ex("Data can not be read into an object");
 		}

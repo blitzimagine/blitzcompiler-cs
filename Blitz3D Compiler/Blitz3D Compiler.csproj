@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Folder Include="Compiling\CS\" />
+    <Folder Include="Converting\" />
     <Folder Include="Generating\" />
   </ItemGroup>
 

@@ -1,15 +1,9 @@
 ﻿using System.Collections.Generic;
-using System.Text;
 
 namespace Blitz3D
 {
 	public static class Utils
 	{
-		public static string Indent(int level) => new string('\t',level);
-		public static void IAppend(this StringBuilder that, int level, string text) => that.Append(Indent(level) + text);
-		public static void IAppendLine(this StringBuilder that, int level, string text) => that.AppendLine(Indent(level) + text);
-
-
 		private static readonly HashSet<string> keywords = new HashSet<string>
 		{
 			"abstract",	"as",			"base",		"bool",	

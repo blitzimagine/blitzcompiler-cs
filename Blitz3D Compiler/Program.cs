@@ -61,26 +61,31 @@ namespace Blitz3D
 			{
 				Libs libs = Libs.InitLibs();
 
-				ProgNode prog = Parse(fileIn);
+				Console.WriteLine("Parsing...");
+				(ProgNode prog, Parser parser) = Parse(fileIn);
+
+				Console.WriteLine("Generating...");
 				Semant(prog, libs);
 
 				#if CONVERT
-				StringWriter output = Convert(prog);
+				Console.WriteLine("Converting...");
+				string output = Convert(prog);
 				#else
+				Console.WriteLine("Translating...");
 				StringWriter output = Translate(prog, libs);
 				#endif
 
 				try
 				{
 					Console.WriteLine("Saving...");
-
-					File.WriteAllText(fileOut.FullName, output.ToString());
+					File.WriteAllText(fileOut.FullName, output);
 				}
 				catch(Exception e)
 				{
 					Console.Error.WriteLine($"Failed to write output to '{fileOut}'.");
 					Console.Error.WriteLine(e);
 				}
+				ConvertInclude(parser);
 			}
 			catch(Ex x)
 			{
@@ -91,37 +96,29 @@ namespace Blitz3D
 			}
 		}
 
-		private static ProgNode Parse(FileInfo inputFile)
+		private static (ProgNode prog, Parser parser) Parse(FileInfo inputFile)
 		{
-			Console.WriteLine("Parsing...");
-
 			using StreamReader input = new StreamReader(inputFile.OpenRead());
 			Toker toker = new Toker(input);
 			Parser parser = new Parser(toker);
-			return parser.parse(inputFile.FullName);
+			return (parser.parse(inputFile.FullName), parser);
 		}
 
 		private static Environ Semant(ProgNode prog, Libs libs)
 		{
-			Console.WriteLine("Generating...");
-
 			return prog.Semant(libs.runtimeEnviron);
 		}
 
 		private static StringWriter Translate(ProgNode prog, Libs libs)
 		{
-			Console.WriteLine("Translating...");
-
 			StringWriter output = new StringWriter{NewLine = "\n"};
 			Codegen_x86 codegen = new Codegen_x86(output);
 			prog.Translate(codegen, libs.userFuncs);
 			return output;
 		}
 
-		private static StringWriter Convert(ProgNode prog)
+		private static string Convert(Node prog)
 		{
-			Console.WriteLine("Converting...");
-
 			StringWriter output = new StringWriter{NewLine = "\n"};
 			int indent = 0;
 			foreach(string str in prog.WriteData())
@@ -131,7 +128,17 @@ namespace Blitz3D
 				output.WriteLine(str);
 				if(str == "{"){indent++;}
 			}
-			return output;
+			return output.ToString();
+		}
+
+		private static void ConvertInclude(Parser parser)
+		{
+			foreach(var include in parser.included)
+			{
+				FileInfo fileOut = new FileInfo(Path.ChangeExtension(include.Key, ".cs"));
+				string output = Convert(include.Value);
+				File.WriteAllText(fileOut.FullName, output);
+			}
 		}
 	}
 }

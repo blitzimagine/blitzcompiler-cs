@@ -10,10 +10,10 @@ namespace Blitz3D.Parsing
 		public int pos;
 		public string file;
 		public DeclNode() { pos = -1; }
-		public virtual void Proto(DeclSeq d, Environ e) { }
-		public virtual void Semant(Environ e) { }
-		public virtual void Translate(Codegen g) { }
-		public virtual void transdata(Codegen g) { }
+		public abstract void Proto(DeclSeq d, Environ e);
+		public virtual void Semant(Environ e){}
+		public abstract void Translate(Codegen g);
+		public virtual void Transdata(Codegen g){}
 	}
 
 	//////////////////////////////
@@ -78,7 +78,7 @@ namespace Blitz3D.Parsing
 			{
 				try
 				{
-					decls[k].transdata(g);
+					decls[k].Transdata(g);
 				}
 				catch(Ex x)
 				{
@@ -404,7 +404,7 @@ namespace Blitz3D.Parsing
 			ConstNode c = expr.constNode();
 			g.s_data(c.stringValue(), str_label);
 		}
-		public override void transdata(Codegen g)
+		public override void Transdata(Codegen g)
 		{
 			ConstNode c = expr.constNode();
 			if(expr.sem_type == Type.int_type)
@@ -427,7 +427,7 @@ namespace Blitz3D.Parsing
 		public override IEnumerable<string> WriteData()
 		{
 			string ret = $"{dataVarName}.Add<{expr.sem_type.Name}>({expr.JoinedWriteData()});";
-			if(str_label.Length>0)
+			if(str_label?.Length>0)
 			{
 				ret = $"/*{str_label}*/{ret}";
 			}

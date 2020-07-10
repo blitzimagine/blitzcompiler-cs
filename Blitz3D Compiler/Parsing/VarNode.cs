@@ -13,13 +13,13 @@ namespace Blitz3D.Parsing
 		//////////////////////////////////
 		public TNode load(Codegen g)
 		{
-			TNode t = translate(g);
+			TNode t = Translate(g);
 			if(sem_type == Type.string_type) return call("__bbStrLoad", t);
 			return mem(t);
 		}
 		public virtual TNode store(Codegen g, TNode n)
 		{
-			TNode t = translate(g);
+			TNode t = Translate(g);
 			if(sem_type.structType()!=null) return call("__bbObjStore", t, n);
 			if(sem_type == Type.string_type) return call("__bbStrStore", t, n);
 			return move(n, mem(t));
@@ -27,8 +27,8 @@ namespace Blitz3D.Parsing
 		public virtual bool isObjParam() => false;
 
 		//addr of var
-		public abstract void semant(Environ e);
-		public abstract TNode translate(Codegen g);
+		public abstract void Semant(Environ e);
+		public abstract TNode Translate(Codegen g);
 	}
 	//#include "decl.h"
 
@@ -49,9 +49,9 @@ namespace Blitz3D.Parsing
 			}
 		}
 
-		public override void semant(Environ e) { }
+		public override void Semant(Environ e) { }
 
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			if(sem_decl.kind == DECL.GLOBAL)
 			{
@@ -63,7 +63,7 @@ namespace Blitz3D.Parsing
 		{
 			if(isObjParam())
 			{
-				TNode t = translate(g);
+				TNode t = Translate(g);
 				return move(n, mem(t));
 			}
 			return base.store(g, n);
@@ -74,14 +74,6 @@ namespace Blitz3D.Parsing
 		{
 			yield return sem_decl.name;
 		}
-		//public override string WriteData() => sem_decl.kind switch
-		//{
-		//	DECL.GLOBAL => $"public static {sem_type.Name} {sem_decl.name};",
-		//	DECL.FIELD => $"public {sem_type.Name} {sem_decl.name};",
-		//	DECL.LOCAL => $"{sem_type.Name} {sem_decl.name};",
-		//	DECL.PARAM => $"{sem_type.Name} {sem_decl.name}",
-		//	_ => throw new NotImplementedException()
-		//};
 	}
 
 	///////////////
@@ -95,7 +87,7 @@ namespace Blitz3D.Parsing
 			ident = i;
 			tag = t;
 		}
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			if(sem_decl!=null) return;
 			Type t = tagType(tag, e);
@@ -142,7 +134,7 @@ namespace Blitz3D.Parsing
 			exprs = e;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			exprs.semant(e);
 			exprs.castTo(Type.int_type, e);
@@ -154,7 +146,7 @@ namespace Blitz3D.Parsing
 			if(a.dims != exprs.Count) ex("incorrect number of dimensions");
 			sem_type = a.elementType;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			TNode t = null;
 			for(int k = 0; k < exprs.Count; ++k)
@@ -192,7 +184,7 @@ namespace Blitz3D.Parsing
 			tag = t;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			expr = expr.Semant(e);
 			StructType s = expr.sem_type.structType();
@@ -201,7 +193,7 @@ namespace Blitz3D.Parsing
 			if(sem_field is null) ex("Type field not found");
 			sem_type = sem_field.type;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			TNode t = expr.Translate(g);
 			t = mem(t);
@@ -228,7 +220,7 @@ namespace Blitz3D.Parsing
 			exprs = es;
 		}
 
-		public override void semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			expr = expr.Semant(e);
 			vec_type = expr.sem_type.vectorType();
@@ -249,7 +241,7 @@ namespace Blitz3D.Parsing
 			}
 			sem_type = vec_type.elementType;
 		}
-		public override TNode translate(Codegen g)
+		public override TNode Translate(Codegen g)
 		{
 			int sz = 4;
 			TNode t = null;

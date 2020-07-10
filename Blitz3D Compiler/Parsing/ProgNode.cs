@@ -338,4 +338,50 @@ namespace Blitz3D.Parsing
 			return lines;
 		}
 	}
+
+	public class IncludeFileNode:Node
+	{
+		private readonly string fileName;
+		public StmtSeqNode stmts;
+
+		public IncludeFileNode(string fileName/*, StmtSeqNode stmts*/)
+		{
+			this.fileName = fileName;
+		}
+
+		public override IEnumerable<string> WriteData()
+		{
+			string thisClass = Path.GetFileNameWithoutExtension(fileName).Replace('-','_');
+			List<string> lines = new List<string>();
+
+			List<string> globalVars = new List<string>();
+			List<string> usingFiles = new List<string>();
+
+			lines.Add($"static {thisClass}()");
+			lines.Add("{");
+			foreach(string s in stmts.WriteData())
+			{
+				if(s.StartsWith("using static "))
+				{
+					usingFiles.Add(s);
+				}
+				else if(s.StartsWith("public static "))
+				{
+					globalVars.Add(s);
+				}
+				else
+				{
+					lines.Add(s);
+				}
+			}
+			lines.Add("}");
+			lines.InsertRange(0, globalVars);
+
+			lines.InsertRange(0,new[]{$"public static class {thisClass}","{"});
+			lines.Add("}");
+			
+			lines.InsertRange(0, usingFiles);
+			return lines;
+		}
+	}
 }

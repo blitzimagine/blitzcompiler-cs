@@ -210,13 +210,13 @@ namespace Blitz3D.Parsing
 			this.input = input;
 			curr_row = -1;
 			makeKeywords();
-			nextline();
+			Nextline();
 		}
 
 		public int Pos => (curr_row << 16) | (Curr.from);
 		public Keyword curr => Curr.Keyword;
 
-		public Keyword next()
+		public Keyword Next()
 		{
 			if(tokes.Count>0)
 			{
@@ -224,7 +224,7 @@ namespace Blitz3D.Parsing
 			}
 			if(tokes.Count==0)
 			{
-				nextline();
+				Nextline();
 			}
 			return Curr.Keyword;
 		}
@@ -280,7 +280,7 @@ namespace Blitz3D.Parsing
 
 
 
-		private void nextline()
+		private void Nextline()
 		{
 			curr_row++;
 			tokes.Clear();

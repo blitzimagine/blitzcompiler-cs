@@ -90,7 +90,7 @@ namespace Blitz3D.Parsing
 		}
 		public void castTo(DeclSeq decls, Environ e, bool userlib)
 		{
-			if((int)exprs.Count > decls.Count) ex("Too many parameters");
+			if(exprs.Count > decls.Count) ex("Too many parameters");
 			for(int k = 0; k < decls.Count; ++k)
 			{
 				Decl d = decls.decls[k];
@@ -224,7 +224,11 @@ namespace Blitz3D.Parsing
 
 		public override IEnumerable<string> WriteData()
 		{
-			yield return $"({sem_type.Name})({expr.JoinedWriteData()})";
+			if(expr.sem_type == sem_type)
+			{
+				return expr.WriteData();
+			}
+			return new[]{$"({sem_type.Name})({expr.JoinedWriteData()})"};
 		}
 	}
 
@@ -307,7 +311,7 @@ namespace Blitz3D.Parsing
 
 		public override ExprNode Semant(Environ e)
 		{
-			var.semant(e);
+			var.Semant(e);
 			sem_type = var.sem_type;
 			ConstType c = sem_type.constType();
 			if(c is null) return this;

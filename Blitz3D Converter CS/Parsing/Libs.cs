@@ -10,7 +10,7 @@ namespace Blitz3D.Parsing
 	public class Libs
 	{
 		//linkLibs
-		public readonly Environ runtimeEnviron = new Environ("", Type.int_type, 0, null);
+		public readonly Environ runtimeEnviron = new Environ("", Type.Int, 0, null);
 		private readonly List<string> keyWords = new List<string>();
 		public readonly List<UserFunc> userFuncs = new List<UserFunc>();
 
@@ -127,7 +127,7 @@ namespace Blitz3D.Parsing
 							{
 								k++;
 							}
-							if(paramType == Type.int_type)
+							if(paramType == Type.Int)
 							{
 								int n2 = int.Parse(sym.Substring(from2, k - from2));
 								defType = new ConstType(n2);
@@ -151,16 +151,16 @@ namespace Blitz3D.Parsing
 		{
 			Type type = str[index] switch
 			{
-				'%' => Type.int_type,
-				'#' => Type.float_type,
-				'$' => Type.string_type,
+				'%' => Type.Int,
+				'#' => Type.Float,
+				'$' => Type.String,
 				_ => null
 			};
 			if(type != null)
 			{
 				index++;
 			}
-			return type ?? Type.void_type;
+			return type ?? Type.Void;
 		}
 
 		private static string TakeIdentifier(string str, ref int index)
@@ -226,12 +226,12 @@ namespace Blitz3D.Parsing
 
 						Type ty = bnext(input) switch
 						{
-							'%' => Type.int_type,
-							'#' => Type.float_type,
-							'$' => Type.string_type,
-							_ => Type.void_type,
+							'%' => Type.Int,
+							'#' => Type.Float,
+							'$' => Type.String,
+							_ => Type.Void,
 						};
-						if(ty != Type.void_type)
+						if(ty != Type.Void)
 						{
 							bnext(input);
 						}
@@ -251,20 +251,20 @@ namespace Blitz3D.Parsing
 								switch(bnext(input))
 								{
 									case '%':
-										ty2 = Type.int_type;
+										ty2 = Type.Int;
 										break;
 									case '#':
-										ty2 = Type.float_type;
+										ty2 = Type.Float;
 										break;
 									case '$':
-										ty2 = Type.string_type;
+										ty2 = Type.String;
 										break;
 									case '*':
-										ty2 = Type.null_type;
+										ty2 = Type.Null;
 										break;
 								}
 								if(ty2!=null) bnext(input);
-								else ty2 = Type.int_type;
+								else ty2 = Type.Int;
 
 								ConstType defType = null;
 

@@ -16,10 +16,6 @@ namespace Blitz3D.Parsing.Nodes
 		///////////////////////////////
 		public static Ex ex(string e = "INTERNAL COMPILER ERROR", Point? pos = null, string f = "") => new Ex(e, pos, f);
 
-		public abstract IEnumerable<string> WriteData();
-		public string JoinedWriteData() => string.Concat(WriteData());
-		public string JoinedWriteData(string separator) => string.Join(separator, WriteData());
-
 		private static int genLabel_cnt;
 		////////////////////////////////
 		// Generate a fresh ASM label //
@@ -45,7 +41,7 @@ namespace Blitz3D.Parsing.Nodes
 		public static TNode compare(Keyword op, TNode l, TNode r, Type ty)
 		{
 			IR n = 0;
-			if(ty == Type.float_type)
+			if(ty == Type.Float)
 			{
 				switch(op)
 				{
@@ -93,7 +89,7 @@ namespace Blitz3D.Parsing.Nodes
 						break;
 				}
 			}
-			if(ty == Type.string_type)
+			if(ty == Type.String)
 			{
 				l = call("__bbStrCompare", l, r);
 				r = new TNode(IR.CONST, null, null, 0);
@@ -114,8 +110,8 @@ namespace Blitz3D.Parsing.Nodes
 			if(ty is ConstType c)
 			{
 				ty = c.valueType;
-				if(ty == Type.int_type) return new IntConstNode(c.intValue);
-				if(ty == Type.float_type) return new FloatConstNode(c.floatValue);
+				if(ty == Type.Int) return new IntConstNode(c.intValue);
+				if(ty == Type.Float) return new FloatConstNode(c.floatValue);
 				return new StringConstNode(c.stringValue);
 			}
 			return null;
@@ -204,7 +200,7 @@ namespace Blitz3D.Parsing.Nodes
 				Decl d = e.decls.decls[k];
 				Type type = d.type;
 				string func = string.Empty;
-				if(type == Type.string_type)
+				if(type == Type.String)
 				{
 					if(d.kind == DECL.LOCAL || d.kind == DECL.PARAM)
 					{

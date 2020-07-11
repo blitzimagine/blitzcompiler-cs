@@ -193,7 +193,7 @@ namespace Blitz3D.Parsing
 			Nextline();
 		}
 
-		public Point Pos => new Point(Current.from, curr_row);//((curr_row << 16) | Curr.from)
+		public Point Pos => new Point(Current.from, curr_row);
 		public Keyword Curr => Current.Keyword;
 
 		public Keyword Next()

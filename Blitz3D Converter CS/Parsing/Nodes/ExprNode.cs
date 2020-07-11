@@ -10,13 +10,8 @@ namespace Blitz3D.Parsing.Nodes
 	public abstract class ExprNode:Node
 	{
 		public Type sem_type = null;
-		public ExprNode() { }
-		public ExprNode(Type t)
-		{
-			sem_type = t;
-		}
 
-		public ExprNode castTo(Type ty, Environ e)
+		public ExprNode CastTo(Type ty, Environ e)
 		{
 			if(!sem_type.CanCastTo(ty))
 			{
@@ -27,8 +22,9 @@ namespace Blitz3D.Parsing.Nodes
 			return cast.Semant(e);
 		}
 
-
 		public abstract ExprNode Semant(Environ e);
+
+		public abstract string JoinedWriteData();
 	}
 
 	/////////////////////////////
@@ -84,7 +80,7 @@ namespace Blitz3D.Parsing.Nodes
 		//	}
 		//	return t;
 		//}
-		public void castTo(DeclSeq decls, Environ e, bool userlib)
+		public void CastTo(DeclSeq decls, Environ e, bool userlib)
 		{
 			if(exprs.Count > decls.Count) throw ex("Too many parameters");
 			for(int k = 0; k < decls.Count; ++k)
@@ -98,7 +94,7 @@ namespace Blitz3D.Parsing.Nodes
 						{
 							if(exprs[k].sem_type is IntType)
 							{
-								exprs[k].sem_type = Type.void_type;
+								exprs[k].sem_type = Type.Void;
 							}
 							else
 							{
@@ -108,7 +104,7 @@ namespace Blitz3D.Parsing.Nodes
 						continue;
 					}
 
-					exprs[k] = exprs[k].castTo(d.type, e);
+					exprs[k] = exprs[k].CastTo(d.type, e);
 				}
 				else
 				{
@@ -122,18 +118,15 @@ namespace Blitz3D.Parsing.Nodes
 				}
 			}
 		}
-		public void castTo(Type t, Environ e)
+		public void CastTo(Type t, Environ e)
 		{
 			for(int k = 0; k < exprs.Count; ++k)
 			{
-				exprs[k] = exprs[k].castTo(t, e);
+				exprs[k] = exprs[k].CastTo(t, e);
 			}
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return string.Join(", ", exprs.Select(e=>e.JoinedWriteData()));
-		}
+		public string JoinedWriteData() => string.Join(", ", exprs.Select(e=>e.JoinedWriteData()));
 	}
 
 	//#include "varnode.h"
@@ -161,11 +154,11 @@ namespace Blitz3D.Parsing.Nodes
 			if(expr is ConstNode c)
 			{
 				ExprNode e2;
-				if(type == Type.int_type)
+				if(type == Type.Int)
 				{
 					e2 = new IntConstNode(c.intValue());
 				}
-				else if(type == Type.float_type)
+				else if(type == Type.Float)
 				{
 					e2 = new FloatConstNode(c.floatValue());
 				}
@@ -173,61 +166,35 @@ namespace Blitz3D.Parsing.Nodes
 				{
 					e2 = new StringConstNode(c.stringValue());
 				}
-				//delete this;
 				return e2;
 			}
 
 			sem_type = type;
 			return this;
 		}
-		//public override TNode Translate(Codegen g)
-		//{
-		//	TNode t = expr.Translate(g);
-		//	if(expr.sem_type == Type.float_type && sem_type == Type.int_type)
-		//	{
-		//		//float->int
-		//		return new TNode(IR.CAST, t, null);
-		//	}
-		//	if(expr.sem_type == Type.int_type && sem_type == Type.float_type)
-		//	{
-		//		//int->float
-		//		return new TNode(IR.FCAST, t, null);
-		//	}
-		//	if(expr.sem_type == Type.string_type && sem_type == Type.int_type)
-		//	{
-		//		//str->int
-		//		return call("__bbStrToInt", t);
-		//	}
-		//	if(expr.sem_type == Type.int_type && sem_type == Type.string_type)
-		//	{
-		//		//int->str
-		//		return call("__bbStrFromInt", t);
-		//	}
-		//	if(expr.sem_type == Type.string_type && sem_type == Type.float_type)
-		//	{
-		//		//str->float
-		//		return fcall("__bbStrToFloat", t);
-		//	}
-		//	if(expr.sem_type == Type.float_type && sem_type == Type.string_type)
-		//	{
-		//		//float->str
-		//		return call("__bbStrFromFloat", t);
-		//	}
-		//	if(expr.sem_type.structType()!=null && sem_type == Type.string_type)
-		//	{
-		//		//obj->str
-		//		return call("__bbObjToStr", t);
-		//	}
-		//	return t;
-		//}
 
-		public override IEnumerable<string> WriteData()
+		public override string JoinedWriteData()
 		{
-			if(expr.sem_type == sem_type)
+			Type from = expr.sem_type;
+			Type to = sem_type;
+			if(from == sem_type || from == Type.Null)
 			{
-				return expr.WriteData();
+				return expr.JoinedWriteData();
 			}
-			return new[]{$"({sem_type.Name})({expr.JoinedWriteData()})"};
+			if(to == Type.String)
+			{
+				//TODO: Either use __bbObjToStr, or auto add ToStrings to custom types.
+				return expr.JoinedWriteData() + ".ToString()";
+			}
+			if(to is StructType)
+			{
+				throw new NotSupportedException("Can not cast to custom type");
+			}
+			if(from == Type.String)
+			{
+				return $"{to.Name}.Parse({expr.JoinedWriteData()})";
+			}
+			return $"({to.Name})({expr.JoinedWriteData()})";
 		}
 	}
 
@@ -260,7 +227,7 @@ namespace Blitz3D.Parsing.Nodes
 				throw ex("incorrect function return type");
 			}
 			exprs.semant(e);
-			exprs.castTo(f.@params, e, f.cfunc);
+			exprs.CastTo(f.@params, e, f.cfunc);
 			sem_type = f.returnType;
 			return this;
 		}
@@ -297,10 +264,7 @@ namespace Blitz3D.Parsing.Nodes
 		//	return t;
 		//}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"{ident}({exprs.JoinedWriteData()})";
-		}
+		public override string JoinedWriteData() => $"{ident}({exprs.JoinedWriteData()})";
 	}
 
 	/////////////////////////
@@ -326,7 +290,7 @@ namespace Blitz3D.Parsing.Nodes
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData() => var.WriteData();
+		public override string JoinedWriteData() => var.JoinedWriteData();
 	}
 
 	public abstract class ConstNode:ExprNode
@@ -347,18 +311,15 @@ namespace Blitz3D.Parsing.Nodes
 		public IntConstNode(int n)
 		{
 			value = n;
-			sem_type = Type.int_type;
+			sem_type = Type.Int;
 		}
 
 		public override int intValue() => value;
 		public override float floatValue() => value;
 
-		public override string stringValue() => /*itoa*/(value).ToString();
+		public override string stringValue() => value.ToString();
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return value.ToString();
-		}
+		public override string JoinedWriteData() => value.ToString();
 	}
 
 	////////////////////
@@ -370,17 +331,14 @@ namespace Blitz3D.Parsing.Nodes
 		public FloatConstNode(float f)
 		{
 			value = f;
-			sem_type = Type.float_type;
+			sem_type = Type.Float;
 		}
 
 		public override int intValue() => (int)MathF.Round(value);
 		public override float floatValue() => value;
 		public override string stringValue() => value.ToString();
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return value.ToString()+'f';
-		}
+		public override string JoinedWriteData() => value.ToString()+'f';
 	}
 
 	/////////////////////
@@ -392,17 +350,14 @@ namespace Blitz3D.Parsing.Nodes
 		public StringConstNode(string s)
 		{
 			value = s;
-			sem_type = Type.string_type;
+			sem_type = Type.String;
 		}
 
 		public override int intValue() => int.Parse(value);
 		public override float floatValue() => float.Parse(value);
 		public override string stringValue() => value;
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return '"'+value+'"';
-		}
+		public override string JoinedWriteData() => '"'+value+'"';
 	}
 
 	////////////////////
@@ -422,11 +377,11 @@ namespace Blitz3D.Parsing.Nodes
 		{
 			expr = expr.Semant(e);
 			sem_type = expr.sem_type;
-			if(sem_type != Type.int_type && sem_type != Type.float_type) throw ex("Illegal operator for type");
+			if(sem_type != Type.Int && sem_type != Type.Float) throw ex("Illegal operator for type");
 			if(expr is ConstNode c)
 			{
 				ExprNode e2 = null;
-				if(sem_type == Type.int_type)
+				if(sem_type == Type.Int)
 				{
 					switch(op)
 					{
@@ -462,7 +417,6 @@ namespace Blitz3D.Parsing.Nodes
 							break;
 					}
 				}
-				//delete this;
 				return e2;
 			}
 			return this;
@@ -498,17 +452,14 @@ namespace Blitz3D.Parsing.Nodes
 		//	return new TNode(n, l, null);
 		//}
 
-		public override IEnumerable<string> WriteData()
+		public override string JoinedWriteData() => op switch
 		{
-			yield return op switch
-			{
-				Keyword.POSITIVE => $"+{expr.JoinedWriteData()}",
-				Keyword.NEGATIVE => $"-{expr.JoinedWriteData()}",
-				Keyword.ABS => $"Math.Abs({expr.JoinedWriteData()})",
-				Keyword.SGN => $"Math.Sign({expr.JoinedWriteData()})",
-				_ => throw new Exception("Invalid operation")
-			};
-		}
+			Keyword.POSITIVE => $"+{expr.JoinedWriteData()}",
+			Keyword.NEGATIVE => $"-{expr.JoinedWriteData()}",
+			Keyword.ABS => $"Math.Abs({expr.JoinedWriteData()})",
+			Keyword.SGN => $"Math.Sign({expr.JoinedWriteData()})",
+			_ => throw new Exception("Invalid operation")
+		};
 	}
 
 	/////////////////////////////////////////////////////
@@ -529,9 +480,9 @@ namespace Blitz3D.Parsing.Nodes
 		public override ExprNode Semant(Environ e)
 		{
 			lhs = lhs.Semant(e);
-			lhs = lhs.castTo(Type.int_type, e);
+			lhs = lhs.CastTo(Type.Int, e);
 			rhs = rhs.Semant(e);
-			rhs = rhs.castTo(Type.int_type, e);
+			rhs = rhs.CastTo(Type.Int, e);
 			if(lhs is ConstNode lc && rhs is ConstNode rc)
 			{
 				return op switch
@@ -545,23 +496,20 @@ namespace Blitz3D.Parsing.Nodes
 					_ => null,
 				};
 			}
-			sem_type = Type.int_type;
+			sem_type = Type.Int;
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData()
+		public override string JoinedWriteData() => op switch
 		{
-			yield return op switch
-			{
-				Keyword.AND => $"({lhs.JoinedWriteData()} & {rhs.JoinedWriteData()})",
-				Keyword.OR => $"({lhs.JoinedWriteData()} | {rhs.JoinedWriteData()})",
-				Keyword.XOR => $"({lhs.JoinedWriteData()} ^ {rhs.JoinedWriteData()})",
-				Keyword.SHL => $"({lhs.JoinedWriteData()} << {rhs.JoinedWriteData()})",
-				Keyword.SHR => $"(int)((uint){lhs.JoinedWriteData()} >> {rhs.JoinedWriteData()})",
-				Keyword.SAR => $"({lhs.JoinedWriteData()} >> {rhs.JoinedWriteData()})",
-				_ => throw new Exception("Invalid operation")
-			};
-		}
+			Keyword.AND => $"({lhs.JoinedWriteData()} & {rhs.JoinedWriteData()})",
+			Keyword.OR => $"({lhs.JoinedWriteData()} | {rhs.JoinedWriteData()})",
+			Keyword.XOR => $"({lhs.JoinedWriteData()} ^ {rhs.JoinedWriteData()})",
+			Keyword.SHL => $"({lhs.JoinedWriteData()} << {rhs.JoinedWriteData()})",
+			Keyword.SHR => $"(int)((uint){lhs.JoinedWriteData()} >> {rhs.JoinedWriteData()})",
+			Keyword.SAR => $"({lhs.JoinedWriteData()} >> {rhs.JoinedWriteData()})",
+			_ => throw new Exception("Invalid operation")
+		};
 	}
 
 	///////////////////////////
@@ -587,29 +535,29 @@ namespace Blitz3D.Parsing.Nodes
 			{
 				throw ex("Arithmetic operator cannot be applied to custom type objects");
 			}
-			if(lhs.sem_type == Type.string_type || rhs.sem_type == Type.string_type)
+			if(lhs.sem_type == Type.String || rhs.sem_type == Type.String)
 			{
 				//one side is a string - only + operator...
 				if(op != Keyword.POSITIVE) throw ex("Operator cannot be applied to strings");
-				sem_type = Type.string_type;
+				sem_type = Type.String;
 			}
-			else if(op == Keyword.POW || lhs.sem_type == Type.float_type || rhs.sem_type == Type.float_type)
+			else if(op == Keyword.POW || lhs.sem_type == Type.Float || rhs.sem_type == Type.Float)
 			{
 				//It's ^, or one side is a float
-				sem_type = Type.float_type;
+				sem_type = Type.Float;
 			}
 			else
 			{
 				//must be 2 ints
-				sem_type = Type.int_type;
+				sem_type = Type.Int;
 			}
-			lhs = lhs.castTo(sem_type, e);
-			rhs = rhs.castTo(sem_type, e);
+			lhs = lhs.CastTo(sem_type, e);
+			rhs = rhs.CastTo(sem_type, e);
 			if(rhs is ConstNode rc)
 			{
 				if(op == Keyword.DIV || op == Keyword.MOD)
 				{
-					if((sem_type == Type.int_type && rc.intValue()==0) || (sem_type == Type.float_type && rc.floatValue()==0.0))
+					if((sem_type == Type.Int && rc.intValue()==0) || (sem_type == Type.Float && rc.floatValue()==0.0))
 					{
 						throw ex("Division by zero");
 					}
@@ -617,11 +565,11 @@ namespace Blitz3D.Parsing.Nodes
 				if(lhs is ConstNode lc)
 				{
 					ExprNode expr = null;
-					if(sem_type == Type.string_type)
+					if(sem_type == Type.String)
 					{
 						expr = new StringConstNode(lc.stringValue() + rc.stringValue());
 					}
-					else if(sem_type == Type.int_type)
+					else if(sem_type == Type.Int)
 					{
 						switch(op)
 						{
@@ -722,19 +670,16 @@ namespace Blitz3D.Parsing.Nodes
 		//	return new TNode(n, l, r);
 		//}
 
-		public override IEnumerable<string> WriteData()
+		public override string JoinedWriteData() => op switch
 		{
-			yield return op switch
-			{
-				Keyword.ADD => $"({lhs.JoinedWriteData()} + {rhs.JoinedWriteData()})",
-				Keyword.SUB => $"({lhs.JoinedWriteData()} - {rhs.JoinedWriteData()})",
-				Keyword.MUL => $"({lhs.JoinedWriteData()} * {rhs.JoinedWriteData()})",
-				Keyword.DIV => $"({lhs.JoinedWriteData()} / {rhs.JoinedWriteData()})",
-				Keyword.MOD => $"({lhs.JoinedWriteData()} % {rhs.JoinedWriteData()})",
-				Keyword.POW => $"MathF.Pow({lhs.JoinedWriteData()}, {rhs.JoinedWriteData()})",
-				_ => throw new Exception("Invalid operation")
-			};
-		}
+			Keyword.ADD => $"({lhs.JoinedWriteData()} + {rhs.JoinedWriteData()})",
+			Keyword.SUB => $"({lhs.JoinedWriteData()} - {rhs.JoinedWriteData()})",
+			Keyword.MUL => $"({lhs.JoinedWriteData()} * {rhs.JoinedWriteData()})",
+			Keyword.DIV => $"({lhs.JoinedWriteData()} / {rhs.JoinedWriteData()})",
+			Keyword.MOD => $"({lhs.JoinedWriteData()} % {rhs.JoinedWriteData()})",
+			Keyword.POW => $"MathF.Pow({lhs.JoinedWriteData()}, {rhs.JoinedWriteData()})",
+			_ => throw new Exception("Invalid operation")
+		};
 	}
 
 	/////////////////////////
@@ -760,29 +705,29 @@ namespace Blitz3D.Parsing.Nodes
 			if(lhs.sem_type is StructType || rhs.sem_type is StructType)
 			{
 				if(op != Keyword.EQ && op != Keyword.NE) throw ex("Illegal operator for custom type objects");
-				opType = lhs.sem_type != Type.null_type ? lhs.sem_type : rhs.sem_type;
+				opType = lhs.sem_type != Type.Null ? lhs.sem_type : rhs.sem_type;
 			}
-			else if(lhs.sem_type == Type.string_type || rhs.sem_type == Type.string_type)
+			else if(lhs.sem_type == Type.String || rhs.sem_type == Type.String)
 			{
-				opType = Type.string_type;
+				opType = Type.String;
 			}
-			else if(lhs.sem_type == Type.float_type || rhs.sem_type == Type.float_type)
+			else if(lhs.sem_type == Type.Float || rhs.sem_type == Type.Float)
 			{
-				opType = Type.float_type;
+				opType = Type.Float;
 			}
 			else
 			{
-				opType = Type.int_type;
+				opType = Type.Int;
 			}
-			sem_type = Type.int_type;
-			lhs = lhs.castTo(opType, e);
-			rhs = rhs.castTo(opType, e);
+			sem_type = Type.Int;
+			lhs = lhs.CastTo(opType, e);
+			rhs = rhs.CastTo(opType, e);
 			ConstNode lc = lhs as ConstNode;
 			ConstNode rc = rhs as ConstNode;
 			if(lc!=null && rc!=null)
 			{
 				ExprNode expr = null;
-				if(opType == Type.string_type)
+				if(opType == Type.String)
 				{
 					switch(op)
 					{
@@ -806,7 +751,7 @@ namespace Blitz3D.Parsing.Nodes
 							break;
 					}
 				}
-				else if(opType == Type.float_type)
+				else if(opType == Type.Float)
 				{
 					switch(op)
 					{
@@ -854,27 +799,26 @@ namespace Blitz3D.Parsing.Nodes
 							break;
 					}
 				}
-				//delete this;
 				return expr;
 			}
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData()
+		public override string JoinedWriteData()
 		{
-			if(opType == Type.string_type)//Compare strings and objects
+			if(opType == Type.String)//Compare strings and objects
 			{
 				//TODO: Make sure this matches __bbStrCompare
-				yield return $"{lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()})";
+				return $"{lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()})";
 			}
 			else if(opType is StructType)
 			{
 				//TODO: Add IComparable to struct by default? This would be __bbObjCompare
-				yield return $"{lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()})";
+				return $"{lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()})";
 			}
 			else
 			{
-				yield return op switch
+				return op switch
 				{
 					Keyword.LT => $"({lhs.JoinedWriteData()} < {rhs.JoinedWriteData()})",
 					Keyword.EQ => $"({lhs.JoinedWriteData()} == {rhs.JoinedWriteData()})",
@@ -912,10 +856,7 @@ namespace Blitz3D.Parsing.Nodes
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"new {ident}()";
-		}
+		public override string JoinedWriteData() => $"new {ident}()";
 	}
 
 	////////////////////
@@ -932,10 +873,7 @@ namespace Blitz3D.Parsing.Nodes
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"__bbObjFirst<{ident}>()";
-		}
+		public override string JoinedWriteData() => $"__bbObjFirst<{ident}>()";
 	}
 
 	///////////////////
@@ -955,10 +893,7 @@ namespace Blitz3D.Parsing.Nodes
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"__bbObjLast<{ident}>()";
-		}
+		public override string JoinedWriteData() => $"__bbObjLast<{ident}>()";
 	};
 
 	////////////////////
@@ -975,7 +910,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override ExprNode Semant(Environ e)
 		{
 			expr = expr.Semant(e);
-			if(expr.sem_type == Type.null_type)
+			if(expr.sem_type == Type.Null)
 			{
 				throw ex("'After' cannot be used on 'Null'");
 			}
@@ -987,10 +922,7 @@ namespace Blitz3D.Parsing.Nodes
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"__bbObjNext({expr.JoinedWriteData()})";
-		}
+		public override string JoinedWriteData() => $"__bbObjNext({expr.JoinedWriteData()})";
 	}
 
 	////////////////////
@@ -1007,7 +939,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override ExprNode Semant(Environ e)
 		{
 			expr = expr.Semant(e);
-			if(expr.sem_type == Type.null_type)
+			if(expr.sem_type == Type.Null)
 			{
 				throw ex("'Before' cannot be used with 'Null'");
 			}
@@ -1019,10 +951,7 @@ namespace Blitz3D.Parsing.Nodes
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"__bbObjPrev({expr.JoinedWriteData()})";
-		}
+		public override string JoinedWriteData() => $"__bbObjPrev({expr.JoinedWriteData()})";
 	}
 
 	/////////////////
@@ -1032,14 +961,11 @@ namespace Blitz3D.Parsing.Nodes
 	{
 		public override ExprNode Semant(Environ e)
 		{
-			sem_type = Type.null_type;
+			sem_type = Type.Null;
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return "null";
-		}
+		public override string JoinedWriteData() => "null";
 	}
 
 	/////////////////
@@ -1058,7 +984,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override ExprNode Semant(Environ e)
 		{
 			expr = expr.Semant(e);
-			expr = expr.castTo(Type.int_type, e);
+			expr = expr.CastTo(Type.Int, e);
 			sem_type = e.findType(type_ident);
 			if(sem_type is null) throw ex("custom type name not found");
 			if(!(sem_type is StructType)) throw ex("type is not a custom type");
@@ -1071,10 +997,7 @@ namespace Blitz3D.Parsing.Nodes
 		//	return t;
 		//}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"__bbObjFromHandle({expr.JoinedWriteData()}, {type_ident})";
-		}
+		public override string JoinedWriteData() => $"__bbObjFromHandle({expr.JoinedWriteData()}, {type_ident})";
 	}
 
 	///////////////////
@@ -1089,13 +1012,10 @@ namespace Blitz3D.Parsing.Nodes
 		{
 			expr = expr.Semant(e);
 			if(!(expr.sem_type is StructType)) throw ex("'ObjectHandle' must be used with an object");
-			sem_type = Type.int_type;
+			sem_type = Type.Int;
 			return this;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"__bbObjToHandle({expr.JoinedWriteData()})";
-		}
+		public override string JoinedWriteData() => $"__bbObjToHandle({expr.JoinedWriteData()})";
 	}
 }

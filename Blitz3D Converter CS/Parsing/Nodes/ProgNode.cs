@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using Blitz3D.Compiling;
 
 namespace Blitz3D.Parsing.Nodes
 {
@@ -24,15 +22,13 @@ namespace Blitz3D.Parsing.Nodes
 
 	public class ProgNode:Node
 	{
-		public DeclSeqNode consts;
-		public DeclSeqNode structs;
-		public DeclSeqNode funcs;
-		public DeclSeqNode datas;
-		public StmtSeqNode stmts;
+		public readonly DeclSeqNode consts;
+		public readonly DeclSeqNode structs;
+		public readonly DeclSeqNode funcs;
+		public readonly DeclSeqNode datas;
+		public readonly StmtSeqNode stmts;
 
-		public Environ sem_env;
-
-		public string file_lab;
+		//public Environ sem_env;
 
 		public ProgNode(DeclSeqNode c, DeclSeqNode s, DeclSeqNode f, DeclSeqNode d, StmtSeqNode ss)
 		{
@@ -48,11 +44,9 @@ namespace Blitz3D.Parsing.Nodes
 		//////////////////
 		public Environ Semant(Environ e)
 		{
-			file_lab = genLabel();
+			StmtSeqNode.Reset(stmts.file, genLabel());
 
-			StmtSeqNode.Reset(stmts.file, file_lab);
-
-			Environ env = new Environ(genLabel(), Type.int_type, 0, e);
+			Environ env = new Environ(genLabel(), Type.Int, 0, e);
 
 			consts.Proto(env.decls, env);
 			structs.Proto(env.typeDecls, env);
@@ -63,12 +57,12 @@ namespace Blitz3D.Parsing.Nodes
 			datas.Proto(env.decls, env);
 			datas.Semant(env);
 
-			sem_env = env;
-			return sem_env;
+			//sem_env = env;
+			return env;
 		}
 
 
-		public override IEnumerable<string> WriteData()
+		public IEnumerable<string> WriteData()
 		{
 			string thisClass = Path.GetFileNameWithoutExtension(stmts.file);
 			List<string> lines = new List<string>();
@@ -130,10 +124,6 @@ namespace Blitz3D.Parsing.Nodes
 			lines.Add("{");
 			foreach(string s in stmts.WriteData())
 			{
-				//if(stmt is VarDeclNode varDeclNode && varDeclNode.kind == DECL.GLOBAL)
-				//{
-					
-				//}
 				if(s.StartsWith("using static "))
 				{
 					usingFiles.Add(s);
@@ -237,7 +227,7 @@ namespace Blitz3D.Parsing.Nodes
 			this.fileName = fileName;
 		}
 
-		public override IEnumerable<string> WriteData()
+		public IEnumerable<string> WriteData()
 		{
 			string thisClass = Path.GetFileNameWithoutExtension(fileName).Replace('-','_');
 			List<string> lines = new List<string>();

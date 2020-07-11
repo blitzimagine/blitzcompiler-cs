@@ -1,8 +1,6 @@
-using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
-using Blitz3D.Compiling;
 
 namespace Blitz3D.Parsing.Nodes
 {
@@ -13,6 +11,8 @@ namespace Blitz3D.Parsing.Nodes
 
 		public abstract void Proto(DeclSeq d, Environ e);
 		public virtual void Semant(Environ e){}
+
+		public abstract IEnumerable<string> WriteData();
 	}
 
 	//////////////////////////////
@@ -56,7 +56,7 @@ namespace Blitz3D.Parsing.Nodes
 			}
 		}
 		
-		public override IEnumerable<string> WriteData()
+		public IEnumerable<string> WriteData()
 		{
 			foreach(var decl in decls)
 			{
@@ -100,23 +100,23 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Proto(DeclSeq d, Environ e)
 		{
 			Type ty = tagType(tag, e);
-			if(ty is null) ty = Type.int_type;
+			if(ty is null) ty = Type.Int;
 			type = ty;
 			ConstType defType = null;
 
 			if(expr!=null)
 			{
 				expr = expr.Semant(e);
-				expr = expr.castTo(ty, e);
+				expr = expr.CastTo(ty, e);
 				if(constant || (kind & DECL.PARAM)!=0)
 				{
 					if(!(expr is ConstNode c))
 					{
 						throw ex("Expression must be constant");
 					}
-					if(ty == Type.int_type) ty = new ConstType(c.intValue());
+					if(ty == Type.Int) ty = new ConstType(c.intValue());
 
-					else if(ty == Type.float_type) ty = new ConstType(c.floatValue());
+					else if(ty == Type.Float) ty = new ConstType(c.floatValue());
 
 					else ty = new ConstType(c.stringValue());
 					e.types.Add(ty);
@@ -194,7 +194,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Proto(DeclSeq d, Environ e)
 		{
 			Type t = tagType(tag, e);
-			if(t is null) t = Type.int_type;
+			if(t is null) t = Type.Int;
 			DeclSeq decls = new DeclSeq();
 			@params.Proto(decls, e);
 			sem_type = new FuncType(t, decls, false, false);
@@ -250,7 +250,8 @@ namespace Blitz3D.Parsing.Nodes
 		public override IEnumerable<string> WriteData()
 		{
 			Type ret = sem_type.returnType;//Type.FromTag(tag);
-			yield return $"public static {ret.Name} {ident}({@params.JoinedWriteData(", ")})";
+			string paramStr = string.Join(", ",@params.WriteData());
+			yield return $"public static {ret.Name} {ident}({paramStr})";
 			yield return "{";
 			foreach(string s in stmts.WriteData())
 			{
@@ -276,7 +277,7 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override void Proto(DeclSeq d, Environ e)
 		{
-			sem_type = new StructType(ident, new DeclSeq());
+			sem_type = new StructType(ident);
 			if(d.insertDecl(ident, sem_type, DECL.STRUCT) is null)
 			{
 				sem_type = null;
@@ -331,7 +332,7 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			yield return $"public class {ident}";
+			yield return $"public class {sem_type.Name}";
 			yield return "{";
 			foreach(string s in fields.WriteData())
 			{
@@ -359,11 +360,11 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Proto(DeclSeq d, Environ e)
 		{
 			expr = expr.Semant(e);
-			if(!(expr is ConstNode c))
+			if(!(expr is ConstNode))
 			{
 				throw ex("Data expression must be constant");
 			}
-			if(expr.sem_type == Type.string_type) str_label = genLabel();
+			if(expr.sem_type == Type.String) str_label = genLabel();
 		}
 		public override void Semant(Environ e) { }
 
@@ -406,7 +407,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Proto(DeclSeq d, Environ env)
 		{
 			Type ty = tagType(tag, env);
-			if(ty is null) ty = Type.int_type;
+			if(ty is null) ty = Type.Int;
 
 			int[] sizes = new int[exprs.Count];
 			for(int k = 0; k < exprs.Count; ++k)
@@ -453,21 +454,8 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			string typeName = sem_type.Name;//Type.FromTag(tag).Name;
+			string typeName = sem_type.Name;
 			yield return $"{GetAccessors(kind)}{typeName} {ident} = new {typeName}(new {typeName}[]{{{exprs.JoinedWriteData()}}});";
-		}
-
-		public string WriteData_InitStmtOnly()
-		{
-			string typeName = sem_type.Name;//Type.FromTag(tag).Name;
-			return $"{ident} = new {typeName}(new {typeName}[]{{{exprs.JoinedWriteData()}}});";
-		}
-
-		public string WriteData_DeclStmtOnly()
-		{
-			string accessors = GetAccessors(kind);
-			string typeName = sem_type.Name;//Type.FromTag(tag).Name;
-			return $"{accessors}{typeName} {ident};";
 		}
 	}
 }

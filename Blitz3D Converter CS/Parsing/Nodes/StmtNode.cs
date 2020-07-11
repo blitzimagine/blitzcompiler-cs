@@ -9,6 +9,8 @@ namespace Blitz3D.Parsing.Nodes
 	{
 		protected static string fileLabel;
 		protected static Dictionary<string,string> fileMap = new Dictionary<string, string>();
+
+		public abstract IEnumerable<string> WriteData();
 	}
 
 	public abstract class StmtNode:_StmtNode
@@ -82,7 +84,7 @@ namespace Blitz3D.Parsing.Nodes
 			fileLabel = "";
 			fileMap.Clear();
 
-			fileMap[file] = lab;
+			fileMap.Add(file, lab);
 		}
 
 		public override IEnumerable<string> WriteData()
@@ -97,16 +99,14 @@ namespace Blitz3D.Parsing.Nodes
 		}
 	}
 
-	//#include "exprnode.h"
-	//#include "declnode.h"
-
 	/////////////////
 	// An Include! //
 	/////////////////
 	public class IncludeNode:StmtNode
 	{
-		private string file,label;
-		private IncludeFileNode include;
+		private readonly string file;
+		private readonly IncludeFileNode include;
+
 		public IncludeNode(string t,IncludeFileNode ss)
 		{
 			file = t;
@@ -115,8 +115,7 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override void Semant(Environ e)
 		{
-			label = genLabel();
-			fileMap[file] = label;
+			fileMap[file] = genLabel();
 
 			include.stmts.Semant(e);
 		}
@@ -185,13 +184,13 @@ namespace Blitz3D.Parsing.Nodes
 			else
 			{
 				if(e.level > 0) throw ex("Array not found in main program");
-				if(t is null) t = Type.int_type;
+				if(t is null) t = Type.Int;
 				sem_type = new ArrayType(t, exprs.Count);
 				sem_decl = e.decls.insertDecl(ident, sem_type, DECL.ARRAY);
 				e.types.Add(sem_type);
 			}
 			exprs.semant(e);
-			exprs.castTo(Type.int_type, e);
+			exprs.CastTo(Type.Int, e);
 		}
 		//public override void Translate(Codegen g)
 		//{
@@ -245,7 +244,7 @@ namespace Blitz3D.Parsing.Nodes
 			if(var.sem_type is ConstType) throw ex("Constants can not be assigned to");
 			if(var.sem_type is VectorType) throw ex("Blitz arrays can not be assigned to");
 			expr = expr.Semant(e);
-			expr = expr.castTo(var.sem_type, e);
+			expr = expr.CastTo(var.sem_type, e);
 		}
 
 		public override IEnumerable<string> WriteData()
@@ -363,7 +362,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			expr = expr.Semant(e);
-			expr = expr.castTo(Type.int_type, e);
+			expr = expr.CastTo(Type.Int, e);
 			stmts.Semant(e);
 			if(elseOpt!=null) elseOpt.Semant(e);
 		}
@@ -438,7 +437,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			expr = expr.Semant(e);
-			expr = expr.castTo(Type.int_type, e);
+			expr = expr.CastTo(Type.Int, e);
 			string brk = e.setBreak(genLabel());
 			stmts.Semant(e);
 			e.setBreak(brk);
@@ -478,16 +477,16 @@ namespace Blitz3D.Parsing.Nodes
 			var.Semant(e);
 			Type ty = var.sem_type;
 			if(ty is ConstType) throw ex("Index variable can not be constant");
-			if(ty != Type.int_type && ty != Type.float_type)
+			if(ty != Type.Int && ty != Type.Float)
 			{
 				throw ex("index variable must be integer or real");
 			}
 			fromExpr = fromExpr.Semant(e);
-			fromExpr = fromExpr.castTo(ty, e);
+			fromExpr = fromExpr.CastTo(ty, e);
 			toExpr = toExpr.Semant(e);
-			toExpr = toExpr.castTo(ty, e);
+			toExpr = toExpr.CastTo(ty, e);
 			stepExpr = stepExpr.Semant(e);
-			stepExpr = stepExpr.castTo(ty, e);
+			stepExpr = stepExpr.CastTo(ty, e);
 
 			if(!(stepExpr is ConstNode)) throw ex("Step value must be constant");
 
@@ -604,11 +603,11 @@ namespace Blitz3D.Parsing.Nodes
 			{
 				if(expr is null)
 				{
-					if(e.returnType == Type.float_type)
+					if(e.returnType == Type.Float)
 					{
 						expr = new FloatConstNode(0);
 					}
-					else if(e.returnType == Type.string_type)
+					else if(e.returnType == Type.String)
 					{
 						expr = new StringConstNode("");
 					}
@@ -622,7 +621,7 @@ namespace Blitz3D.Parsing.Nodes
 					}
 				}
 				expr = expr.Semant(e);
-				expr = expr.castTo(e.returnType, e);
+				expr = expr.CastTo(e.returnType, e);
 				//returnLabel = e.funcLabel + "_leave";
 			}
 		}
@@ -786,7 +785,7 @@ namespace Blitz3D.Parsing.Nodes
 			{
 				CaseNode c = cases[k];
 				c.exprs.semant(e);
-				c.exprs.castTo(ty, e);
+				c.exprs.CastTo(ty, e);
 				c.stmts.Semant(e);
 			}
 			if(defStmts!=null) defStmts.Semant(e);
@@ -838,7 +837,7 @@ namespace Blitz3D.Parsing.Nodes
 			if(expr!=null)
 			{
 				expr = expr.Semant(e);
-				expr = expr.castTo(Type.int_type, e);
+				expr = expr.CastTo(Type.Int, e);
 			}
 		}
 
@@ -924,7 +923,7 @@ namespace Blitz3D.Parsing.Nodes
 			}
 			else
 			{
-				yield return $"BlitzData.Current = null;";
+				yield return $"BlitzData.Current = __DATA;";
 			}
 		}
 	}

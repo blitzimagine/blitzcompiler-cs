@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using Blitz3D.Parsing;
@@ -64,7 +65,7 @@ namespace Blitz3D
 				Semant(prog, libs);
 
 				Console.WriteLine("Converting...");
-				string output = Convert(prog);
+				string output = Convert(prog.WriteData());
 
 				try
 				{
@@ -104,11 +105,11 @@ namespace Blitz3D
 			return prog.Semant(libs.runtimeEnviron);
 		}
 
-		private static string Convert(Node prog)
+		private static string Convert(IEnumerable<string> prog)
 		{
 			StringWriter output = new StringWriter{NewLine = "\n"};
 			int indent = 0;
-			foreach(string str in prog.WriteData())
+			foreach(string str in prog)
 			{
 				if(str == "}"){indent--;}
 				output.Write(new string('\t',indent));
@@ -123,7 +124,7 @@ namespace Blitz3D
 			foreach(var include in parser.included)
 			{
 				FileInfo fileOut = new FileInfo(Path.ChangeExtension(include.Key, ".cs"));
-				string output = Convert(include.Value);
+				string output = Convert(include.Value.WriteData());
 				File.WriteAllText(fileOut.FullName, output);
 			}
 		}

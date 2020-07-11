@@ -39,22 +39,12 @@ namespace Blitz3D.Parsing
 			structs = new DeclSeqNode();
 			funcs = new DeclSeqNode();
 			datas = new DeclSeqNode();
-			try
-			{
-				StmtSeqNode stmts = parseStmtSeq(STMTS.PROG);
-				
-				toker.AssertCurr(Keyword.EOF, exp, "end-of-file");
 
-				return new ProgNode(consts, structs, funcs, datas, stmts);
-			}
-			catch(Ex)
-			{
-				datas = null;
-				funcs = null;
-				structs = null;
-				consts = null;
-				throw;
-			}
+			StmtSeqNode stmts = parseStmtSeq(STMTS.PROG);	
+			
+			toker.AssertCurr(Keyword.EOF, exp, "end-of-file");
+
+			return new ProgNode(consts, structs, funcs, datas, stmts);
 		}
 
 		private StmtSeqNode parseStmtSeq(STMTS scope)
@@ -523,12 +513,17 @@ namespace Blitz3D.Parsing
 			string ident = parseIdent();
 			string tag = parseTypeTag();
 			DeclNode d;
-			if(toker.Curr == Keyword.BracketOpen)
+			if(toker.TrySkip(Keyword.BracketOpen))
 			{
-				if(constant) throw ex("Blitz arrays may not be constant");
-				toker.Next();
+				if(constant)
+				{
+					throw ex("Blitz arrays may not be constant");
+				}
 				ExprSeqNode exprs = parseExprSeq();
-				if(exprs.Count != 1 || toker.Curr != Keyword.BracketClose) throw exp("']'");
+				if(exprs.Count != 1 || toker.Curr != Keyword.BracketClose)
+				{
+					throw exp("']'");
+				}
 				toker.Next();
 				d = new VectorDeclNode(ident, tag, exprs, kind);
 			}
@@ -540,7 +535,10 @@ namespace Blitz3D.Parsing
 					toker.Next();
 					expr = parseExpr(false);
 				}
-				else if(constant) throw ex("Constants must be initialized");
+				else if(constant)
+				{
+					throw ex("Constants must be initialized");
+				}
 				d = new VarDeclNode(ident, tag, kind, constant, expr);
 			}
 			d.pos = pos;
@@ -555,7 +553,10 @@ namespace Blitz3D.Parsing
 			toker.AssertSkip(Keyword.ParenOpen, exp, "'('");
 			ExprSeqNode exprs = parseExprSeq();
 			toker.AssertSkip(Keyword.ParenClose, exp, "')'");
-			if(exprs.Count==0) throw ex("can't have a 0 dimensional array");
+			if(exprs.Count==0)
+			{
+				throw ex("can't have a 0 dimensional array");
+			}
 			DimNode d = new DimNode(ident, tag, exprs);
 			arrayDecls[ident] = d;
 			d.pos = pos;
@@ -600,13 +601,12 @@ namespace Blitz3D.Parsing
 			string ident = parseIdent();
 			toker.SkipWhile(Keyword.NEWLINE);
 			DeclSeqNode fields = new DeclSeqNode();
-			while(toker.Curr == Keyword.FIELD)
+			while(toker.TrySkip(Keyword.FIELD))
 			{
 				do
 				{
-					toker.Next();
 					fields.Add(parseVarDecl(DECL.FIELD, false));
-				} while(toker.Curr == Keyword.COMMA);
+				} while(toker.TrySkip(Keyword.COMMA));
 				toker.SkipWhile(Keyword.NEWLINE);
 			}
 			toker.AssertSkip(Keyword.ENDTYPE, exp, "'Field' or 'End Type'");
@@ -723,19 +723,19 @@ namespace Blitz3D.Parsing
 					toker.Next();
 					toker.TrySkip((Keyword)'%');
 					result = parseUniExpr(false);
-					result = new CastNode(result, Type.int_type);
+					result = new CastNode(result, Type.Int);
 					break;
 				case Keyword.BBFLOAT:
 					toker.Next();
 					toker.TrySkip((Keyword)'#');
 					result = parseUniExpr(false);
-					result = new CastNode(result, Type.float_type);
+					result = new CastNode(result, Type.Float);
 					break;
 				case Keyword.BBSTR:
 					toker.Next();
 					toker.TrySkip((Keyword)'$');
 					result = parseUniExpr(false);
-					result = new CastNode(result, Type.string_type);
+					result = new CastNode(result, Type.String);
 					break;
 				case Keyword.OBJECT:
 					toker.Next();

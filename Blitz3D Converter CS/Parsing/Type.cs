@@ -10,21 +10,12 @@ namespace Blitz3D.Parsing
 		public virtual bool CanCastTo(Type t) => this == t;
 
 		//built in types
-		public readonly static Type void_type = new VoidType();
-		public readonly static Type int_type = new IntType();
-		public readonly static Type float_type = new FloatType();
-		public readonly static Type string_type = new StringType();
-		public readonly static Type null_type = new StructType("Null");
-
-		//public static Type FromTag(string tag) => tag switch
-		//{
-		//	"%" => int_type,
-		//	"#" => float_type,
-		//	"$" => string_type,
-		//	"" => int_type,
-		//	_ => int_type,/*throw new System.Exception("Unknown type")*/
-		//};
-	};
+		public readonly static Type Void = new VoidType();
+		public readonly static Type Int = new IntType();
+		public readonly static Type Float = new FloatType();
+		public readonly static Type String = new StringType();
+		public readonly static Type Null = new StructType("Null");
+	}
 
 	public class FuncType:Type
 	{
@@ -40,11 +31,11 @@ namespace Blitz3D.Parsing
 			userlib = ulib;
 			cfunc = cfn;
 		}
-	};
+	}
 
 	public class ArrayType:Type
 	{
-		public override string Name => $"{elementType.Name}[]";
+		public override string Name => $"{elementType.Name}[{new string(',', dims-1)}]";
 
 		public readonly Type elementType;
 		public readonly int dims;
@@ -60,16 +51,15 @@ namespace Blitz3D.Parsing
 		public override string Name => ident;
 
 		public readonly string ident;
-		public readonly DeclSeq fields;
+		public readonly DeclSeq fields = new DeclSeq();
 
-		public StructType(string i, DeclSeq f = null)
+		public StructType(string i)
 		{
 			ident = i;
-			fields = f;
 		}
 
-		public override bool CanCastTo(Type t) => t == this || t == null_type || (this == null_type && t is StructType);
-	};
+		public override bool CanCastTo(Type t) => t == this || t == Null || (this == Null && t is StructType);
+	}
 
 	public class ConstType:Type
 	{
@@ -90,17 +80,17 @@ namespace Blitz3D.Parsing
 
 		public ConstType(int n)
 		{
-			valueType = int_type;
+			valueType = Int;
 			intValue = n;
 		}
 		public ConstType(float n)
 		{
-			valueType = float_type;
+			valueType = Float;
 			floatValue = n;
 		}
 		public ConstType(string n)
 		{
-			valueType = string_type;
+			valueType = String;
 			stringValue = n;
 		}
 	}
@@ -137,27 +127,27 @@ namespace Blitz3D.Parsing
 	{
 		public override string Name => "void";
 
-		public override bool CanCastTo(Type t) => t == void_type;
+		public override bool CanCastTo(Type t) => t == Void;
 	}
 
 	public class IntType:Type
 	{
 		public override string Name => "int";
 
-		public override bool CanCastTo(Type t) => t == int_type || t == float_type || t == string_type;
+		public override bool CanCastTo(Type t) => t == Int || t == Float || t == String;
 	}
 
 	public class FloatType:Type
 	{
 		public override string Name => "float";
 
-		public override bool CanCastTo(Type t) => t == int_type || t == float_type || t == string_type;
+		public override bool CanCastTo(Type t) => t == Int || t == Float || t == String;
 	}
 
 	public class StringType:Type
 	{
 		public override string Name => "string";
 
-		public override bool CanCastTo(Type t) => t == int_type || t == float_type || t == string_type;
+		public override bool CanCastTo(Type t) => t == Int || t == Float || t == String;
 	}
 }

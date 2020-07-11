@@ -28,9 +28,9 @@ namespace Blitz3D.Parsing.Nodes
 
 		//addr of var
 		public abstract void Semant(Environ e);
-	}
-	//#include "decl.h"
 
+		public abstract string JoinedWriteData();
+	}
 
 	//////////////////
 	// Declared var //
@@ -69,10 +69,7 @@ namespace Blitz3D.Parsing.Nodes
 		//}
 		public override bool isObjParam() => sem_type is StructType && sem_decl.kind == DECL.PARAM;
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return sem_decl.name;
-		}
+		public override string JoinedWriteData() => sem_decl.name;
 	}
 
 	///////////////
@@ -90,7 +87,7 @@ namespace Blitz3D.Parsing.Nodes
 		{
 			if(sem_decl!=null) return;
 			Type t = tagType(tag, e);
-			if(t is null) t = Type.int_type;
+			if(t is null) t = Type.Int;
 			if((sem_decl = e.findDecl(ident))!=null)
 			{
 				if((sem_decl.kind & (DECL.GLOBAL | DECL.LOCAL | DECL.PARAM))==0)
@@ -112,10 +109,7 @@ namespace Blitz3D.Parsing.Nodes
 			sem_type = sem_decl.type;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return ident;
-		}
+		public override string JoinedWriteData() => ident;
 	}
 
 	/////////////////
@@ -136,7 +130,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			exprs.semant(e);
-			exprs.castTo(Type.int_type, e);
+			exprs.CastTo(Type.Int, e);
 			Type t = e.findType(tag);
 			sem_decl = e.findDecl(ident);
 			if(sem_decl is null || (sem_decl.kind & DECL.ARRAY)==0)
@@ -155,10 +149,7 @@ namespace Blitz3D.Parsing.Nodes
 			sem_type = a.elementType;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"{ident}[{exprs.JoinedWriteData()}]";
-		}
+		public override string JoinedWriteData() => $"{ident}[{exprs.JoinedWriteData()}]";
 	}
 
 	///////////////
@@ -191,10 +182,7 @@ namespace Blitz3D.Parsing.Nodes
 			sem_type = sem_field.type;
 		}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"{expr.JoinedWriteData()}.{ident}";
-		}
+		public override string JoinedWriteData() => $"{expr.JoinedWriteData()}.{ident}";
 	}
 
 	////////////////
@@ -223,7 +211,7 @@ namespace Blitz3D.Parsing.Nodes
 				throw ex("Incorrect number of subscripts");
 			}
 			exprs.semant(e);
-			exprs.castTo(Type.int_type, e);
+			exprs.CastTo(Type.Int, e);
 			for(int k = 0; k < exprs.Count; ++k)
 			{
 				if(exprs.exprs[k] is ConstNode t)
@@ -259,9 +247,6 @@ namespace Blitz3D.Parsing.Nodes
 		//	return add(t, expr.Translate(g));
 		//}
 
-		public override IEnumerable<string> WriteData()
-		{
-			yield return $"{expr.JoinedWriteData()}[{exprs.JoinedWriteData()}]";
-		}
+		public override string JoinedWriteData() => $"{expr.JoinedWriteData()}[{exprs.JoinedWriteData()}]";
 	}
 }

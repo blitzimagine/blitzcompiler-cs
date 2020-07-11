@@ -56,9 +56,9 @@ namespace Blitz3D.Parsing
 		}
 		public Type findType(string s)
 		{
-			if(s == "%") return Type.int_type;
-			if(s == "#") return Type.float_type;
-			if(s == "$") return Type.string_type;
+			if(s == "%") return Type.Int;
+			if(s == "#") return Type.Float;
+			if(s == "$") return Type.String;
 			for(Environ e = this; e!=null; e = e.globals)
 			{
 				Decl d = e.typeDecls.findDecl(s);

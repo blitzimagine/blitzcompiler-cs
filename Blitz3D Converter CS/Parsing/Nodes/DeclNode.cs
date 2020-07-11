@@ -85,6 +85,8 @@ namespace Blitz3D.Parsing.Nodes
 		public ExprNode expr;
 		public DeclVarNode sem_var;
 
+		private Type type;
+
 		public VarDeclNode(string i, string t, DECL k, bool c, ExprNode e)
 		{
 			ident = i;
@@ -99,6 +101,7 @@ namespace Blitz3D.Parsing.Nodes
 		{
 			Type ty = tagType(tag, e);
 			if(ty is null) ty = Type.int_type;
+			type = ty;
 			ConstType defType = null;
 
 			if(expr!=null)
@@ -137,7 +140,7 @@ namespace Blitz3D.Parsing.Nodes
 		{
 			StringBuilder builder = new StringBuilder();
 			string accessors = GetAccessors(kind, constant);
-			string typeName = Type.FromTag(tag).Name;
+			string typeName = type.Name;//Type.FromTag(tag).Name;
 			builder.Append($"{accessors}{typeName} {ident}");
 			if(expr != null)
 			{
@@ -162,7 +165,7 @@ namespace Blitz3D.Parsing.Nodes
 		public string WriteData_DeclStmtOnly()
 		{
 			string accessors = GetAccessors(kind, constant);
-			string typeName = Type.FromTag(tag).Name;
+			string typeName = type.Name;//Type.FromTag(tag).Name;
 			return $"{accessors}{typeName} {ident};";
 		}
 	}
@@ -246,7 +249,7 @@ namespace Blitz3D.Parsing.Nodes
 		//}
 		public override IEnumerable<string> WriteData()
 		{
-			Type ret = Type.FromTag(tag);
+			Type ret = sem_type.returnType;//Type.FromTag(tag);
 			yield return $"public static {ret.Name} {ident}({@params.JoinedWriteData(", ")})";
 			yield return "{";
 			foreach(string s in stmts.WriteData())
@@ -450,21 +453,21 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			string typeName = Type.FromTag(tag).Name;
-			yield return $"{GetAccessors(kind)}System.Collections.Generic.List<{typeName}> {ident} = new System.Collections.Generic.List<{typeName}>(new {typeName}[]{{{exprs.JoinedWriteData()}}});";
+			string typeName = sem_type.Name;//Type.FromTag(tag).Name;
+			yield return $"{GetAccessors(kind)}{typeName} {ident} = new {typeName}(new {typeName}[]{{{exprs.JoinedWriteData()}}});";
 		}
 
 		public string WriteData_InitStmtOnly()
 		{
-			string typeName = Type.FromTag(tag).Name;
-			return $"{ident} = new System.Collections.Generic.List<{typeName}>(new {typeName}[]{{{exprs.JoinedWriteData()}}});";
+			string typeName = sem_type.Name;//Type.FromTag(tag).Name;
+			return $"{ident} = new {typeName}(new {typeName}[]{{{exprs.JoinedWriteData()}}});";
 		}
 
 		public string WriteData_DeclStmtOnly()
 		{
 			string accessors = GetAccessors(kind);
-			string typeName = Type.FromTag(tag).Name;
-			return $"{accessors}System.Collections.Generic.List<{typeName}> {ident};";
+			string typeName = sem_type.Name;//Type.FromTag(tag).Name;
+			return $"{accessors}{typeName} {ident};";
 		}
 	}
 }

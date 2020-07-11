@@ -193,7 +193,7 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			yield return $"this.{ident}";
+			yield return $"{expr.JoinedWriteData()}.{ident}";
 		}
 	}
 

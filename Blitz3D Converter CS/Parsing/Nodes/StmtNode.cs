@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Text;
-using Blitz3D.Compiling;
 
 namespace Blitz3D.Parsing.Nodes
 {

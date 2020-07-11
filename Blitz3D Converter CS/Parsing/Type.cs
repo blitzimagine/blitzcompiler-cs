@@ -16,14 +16,14 @@ namespace Blitz3D.Parsing
 		public readonly static Type string_type = new StringType();
 		public readonly static Type null_type = new StructType("Null");
 
-		public static Type FromTag(string tag) => tag switch
-		{
-			"%" => int_type,
-			"#" => float_type,
-			"$" => string_type,
-			"" => int_type,
-			_ => int_type,/*throw new System.Exception("Unknown type")*/
-		};
+		//public static Type FromTag(string tag) => tag switch
+		//{
+		//	"%" => int_type,
+		//	"#" => float_type,
+		//	"$" => string_type,
+		//	"" => int_type,
+		//	_ => int_type,/*throw new System.Exception("Unknown type")*/
+		//};
 	};
 
 	public class FuncType:Type
@@ -107,7 +107,7 @@ namespace Blitz3D.Parsing
 
 	public class VectorType:Type
 	{
-		public override string Name => $"List<{elementType.Name}>";
+		public override string Name => $"System.Collections.Generic.List<{elementType.Name}>";
 
 		public readonly string label;
 		public readonly Type elementType;

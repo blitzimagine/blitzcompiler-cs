@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using Blitz3D.Compiling;
 
-namespace Blitz3D.Parsing
+namespace Blitz3D.Parsing.Nodes
 {
 	public class UserFunc
 	{
@@ -104,9 +104,10 @@ namespace Blitz3D.Parsing
 			//check labels
 			for(k = 0; k < sem_env.labels.Count; ++k)
 			{
-				if(sem_env.labels[k].def < 0)
-					ex("Undefined label '" + sem_env.labels[k].name + "'",
-					   sem_env.labels[k].@ref, stmts.file);
+				if(sem_env.labels[k].def is null)
+				{
+					throw ex("Undefined label '" + sem_env.labels[k].name + "'", sem_env.labels[k].@ref, stmts.file);
+				}
 			}
 
 			//leave main program

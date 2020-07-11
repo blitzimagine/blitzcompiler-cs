@@ -1,8 +1,6 @@
-﻿#define CONVERT
-using System;
+﻿using System;
 using System.Drawing;
 using System.IO;
-using Blitz3D.Compiling.ASM.x86;
 using Blitz3D.Parsing;
 using Blitz3D.Parsing.Nodes;
 
@@ -39,11 +37,7 @@ namespace Blitz3D
 			}
 			else
 			{
-				#if CONVERT
 				output = new FileInfo(Path.ChangeExtension(input.FullName, ".cs"));
-				#else
-				out_file = new FileInfo(Path.ChangeExtension(in_file.FullName, ".asm"));
-				#endif
 			}
 			Directory.SetCurrentDirectory(input.Directory.FullName);
 			return null;
@@ -69,13 +63,8 @@ namespace Blitz3D
 				Console.WriteLine("Generating...");
 				Semant(prog, libs);
 
-				#if CONVERT
 				Console.WriteLine("Converting...");
 				string output = Convert(prog);
-				#else
-				Console.WriteLine("Translating...");
-				StringWriter output = Translate(prog, libs);
-				#endif
 
 				try
 				{
@@ -113,14 +102,6 @@ namespace Blitz3D
 		private static Environ Semant(ProgNode prog, Libs libs)
 		{
 			return prog.Semant(libs.runtimeEnviron);
-		}
-
-		private static StringWriter Translate(ProgNode prog, Libs libs)
-		{
-			StringWriter output = new StringWriter{NewLine = "\n"};
-			Codegen_x86 codegen = new Codegen_x86(output);
-			prog.Translate(codegen, libs.userFuncs);
-			return output;
 		}
 
 		private static string Convert(Node prog)

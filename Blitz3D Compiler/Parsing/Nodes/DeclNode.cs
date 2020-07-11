@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Text;
 using Blitz3D.Compiling;
 
-namespace Blitz3D.Parsing
+namespace Blitz3D.Parsing.Nodes
 {
 	public abstract class DeclNode:Node
 	{
-		public int pos;
+		public Point? pos = null;
 		public string file;
-		public DeclNode() { pos = -1; }
+
 		public abstract void Proto(DeclSeq d, Environ e);
 		public virtual void Semant(Environ e){}
 		public abstract void Translate(Codegen g);
@@ -34,7 +35,7 @@ namespace Blitz3D.Parsing
 				}
 				catch(Ex x)
 				{
-					if(x.pos < 0) x.pos = decls[k].pos;
+					if(x.pos is null) x.pos = decls[k].pos;
 					if(x.file.Length==0) x.file = decls[k].file;
 					throw;
 				}
@@ -50,7 +51,7 @@ namespace Blitz3D.Parsing
 				}
 				catch(Ex x)
 				{
-					if(x.pos < 0) x.pos = decls[k].pos;
+					if(x.pos is null) x.pos = decls[k].pos;
 					if(x.file.Length==0) x.file = decls[k].file;
 					throw;
 				}
@@ -66,7 +67,7 @@ namespace Blitz3D.Parsing
 				}
 				catch(Ex x)
 				{
-					if(x.pos < 0) x.pos = decls[k].pos;
+					if(x.pos is null) x.pos = decls[k].pos;
 					if(x.file.Length==0) x.file = decls[k].file;
 					throw;
 				}
@@ -82,7 +83,7 @@ namespace Blitz3D.Parsing
 				}
 				catch(Ex x)
 				{
-					if(x.pos < 0) x.pos = decls[k].pos;
+					if(x.pos is null) x.pos = decls[k].pos;
 					if(x.file.Length==0) x.file = decls[k].file;
 					throw;
 				}
@@ -140,8 +141,10 @@ namespace Blitz3D.Parsing
 				expr = expr.castTo(ty, e);
 				if(constant || (kind & DECL.PARAM)!=0)
 				{
-					ConstNode c = expr.constNode();
-					if(c is null) ex("Expression must be constant");
+					if(!(expr is ConstNode c))
+					{
+						throw ex("Expression must be constant");
+					}
 					if(ty == Type.int_type) ty = new ConstType(c.intValue());
 
 					else if(ty == Type.float_type) ty = new ConstType(c.floatValue());
@@ -156,10 +159,10 @@ namespace Blitz3D.Parsing
 					ty = defType.valueType;
 				}
 			}
-			else if(constant) ex("Constants must be initialized");
+			else if(constant) throw ex("Constants must be initialized");
 
 			Decl decl = d.insertDecl(ident, ty, kind, defType);
-			if(decl is null) ex("Duplicate variable name");
+			if(decl is null) throw ex("Duplicate variable name");
 			if(expr!=null) sem_var = new DeclVarNode(decl);
 		}
 		public override void Semant(Environ e) { }
@@ -238,7 +241,7 @@ namespace Blitz3D.Parsing
 			if(d.insertDecl(ident, sem_type, DECL.FUNC) is null)
 			{
 				sem_type = null;
-				ex("duplicate identifier");
+				throw ex("duplicate identifier");
 			}
 			e.types.Add(sem_type);
 		}
@@ -251,7 +254,7 @@ namespace Blitz3D.Parsing
 			for(k = 0; k < sem_type.@params.Count; ++k)
 			{
 				Decl d = sem_type.@params.decls[k];
-				if(decls.insertDecl(d.name, d.type, d.kind) is null) ex("duplicate identifier");
+				if(decls.insertDecl(d.name, d.type, d.kind) is null) throw ex("duplicate identifier");
 			}
 
 			stmts.Semant(sem_env);
@@ -273,7 +276,10 @@ namespace Blitz3D.Parsing
 
 			for(int k = 0; k < sem_env.labels.Count; ++k)
 			{
-				if(sem_env.labels[k].def < 0) ex("Undefined label", sem_env.labels[k].@ref);
+				if(sem_env.labels[k].def is null)
+				{
+					throw ex("Undefined label", sem_env.labels[k].@ref);
+				}
 			}
 
 			//leave the function
@@ -314,7 +320,7 @@ namespace Blitz3D.Parsing
 			if(d.insertDecl(ident, sem_type, DECL.STRUCT) is null)
 			{
 				sem_type = null;
-				ex("Duplicate identifier");
+				throw ex("Duplicate identifier");
 			}
 			e.types.Add(sem_type);
 		}
@@ -393,20 +399,22 @@ namespace Blitz3D.Parsing
 		public override void Proto(DeclSeq d, Environ e)
 		{
 			expr = expr.Semant(e);
-			ConstNode c = expr.constNode();
-			if(c is null) ex("Data expression must be constant");
+			if(!(expr is ConstNode c))
+			{
+				throw ex("Data expression must be constant");
+			}
 			if(expr.sem_type == Type.string_type) str_label = genLabel();
 		}
 		public override void Semant(Environ e) { }
 		public override void Translate(Codegen g)
 		{
 			if(expr.sem_type != Type.string_type) return;
-			ConstNode c = expr.constNode();
+			ConstNode c = (ConstNode)expr;
 			g.s_data(c.stringValue(), str_label);
 		}
 		public override void Transdata(Codegen g)
 		{
-			ConstNode c = expr.constNode();
+			ConstNode c = (ConstNode)expr;
 			if(expr.sem_type == Type.int_type)
 			{
 				g.i_data(1);
@@ -469,10 +477,12 @@ namespace Blitz3D.Parsing
 			for(int k = 0; k < exprs.Count; ++k)
 			{
 				ExprNode e = exprs.exprs[k] = exprs.exprs[k].Semant(env);
-				ConstNode c = e.constNode();
-				if(c is null) ex("Blitz array sizes must be constant");
+				if(!(e is ConstNode c))
+				{
+					throw ex("Blitz array sizes must be constant");
+				}
 				int n = c.intValue();
-				if(n < 0) ex("Blitz array sizes must not be negative");
+				if(n < 0) throw ex("Blitz array sizes must not be negative");
 				sizes[k] = n + 1;
 			}
 			string label = genLabel();
@@ -480,7 +490,7 @@ namespace Blitz3D.Parsing
 			if(d.insertDecl(ident, sem_type, kind) is null)
 			{
 				sem_type = null;
-				ex("Duplicate identifier");
+				throw ex("Duplicate identifier");
 			}
 			env.types.Add(sem_type);
 		}

@@ -14,14 +14,6 @@ namespace Blitz3D.Parsing
 		private readonly List<string> keyWords = new List<string>();
 		public readonly List<UserFunc> userFuncs = new List<UserFunc>();
 
-		private Type @typeof(int c) => c switch
-		{
-			'%' => Type.int_type,
-			'#' => Type.float_type,
-			'$' => Type.string_type,
-			_ => Type.void_type
-		};
-
 		private int curr;
 		private string text;
 
@@ -88,83 +80,97 @@ namespace Blitz3D.Parsing
 		{
 			foreach(string sym in Symbols.GetLinkSymbols())
 			{
-				string s = sym;
-
 				//internal?
-				if(s[0] == '_')
-				{
-					continue;
-				}
+				if(sym[0] == '_'){continue;}
+
+				int k = 0;
 
 				bool cfunc = false;
-
-				if(s[0] == '!')
+				if(sym[0] == '!')
 				{
 					cfunc = true;
-					s = s.Substring(1);
+					k++;
 				}
 
-				keyWords.Add(s);
-
+				keyWords.Add(sym.Substring(k));
+				
 				//global!
-				int start = 0, end;
-				Type t = Type.void_type;
-				if(!char.IsLetter(s[0]))
-				{
-					start = 1;
-					t = @typeof(s[0]);
-				}
-				int k;
-				for(k = 1; k < s.Length; ++k)
-				{
-					if(!char.IsLetterOrDigit(s[k]) && s[k] != '_')
-					{
-						break;
-					}
-				}
-				end = k;
+				Type funcType = TakeType(sym, ref k);
+				string name = TakeIdentifier(sym, ref k).ToLowerInvariant();
 				DeclSeq @params = new DeclSeq();
-				string n = s.Substring(start, end - start);
-				while(k < s.Length)
+				while(k<sym.Length)
 				{
-					Type t2 = @typeof(s[k++]);
-					int from = k;
-					for(; k<s.Length && (char.IsLetterOrDigit(s[k]) || s[k] == '_'); ++k) { }
-					string str = s.Substring(from, k - from);
+					Type paramType = TakeType(sym, ref k);
+					string str = TakeIdentifier(sym, ref k);
 					ConstType defType = null;
-					if(k<s.Length && s[k] == '=')
+					if(k<sym.Length && sym[k] == '=')
 					{
 						int from2 = ++k;
-						if(k<s.Length && s[k] == '\"')
+						if(k<sym.Length && sym[k] == '\"')
 						{
-							for(++k; s[k] != '\"'; ++k) { }
-							string t3 = s.Substring(from2 + 1, k - from2 - 1);
+							k++;
+							while(sym[k] != '\"')
+							{
+								k++;
+							}
+							string t3 = sym.Substring(from2 + 1, k - from2 - 1);
 							defType = new ConstType(t3);
-							++k;
+							k++;
 						}
 						else
 						{
-							if(k<s.Length && s[k] == '-') ++k;
-							for(; k<s.Length && char.IsDigit(s[k]); ++k) { }
-							if(t2 == Type.int_type)
+							if(k<sym.Length && sym[k] == '-')
 							{
-								int n2 = int.Parse(s.Substring(from2, k - from2));
+								k++;
+							}
+							while(k<sym.Length && char.IsDigit(sym,k))
+							{
+								k++;
+							}
+							if(paramType == Type.int_type)
+							{
+								int n2 = int.Parse(sym.Substring(from2, k - from2));
 								defType = new ConstType(n2);
 							}
 							else
 							{
-								float n2 = float.Parse(s.Substring(from2, k - from2));
+								float n2 = float.Parse(sym.Substring(from2, k - from2));
 								defType = new ConstType(n2);
 							}
 						}
 					}
-					Decl d = @params.insertDecl(str, t2, DECL.PARAM, defType);
+					@params.insertDecl(str, paramType, DECL.PARAM, defType);
 				}
 
-				FuncType f = new FuncType(t, @params, false, cfunc);
-				n = n.ToLowerInvariant();
-				runtimeEnviron.funcDecls.insertDecl(n, f, DECL.FUNC);
+				FuncType f = new FuncType(funcType, @params, false, cfunc);
+				runtimeEnviron.funcDecls.insertDecl(name, f, DECL.FUNC);
 			}
+		}
+
+		private static Type TakeType(string str, ref int index)
+		{
+			Type type = str[index] switch
+			{
+				'%' => Type.int_type,
+				'#' => Type.float_type,
+				'$' => Type.string_type,
+				_ => null
+			};
+			if(type != null)
+			{
+				index++;
+			}
+			return type ?? Type.void_type;
+		}
+
+		private static string TakeIdentifier(string str, ref int index)
+		{
+			int from = index;
+			while(index<str.Length && (char.IsLetterOrDigit(str[index]) || str[index] == '_'))
+			{
+				index++;
+			}
+			return str.Substring(from, index - from);
 		}
 
 		private void linkUserLibs()

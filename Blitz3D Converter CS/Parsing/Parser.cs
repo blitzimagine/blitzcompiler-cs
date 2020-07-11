@@ -164,9 +164,8 @@ namespace Blitz3D.Parsing
 						toker.Next();
 						ExprNode expr = parseExpr(false);
 						StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
-						Point pos2 = toker.Pos;
 						toker.AssertSkip(Keyword.WEND, exp, "'Wend'");
-						result = new WhileNode(expr, stmts2, pos2);
+						result = new WhileNode(expr, stmts2);
 					}
 					break;
 					case Keyword.REPEAT:
@@ -175,11 +174,10 @@ namespace Blitz3D.Parsing
 						ExprNode expr = null;
 						StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
 						Keyword curr = toker.Curr;
-						Point pos2 = toker.Pos;
 						if(curr != Keyword.UNTIL && curr != Keyword.FOREVER) throw exp("'Until' or 'Forever'");
 						toker.Next();
 						if(curr == Keyword.UNTIL) expr = parseExpr(false);
-						result = new RepeatNode(stmts2, expr, pos2);
+						result = new RepeatNode(stmts2, expr);
 					}
 					break;
 					case Keyword.SELECT:
@@ -223,9 +221,8 @@ namespace Blitz3D.Parsing
 						{
 							string ident = parseIdent();
 							stmts2 = parseStmtSeq(STMTS.BLOCK);
-							Point pos2 = toker.Pos;
 							toker.AssertSkip(Keyword.NEXT, exp, "'Next'");
-							result = new ForEachNode(var, ident, stmts2, pos2);
+							result = new ForEachNode(var, ident, stmts2);
 						}
 						else
 						{
@@ -241,9 +238,8 @@ namespace Blitz3D.Parsing
 							}
 							else step = new IntConstNode(1);
 							stmts2 = parseStmtSeq(STMTS.BLOCK);
-							Point pos2 = toker.Pos;
 							toker.AssertSkip(Keyword.NEXT, exp, "'Next'");
-							result = new ForNode(var, from, to, step, stmts2, pos2);
+							result = new ForNode(var, from, to, step, stmts2);
 						}
 					}
 					break;

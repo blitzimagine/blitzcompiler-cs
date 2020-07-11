@@ -64,7 +64,7 @@ namespace Blitz3D.Parsing
 				Decl d = e.typeDecls.findDecl(s);
 				if(d!=null)
 				{
-					return d.type.structType();
+					return d.type as StructType;
 				}
 			}
 			return null;

@@ -1,8 +1,9 @@
 using System.Collections.Generic;
+using System.Drawing;
 using System.Text;
 using Blitz3D.Compiling;
 
-namespace Blitz3D.Parsing
+namespace Blitz3D.Parsing.Nodes
 {
 	public abstract class Node
 	{
@@ -13,7 +14,7 @@ namespace Blitz3D.Parsing
 		///////////////////////////////
 		// generic exception thrower //
 		///////////////////////////////
-		public static void ex(string e = "INTERNAL COMPILER ERROR", int pos = -1, string f = "") => throw new Ex(e, pos, f);
+		public static Ex ex(string e = "INTERNAL COMPILER ERROR", Point? pos = null, string f = "") => new Ex(e, pos, f);
 
 		public abstract IEnumerable<string> WriteData();
 		public string JoinedWriteData() => string.Concat(WriteData());
@@ -97,7 +98,7 @@ namespace Blitz3D.Parsing
 				l = call("__bbStrCompare", l, r);
 				r = new TNode(IR.CONST, null, null, 0);
 			}
-			else if(ty.structType()!=null)
+			else if(ty is StructType)
 			{
 				l = call("__bbObjCompare", l, r);
 				r = new TNode(IR.CONST, null, null, 0);
@@ -110,12 +111,14 @@ namespace Blitz3D.Parsing
 		/////////////////////////////////////////////////
 		public static ConstNode constValue(Type ty)
 		{
-			ConstType c = ty.constType();
-			if(c is null) return null;
-			ty = c.valueType;
-			if(ty == Type.int_type) return new IntConstNode(c.intValue);
-			if(ty == Type.float_type) return new FloatConstNode(c.floatValue);
-			return new StringConstNode(c.stringValue);
+			if(ty is ConstType c)
+			{
+				ty = c.valueType;
+				if(ty == Type.int_type) return new IntConstNode(c.intValue);
+				if(ty == Type.float_type) return new FloatConstNode(c.floatValue);
+				return new StringConstNode(c.stringValue);
+			}
+			return null;
 		}
 
 		///////////////////////////////////////////////////////
@@ -151,7 +154,7 @@ namespace Blitz3D.Parsing
 			if(tag.Length>0)
 			{
 				t = e.findType(tag);
-				if(t is null) ex("Type \"" + tag + "\" not found");
+				if(t is null) throw ex("Type \"" + tag + "\" not found");
 			}
 			else t = null;
 			return t;
@@ -169,7 +172,7 @@ namespace Blitz3D.Parsing
 			{
 				Decl d = e.decls.decls[k];
 				if(d.kind != DECL.LOCAL) continue;
-				if(d.type.vectorType()!=null) continue;
+				if(d.type is VectorType) continue;
 				if(t is null) t = new TNode(IR.CONST, null, null, 0);
 				TNode p = new TNode(IR.LOCAL, null, null, d.offset);
 				p = new TNode(IR.MEM, p, null);
@@ -180,8 +183,7 @@ namespace Blitz3D.Parsing
 			{
 				Decl d = e.decls.decls[k];
 				if(d.kind == DECL.PARAM) continue;
-				VectorType v = d.type.vectorType();
-				if(v is null) continue;
+				if(!(d.type is VectorType v)) continue;
 				TNode p = call("__bbVecAlloc", global(v.label));
 				TNode m = d.kind == DECL.GLOBAL ? global("_v" + d.name) : local(d.offset);
 				p = move(p, mem(m));
@@ -211,7 +213,7 @@ namespace Blitz3D.Parsing
 						p2 = null;
 					}
 				}
-				else if(type.structType()!=null)
+				else if(type is StructType)
 				{
 					if(d.kind == DECL.LOCAL)
 					{
@@ -222,8 +224,7 @@ namespace Blitz3D.Parsing
 				}
 				else
 				{
-					VectorType v = type.vectorType();
-					if(v!=null)
+					if(type is VectorType v)
 					{
 						if(d.kind == DECL.LOCAL)
 						{

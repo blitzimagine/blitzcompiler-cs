@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Blitz3D.Compiling;
 
-namespace Blitz3D.Parsing
+namespace Blitz3D.Parsing.Nodes
 {
 	//////////////////////////////////
 	// Cast an expression to a type //
@@ -21,7 +21,7 @@ namespace Blitz3D.Parsing
 		{
 			if(!sem_type.canCastTo(ty))
 			{
-				ex("Illegal type conversion");
+				throw ex("Illegal type conversion");
 			}
 
 			ExprNode cast = new CastNode(this, ty);
@@ -31,8 +31,6 @@ namespace Blitz3D.Parsing
 
 		public abstract ExprNode Semant(Environ e);
 		public abstract TNode Translate(Codegen g);
-
-		public virtual ConstNode constNode() => null;
 	}
 
 	/////////////////////////////
@@ -90,7 +88,7 @@ namespace Blitz3D.Parsing
 		}
 		public void castTo(DeclSeq decls, Environ e, bool userlib)
 		{
-			if(exprs.Count > decls.Count) ex("Too many parameters");
+			if(exprs.Count > decls.Count) throw ex("Too many parameters");
 			for(int k = 0; k < decls.Count; ++k)
 			{
 				Decl d = decls.decls[k];
@@ -106,7 +104,7 @@ namespace Blitz3D.Parsing
 							}
 							else
 							{
-								ex("Illegal type conversion");
+								throw ex("Illegal type conversion");
 							}
 						}
 						continue;
@@ -116,7 +114,7 @@ namespace Blitz3D.Parsing
 				}
 				else
 				{
-					if(d.defType is null) ex("Not enough parameters");
+					if(d.defType is null) throw ex("Not enough parameters");
 					ExprNode expr = constValue(d.defType);
 					if(k < exprs.Count) exprs[k] = expr;
 					else exprs.Add(expr);
@@ -159,7 +157,7 @@ namespace Blitz3D.Parsing
 				expr = expr.Semant(e);
 			}
 
-			if(expr.constNode() is ConstNode c)
+			if(expr is ConstNode c)
 			{
 				ExprNode e2;
 				if(type == Type.int_type)
@@ -251,9 +249,9 @@ namespace Blitz3D.Parsing
 		{
 			Type t = e.findType(tag);
 			sem_decl = e.findFunc(ident);
-			if(sem_decl is null || (sem_decl.kind & DECL.FUNC)==0) ex("Function '" + ident + "' not found");
+			if(sem_decl is null || (sem_decl.kind & DECL.FUNC)==0) throw ex("Function '" + ident + "' not found");
 			FuncType f = sem_decl.type.funcType();
-			if(t!=null && f.returnType != t) ex("incorrect function return type");
+			if(t!=null && f.returnType != t) throw ex("incorrect function return type");
 			exprs.semant(e);
 			exprs.castTo(f.@params, e, f.cfunc);
 			sem_type = f.returnType;
@@ -330,7 +328,6 @@ namespace Blitz3D.Parsing
 	public abstract class ConstNode:ExprNode
 	{
 		public override ExprNode Semant(Environ e) => this;
-		public override ConstNode constNode() => this;
 
 		public abstract int intValue();
 		public abstract float floatValue();
@@ -376,11 +373,11 @@ namespace Blitz3D.Parsing
 		}
 		public override TNode Translate(Codegen g)
 		{
-			return new TNode(IR.CONST, null, null, BitConverter.SingleToInt32Bits(value));// *(int*)&value
+			return new TNode(IR.CONST, null, null, BitConverter.SingleToInt32Bits(value));
 		}
 		public override int intValue() => (int)MathF.Round(value);
 		public override float floatValue() => value;
-		public override string stringValue() => /*ftoa*/(value).ToString();
+		public override string stringValue() => value.ToString();
 
 		public override IEnumerable<string> WriteData()
 		{
@@ -393,7 +390,7 @@ namespace Blitz3D.Parsing
 	/////////////////////
 	public class StringConstNode:ConstNode
 	{
-		public string value;
+		private readonly string value;
 		public StringConstNode(string s)
 		{
 			value = s;
@@ -405,8 +402,8 @@ namespace Blitz3D.Parsing
 			g.s_data(value, lab);
 			return call("__bbStrConst", global(lab));
 		}
-		public override int intValue() => /*atoi*/int.Parse(value);
-		public override float floatValue() => /*atof*/float.Parse(value);
+		public override int intValue() => int.Parse(value);
+		public override float floatValue() => float.Parse(value);
 		public override string stringValue() => value;
 
 		public override IEnumerable<string> WriteData()
@@ -432,8 +429,8 @@ namespace Blitz3D.Parsing
 		{
 			expr = expr.Semant(e);
 			sem_type = expr.sem_type;
-			if(sem_type != Type.int_type && sem_type != Type.float_type) ex("Illegal operator for type");
-			if(expr.constNode() is ConstNode c)
+			if(sem_type != Type.int_type && sem_type != Type.float_type) throw ex("Illegal operator for type");
+			if(expr is ConstNode c)
 			{
 				ExprNode e2 = null;
 				if(sem_type == Type.int_type)
@@ -542,33 +539,18 @@ namespace Blitz3D.Parsing
 			lhs = lhs.castTo(Type.int_type, e);
 			rhs = rhs.Semant(e);
 			rhs = rhs.castTo(Type.int_type, e);
-			ConstNode lc = lhs.constNode(), rc = rhs.constNode();
-			if(lc!=null && rc!=null)
+			if(lhs is ConstNode lc && rhs is ConstNode rc)
 			{
-				ExprNode expr = null;
-				switch(op)
+				return op switch
 				{
-					case Keyword.AND:
-						expr = new IntConstNode(lc.intValue() & rc.intValue());
-						break;
-					case Keyword.OR:
-						expr = new IntConstNode(lc.intValue() | rc.intValue());
-						break;
-					case Keyword.XOR:
-						expr = new IntConstNode(lc.intValue() ^ rc.intValue());
-						break;
-					case Keyword.SHL:
-						expr = new IntConstNode(lc.intValue() << rc.intValue());
-						break;
-					case Keyword.SHR:
-						expr = new IntConstNode((int)((uint)lc.intValue() >> rc.intValue()));
-						break;
-					case Keyword.SAR:
-						expr = new IntConstNode(lc.intValue() >> rc.intValue());
-						break;
-				}
-				//delete this;
-				return expr;
+					Keyword.AND => new IntConstNode(lc.intValue() & rc.intValue()),
+					Keyword.OR => new IntConstNode(lc.intValue() | rc.intValue()),
+					Keyword.XOR => new IntConstNode(lc.intValue() ^ rc.intValue()),
+					Keyword.SHL => new IntConstNode(lc.intValue() << rc.intValue()),
+					Keyword.SHR => new IntConstNode((int)((uint)lc.intValue() >> rc.intValue())),
+					Keyword.SAR => new IntConstNode(lc.intValue() >> rc.intValue()),
+					_ => null,
+				};
 			}
 			sem_type = Type.int_type;
 			return this;
@@ -638,12 +620,12 @@ namespace Blitz3D.Parsing
 			rhs = rhs.Semant(e);
 			if(lhs.sem_type.structType()!=null || rhs.sem_type.structType()!=null)
 			{
-				ex("Arithmetic operator cannot be applied to custom type objects");
+				throw ex("Arithmetic operator cannot be applied to custom type objects");
 			}
 			if(lhs.sem_type == Type.string_type || rhs.sem_type == Type.string_type)
 			{
 				//one side is a string - only + operator...
-				if(op != Keyword.POSITIVE) ex("Operator cannot be applied to strings");
+				if(op != Keyword.POSITIVE) throw ex("Operator cannot be applied to strings");
 				sem_type = Type.string_type;
 			}
 			else if(op == Keyword.POW || lhs.sem_type == Type.float_type || rhs.sem_type == Type.float_type)
@@ -658,68 +640,69 @@ namespace Blitz3D.Parsing
 			}
 			lhs = lhs.castTo(sem_type, e);
 			rhs = rhs.castTo(sem_type, e);
-			ConstNode lc = lhs.constNode(), rc = rhs.constNode();
-			if(rc!=null && (op == Keyword.DIV || op == Keyword.MOD))
+			if(rhs is ConstNode rc)
 			{
-				if((sem_type == Type.int_type && rc.intValue()==0) || (sem_type == Type.float_type && rc.floatValue()==0.0))
+				if(op == Keyword.DIV || op == Keyword.MOD)
 				{
-					ex("Division by zero");
-				}
-			}
-			if(lc!=null && rc!=null)
-			{
-				ExprNode expr = null;
-				if(sem_type == Type.string_type)
-				{
-					expr = new StringConstNode(lc.stringValue() + rc.stringValue());
-				}
-				else if(sem_type == Type.int_type)
-				{
-					switch(op)
+					if((sem_type == Type.int_type && rc.intValue()==0) || (sem_type == Type.float_type && rc.floatValue()==0.0))
 					{
-						case Keyword.ADD:
-							expr = new IntConstNode(lc.intValue() + rc.intValue());
-							break;
-						case Keyword.SUB:
-							expr = new IntConstNode(lc.intValue() - rc.intValue());
-							break;
-						case Keyword.MUL:
-							expr = new IntConstNode(lc.intValue() * rc.intValue());
-							break;
-						case Keyword.DIV:
-							expr = new IntConstNode(lc.intValue() / rc.intValue());
-							break;
-						case Keyword.MOD:
-							expr = new IntConstNode(lc.intValue() % rc.intValue());
-							break;
+						throw ex("Division by zero");
 					}
 				}
-				else
+				if(lhs is ConstNode lc)
 				{
-					switch(op)
+					ExprNode expr = null;
+					if(sem_type == Type.string_type)
 					{
-						case Keyword.ADD:
-							expr = new FloatConstNode(lc.floatValue() + rc.floatValue());
-							break;
-						case Keyword.SUB:
-							expr = new FloatConstNode(lc.floatValue() - rc.floatValue());
-							break;
-						case Keyword.MUL:
-							expr = new FloatConstNode(lc.floatValue() * rc.floatValue());
-							break;
-						case Keyword.DIV:
-							expr = new FloatConstNode(lc.floatValue() / rc.floatValue());
-							break;
-						case Keyword.MOD:
-							expr = new FloatConstNode(lc.floatValue() % rc.floatValue());
-							break;
-						case Keyword.POW:
-							expr = new FloatConstNode(MathF.Pow(lc.floatValue(), rc.floatValue()));
-							break;
+						expr = new StringConstNode(lc.stringValue() + rc.stringValue());
 					}
+					else if(sem_type == Type.int_type)
+					{
+						switch(op)
+						{
+							case Keyword.ADD:
+								expr = new IntConstNode(lc.intValue() + rc.intValue());
+								break;
+							case Keyword.SUB:
+								expr = new IntConstNode(lc.intValue() - rc.intValue());
+								break;
+							case Keyword.MUL:
+								expr = new IntConstNode(lc.intValue() * rc.intValue());
+								break;
+							case Keyword.DIV:
+								expr = new IntConstNode(lc.intValue() / rc.intValue());
+								break;
+							case Keyword.MOD:
+								expr = new IntConstNode(lc.intValue() % rc.intValue());
+								break;
+						}
+					}
+					else
+					{
+						switch(op)
+						{
+							case Keyword.ADD:
+								expr = new FloatConstNode(lc.floatValue() + rc.floatValue());
+								break;
+							case Keyword.SUB:
+								expr = new FloatConstNode(lc.floatValue() - rc.floatValue());
+								break;
+							case Keyword.MUL:
+								expr = new FloatConstNode(lc.floatValue() * rc.floatValue());
+								break;
+							case Keyword.DIV:
+								expr = new FloatConstNode(lc.floatValue() / rc.floatValue());
+								break;
+							case Keyword.MOD:
+								expr = new FloatConstNode(lc.floatValue() % rc.floatValue());
+								break;
+							case Keyword.POW:
+								expr = new FloatConstNode(MathF.Pow(lc.floatValue(), rc.floatValue()));
+								break;
+						}
+					}
+					return expr;
 				}
-				//delete this;
-				return expr;
 			}
 			return this;
 		}
@@ -811,7 +794,7 @@ namespace Blitz3D.Parsing
 			rhs = rhs.Semant(e);
 			if(lhs.sem_type.structType()!=null || rhs.sem_type.structType()!=null)
 			{
-				if(op != Keyword.EQ && op != Keyword.NE) ex("Illegal operator for custom type objects");
+				if(op != Keyword.EQ && op != Keyword.NE) throw ex("Illegal operator for custom type objects");
 				opType = lhs.sem_type != Type.null_type ? lhs.sem_type : rhs.sem_type;
 			}
 			else if(lhs.sem_type == Type.string_type || rhs.sem_type == Type.string_type)
@@ -829,7 +812,8 @@ namespace Blitz3D.Parsing
 			sem_type = Type.int_type;
 			lhs = lhs.castTo(opType, e);
 			rhs = rhs.castTo(opType, e);
-			ConstNode lc = lhs.constNode(), rc = rhs.constNode();
+			ConstNode lc = lhs as ConstNode;
+			ConstNode rc = rhs as ConstNode;
 			if(lc!=null && rc!=null)
 			{
 				ExprNode expr = null;
@@ -945,8 +929,8 @@ namespace Blitz3D.Parsing
 		public override ExprNode Semant(Environ e)
 		{
 			sem_type = e.findType(ident);
-			if(sem_type is null) ex("custom type name not found");
-			if(sem_type.structType() == null) ex("type is not a custom type");
+			if(sem_type is null) throw ex("custom type name not found");
+			if(sem_type.structType() == null) throw ex("type is not a custom type");
 			return this;
 		}
 		public override TNode Translate(Codegen g)
@@ -970,7 +954,7 @@ namespace Blitz3D.Parsing
 		public override ExprNode Semant(Environ e)
 		{
 			sem_type = e.findType(ident);
-			if(sem_type is null) ex("custom type name name not found");
+			if(sem_type is null) throw ex("custom type name name not found");
 			return this;
 		}
 		public override TNode Translate(Codegen g)
@@ -997,7 +981,7 @@ namespace Blitz3D.Parsing
 		public override ExprNode Semant(Environ e)
 		{
 			sem_type = e.findType(ident);
-			if(sem_type is null) ex("custom type name not found");
+			if(sem_type is null) throw ex("custom type name not found");
 			return this;
 		}
 		public override TNode Translate(Codegen g)
@@ -1022,8 +1006,8 @@ namespace Blitz3D.Parsing
 		public override ExprNode Semant(Environ e)
 		{
 			expr = expr.Semant(e);
-			if(expr.sem_type == Type.null_type) ex("'After' cannot be used on 'Null'");
-			if(expr.sem_type.structType() == null) ex("'After' must be used with a custom type object");
+			if(expr.sem_type == Type.null_type) throw ex("'After' cannot be used on 'Null'");
+			if(expr.sem_type.structType() == null) throw ex("'After' must be used with a custom type object");
 			sem_type = expr.sem_type;
 			return this;
 		}
@@ -1050,8 +1034,8 @@ namespace Blitz3D.Parsing
 		public override ExprNode Semant(Environ e)
 		{
 			expr = expr.Semant(e);
-			if(expr.sem_type == Type.null_type) ex("'Before' cannot be used with 'Null'");
-			if(expr.sem_type.structType() == null) ex("'Before' must be used with a custom type object");
+			if(expr.sem_type == Type.null_type) throw ex("'Before' cannot be used with 'Null'");
+			if(expr.sem_type.structType() == null) throw ex("'Before' must be used with a custom type object");
 			sem_type = expr.sem_type;
 			return this;
 		}
@@ -1106,8 +1090,8 @@ namespace Blitz3D.Parsing
 			expr = expr.Semant(e);
 			expr = expr.castTo(Type.int_type, e);
 			sem_type = e.findType(type_ident);
-			if(sem_type is null) ex("custom type name not found");
-			if(sem_type.structType() is null) ex("type is not a custom type");
+			if(sem_type is null) throw ex("custom type name not found");
+			if(sem_type.structType() is null) throw ex("type is not a custom type");
 			return this;
 		}
 		public override TNode Translate(Codegen g)
@@ -1134,7 +1118,7 @@ namespace Blitz3D.Parsing
 		public override ExprNode Semant(Environ e)
 		{
 			expr = expr.Semant(e);
-			if(expr.sem_type.structType() is null) ex("'ObjectHandle' must be used with an object");
+			if(expr.sem_type.structType() is null) throw ex("'ObjectHandle' must be used with an object");
 			sem_type = Type.int_type;
 			return this;
 		}

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Blitz3D Converter CS": {
+      "commandName": "Project",
+      "commandLineArgs": "openwa/player.bb"
+    }
+  }
+}

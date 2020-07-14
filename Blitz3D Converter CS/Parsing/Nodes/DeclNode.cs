@@ -21,7 +21,6 @@ namespace Blitz3D.Parsing.Nodes
 	public class DeclSeqNode:Node
 	{
 		public readonly List<DeclNode> decls = new List<DeclNode>();
-		public DeclSeqNode() { }
 
 		public void Proto(DeclSeq d, Environ e)
 		{
@@ -33,8 +32,14 @@ namespace Blitz3D.Parsing.Nodes
 				}
 				catch(Ex x)
 				{
-					if(x.pos is null) x.pos = decls[k].pos;
-					if(x.file.Length==0) x.file = decls[k].file;
+					if(x.pos is null)
+					{
+						x.pos = decls[k].pos;
+					}
+					if(x.file is null)
+					{
+						x.file = decls[k].file;
+					}
 					throw;
 				}
 			}
@@ -49,8 +54,14 @@ namespace Blitz3D.Parsing.Nodes
 				}
 				catch(Ex x)
 				{
-					if(x.pos is null) x.pos = decls[k].pos;
-					if(x.file.Length==0) x.file = decls[k].file;
+					if(x.pos is null)
+					{
+						x.pos = decls[k].pos;
+					}
+					if(x.file is null)
+					{
+						x.file = decls[k].file;
+					}
 					throw;
 				}
 			}
@@ -94,47 +105,60 @@ namespace Blitz3D.Parsing.Nodes
 			kind = k;
 			constant = c;
 			expr = e;
-			sem_var = null;
 		}
 
 		public override void Proto(DeclSeq d, Environ e)
 		{
-			Type ty = tagType(tag, e);
-			if(ty is null) ty = Type.Int;
+			Type ty = tagType(tag, e) ?? Type.Int;
 			type = ty;
-			ConstType defType = null;
+			//ConstType defType = null;
 
 			if(expr!=null)
 			{
-				expr = expr.Semant(e);
+				expr.Semant(e);
 				expr = expr.CastTo(ty, e);
-				if(constant || (kind & DECL.PARAM)!=0)
-				{
-					if(!(expr is ConstNode c))
-					{
-						throw ex("Expression must be constant");
-					}
-					if(ty == Type.Int) ty = new ConstType(c.intValue());
-
-					else if(ty == Type.Float) ty = new ConstType(c.floatValue());
-
-					else ty = new ConstType(c.stringValue());
-					e.types.Add(ty);
-					expr = null;
-				}
-				if((kind & DECL.PARAM)!=0)
-				{
-					defType = (ConstType)ty;
-					ty = defType.valueType;
-				}
+				//if(constant || (kind & DECL.PARAM)!=0)
+				//{
+				//	if(!(expr is ConstNode c))
+				//	{
+				//		throw new Ex("Expression must be constant");
+				//	}
+				//	if(ty == Type.Int)
+				//	{
+				//		ty = new ConstType(c.intValue());
+				//	}
+				//	else if(ty == Type.Float)
+				//	{
+				//		ty = new ConstType(c.floatValue());
+				//	}
+				//	else
+				//	{
+				//		ty = new ConstType(c.stringValue());
+				//	}
+				//	e.types.Add(ty);
+				//	expr = null;
+				//}
+				//if((kind & DECL.PARAM)!=0)
+				//{
+				//	defType = (ConstType)ty;
+				//	ty = defType.valueType;
+				//}
 			}
-			else if(constant) throw ex("Constants must be initialized");
+			else if(constant)
+			{
+				throw new Ex("Constants must be initialized");
+			}
 
-			Decl decl = d.insertDecl(ident, ty, kind, defType);
-			if(decl is null) throw ex("Duplicate variable name");
-			if(expr!=null) sem_var = new DeclVarNode(decl);
+			Decl decl = d.insertDecl(ident, ty, kind, expr);
+			if(decl is null)
+			{
+				throw new Ex("Duplicate variable name");
+			}
+			if(expr!=null)
+			{
+				sem_var = new DeclVarNode(decl);
+			}
 		}
-		public override void Semant(Environ e) { }
 
 		public override IEnumerable<string> WriteData()
 		{
@@ -193,15 +217,14 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override void Proto(DeclSeq d, Environ e)
 		{
-			Type t = tagType(tag, e);
-			if(t is null) t = Type.Int;
+			Type t = tagType(tag, e) ?? Type.Int;
 			DeclSeq decls = new DeclSeq();
 			@params.Proto(decls, e);
 			sem_type = new FuncType(t, decls, false, false);
 			if(d.insertDecl(ident, sem_type, DECL.FUNC) is null)
 			{
 				sem_type = null;
-				throw ex("duplicate identifier");
+				throw new Ex("duplicate identifier");
 			}
 			e.types.Add(sem_type);
 		}
@@ -214,7 +237,7 @@ namespace Blitz3D.Parsing.Nodes
 			for(k = 0; k < sem_type.@params.Count; ++k)
 			{
 				Decl d = sem_type.@params.decls[k];
-				if(decls.insertDecl(d.name, d.type, d.kind) is null) throw ex("duplicate identifier");
+				if(decls.insertDecl(d.name, d.type, d.kind) is null) throw new Ex("duplicate identifier");
 			}
 
 			stmts.Semant(sem_env);
@@ -238,7 +261,7 @@ namespace Blitz3D.Parsing.Nodes
 		//	{
 		//		if(sem_env.labels[k].def is null)
 		//		{
-		//			throw ex("Undefined label", sem_env.labels[k].@ref);
+		//			throw new Ex("Undefined label", sem_env.labels[k].@ref);
 		//		}
 		//	}
 
@@ -249,7 +272,7 @@ namespace Blitz3D.Parsing.Nodes
 		//}
 		public override IEnumerable<string> WriteData()
 		{
-			Type ret = sem_type.returnType;//Type.FromTag(tag);
+			Type ret = sem_type.returnType;
 			string paramStr = string.Join(", ",@params.WriteData());
 			yield return $"public static {ret.Name} {ident}({paramStr})";
 			yield return "{";
@@ -281,14 +304,13 @@ namespace Blitz3D.Parsing.Nodes
 			if(d.insertDecl(ident, sem_type, DECL.STRUCT) is null)
 			{
 				sem_type = null;
-				throw ex("Duplicate identifier");
+				throw new Ex("Duplicate identifier");
 			}
 			e.types.Add(sem_type);
 		}
 		public override void Semant(Environ e)
 		{
 			fields.Proto(sem_type.fields, e);
-			for(int k = 0; k < sem_type.fields.Count; ++k) sem_type.fields.decls[k].offset = k * 4;
 		}
 		//public override void Translate(Codegen g)
 		//{
@@ -359,14 +381,13 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override void Proto(DeclSeq d, Environ e)
 		{
-			expr = expr.Semant(e);
-			if(!(expr is ConstNode))
+			expr.Semant(e);
+
+			if(expr.sem_type == Type.String)
 			{
-				throw ex("Data expression must be constant");
+				str_label = genLabel();
 			}
-			if(expr.sem_type == Type.String) str_label = genLabel();
 		}
-		public override void Semant(Environ e) { }
 
 		public override IEnumerable<string> WriteData()
 		{
@@ -392,10 +413,10 @@ namespace Blitz3D.Parsing.Nodes
 	////////////////////////
 	public class VectorDeclNode:DeclNode
 	{
-		public string ident, tag;
-		public ExprSeqNode exprs;
-		public DECL kind;
-		public VectorType sem_type;
+		private readonly string ident, tag;
+		private readonly ExprSeqNode exprs;
+		private readonly DECL kind;
+		private VectorType sem_type;
 		public VectorDeclNode(string i, string t, ExprSeqNode e, DECL k)
 		{
 			ident = i;
@@ -406,27 +427,13 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override void Proto(DeclSeq d, Environ env)
 		{
-			Type ty = tagType(tag, env);
-			if(ty is null) ty = Type.Int;
+			Type ty = tagType(tag, env) ?? Type.Int;
 
-			int[] sizes = new int[exprs.Count];
-			for(int k = 0; k < exprs.Count; ++k)
-			{
-				ExprNode e = exprs.exprs[k] = exprs.exprs[k].Semant(env);
-				if(!(e is ConstNode c))
-				{
-					throw ex("Blitz array sizes must be constant");
-				}
-				int n = c.intValue();
-				if(n < 0) throw ex("Blitz array sizes must not be negative");
-				sizes[k] = n + 1;
-			}
-			string label = genLabel();
-			sem_type = new VectorType(label, ty, sizes);
+			sem_type = new VectorType(ty, exprs.Count);
 			if(d.insertDecl(ident, sem_type, kind) is null)
 			{
 				sem_type = null;
-				throw ex("Duplicate identifier");
+				throw new Ex("Duplicate identifier");
 			}
 			env.types.Add(sem_type);
 		}
@@ -455,7 +462,8 @@ namespace Blitz3D.Parsing.Nodes
 		public override IEnumerable<string> WriteData()
 		{
 			string typeName = sem_type.Name;
-			yield return $"{GetAccessors(kind)}{typeName} {ident} = new {typeName}(new {typeName}[]{{{exprs.JoinedWriteData()}}});";
+			string elementType = sem_type.elementType.Name;
+			yield return $"{GetAccessors(kind,true)}{typeName} {ident} = new {elementType}[{exprs.JoinedWriteData()}];";
 		}
 	}
 }

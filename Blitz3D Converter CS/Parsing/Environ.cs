@@ -6,17 +6,18 @@ namespace Blitz3D.Parsing
 	///<summary>An environ represent a stack frame block.</summary>
 	public class Environ
 	{
-		public int level;
-		public DeclSeq decls = new DeclSeq();
-		public DeclSeq funcDecls = new DeclSeq();
-		public DeclSeq typeDecls = new DeclSeq();
+		public readonly int level;
+		public readonly DeclSeq decls = new DeclSeq();
+		public readonly DeclSeq funcDecls = new DeclSeq();
+		public readonly DeclSeq typeDecls = new DeclSeq();
 
-		public List<Type> types = new List<Type>();
+		public readonly List<Type> types = new List<Type>();
 
-		public List<Label> labels = new List<Label>();
-		public Environ globals;
-		public Type returnType;
-		public string funcLabel, breakLabel;
+		private readonly List<Label> labels = new List<Label>();
+		
+		public readonly Environ globals;
+		public readonly Type returnType;
+		public readonly string funcLabel;
 
 		public Environ(string f, Type r, int l, Environ gs)
 		{
@@ -69,29 +70,25 @@ namespace Blitz3D.Parsing
 			}
 			return null;
 		}
-		public Label findLabel(string s)
+
+
+		//TODO: Make this TryAddLabel?
+		public Label findLabel(string name)
 		{
 			for(int k = 0; k < labels.Count; ++k)
 			{
-				if(labels[k].name == s)
+				if(labels[k].name == name)
 				{
 					return labels[k];
 				}
 			}
 			return null;
 		}
-		public Label insertLabel(string s, Point? def, Point? src, int sz)
+		public Label insertLabel(string name, Point? def, Point? src)
 		{
-			Label l = new Label(s, def, src, sz);
+			Label l = new Label(name, def, src);
 			labels.Add(l);
 			return l;
-		}
-
-		public string setBreak(string s)
-		{
-			string t = breakLabel;
-			breakLabel = s;
-			return t;
 		}
 	}
 }

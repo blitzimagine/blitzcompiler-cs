@@ -27,7 +27,7 @@ namespace Blitz3D.Parsing.Nodes
 		public virtual bool isObjParam() => false;
 
 		//addr of var
-		public abstract void Semant(Environ e);
+		public virtual void Semant(Environ e){}
 
 		public abstract string JoinedWriteData();
 	}
@@ -47,8 +47,6 @@ namespace Blitz3D.Parsing.Nodes
 				sem_type = d.type;
 			}
 		}
-
-		public override void Semant(Environ e) { }
 
 		//public override TNode Translate(Codegen g)
 		//{
@@ -77,7 +75,8 @@ namespace Blitz3D.Parsing.Nodes
 	///////////////
 	public class IdentVarNode:DeclVarNode
 	{
-		public readonly string ident, tag;
+		private readonly string ident;
+		private readonly string tag;
 		public IdentVarNode(string i, string t)
 		{
 			ident = i;
@@ -86,20 +85,19 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			if(sem_decl!=null) return;
-			Type t = tagType(tag, e);
-			if(t is null) t = Type.Int;
+			Type t = tagType(tag, e) ?? Type.Int;
 			if((sem_decl = e.findDecl(ident))!=null)
 			{
 				if((sem_decl.kind & (DECL.GLOBAL | DECL.LOCAL | DECL.PARAM))==0)
 				{
-					throw ex("Identifier '" + sem_decl.name + "' may not be used like this");
+					throw new Ex("Identifier '" + sem_decl.name + "' may not be used like this");
 				}
 				Type ty = sem_decl.type;
 				if(ty is ConstType constType)
 				{
 					ty = constType.valueType;
 				}
-				if(tag.Length>0 && t != ty) throw ex("Variable type mismatch");
+				if(tag.Length>0 && t != ty) throw new Ex("Variable type mismatch");
 			}
 			else
 			{
@@ -117,9 +115,11 @@ namespace Blitz3D.Parsing.Nodes
 	/////////////////
 	public class ArrayVarNode:VarNode
 	{
-		public readonly string ident, tag;
-		public readonly ExprSeqNode exprs;
-		public Decl sem_decl;
+		private readonly string ident;
+		private readonly string tag;
+		private readonly ExprSeqNode exprs;
+		private Decl sem_decl;
+
 		public ArrayVarNode(string i, string t, ExprSeqNode e)
 		{
 			ident = i;
@@ -129,22 +129,22 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override void Semant(Environ e)
 		{
-			exprs.semant(e);
+			exprs.Semant(e);
 			exprs.CastTo(Type.Int, e);
 			Type t = e.findType(tag);
 			sem_decl = e.findDecl(ident);
 			if(sem_decl is null || (sem_decl.kind & DECL.ARRAY)==0)
 			{
-				throw ex("Array not found");
+				throw new Ex("Array not found");
 			}
 			ArrayType a = (ArrayType)sem_decl.type;
 			if(t!=null && t != a.elementType)
 			{
-				throw ex("array type mismtach");
+				throw new Ex("array type mismtach");
 			}
 			if(a.dims != exprs.Count)
 			{
-				throw ex("incorrect number of dimensions");
+				throw new Ex("incorrect number of dimensions");
 			}
 			sem_type = a.elementType;
 		}
@@ -169,15 +169,15 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override void Semant(Environ e)
 		{
-			expr = expr.Semant(e);
+			expr.Semant(e);
 			if(!(expr.sem_type is StructType s))
 			{
-				throw ex("Variable must be a Type");
+				throw new Ex("Variable must be a Type");
 			}
 			sem_field = s.fields.findDecl(ident);
 			if(sem_field is null)
 			{
-				throw ex("Type field not found");
+				throw new Ex("Type field not found");
 			}
 			sem_type = sem_field.type;
 		}
@@ -201,27 +201,17 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override void Semant(Environ e)
 		{
-			expr = expr.Semant(e);
+			expr.Semant(e);
 			if(!(expr.sem_type is VectorType vec_type))
 			{
-				throw ex("Variable must be a Blitz array");
+				throw new Ex("Variable must be a Blitz array");
 			}
-			if(vec_type.sizes.Length != exprs.Count)
+			if(vec_type.dimensions != exprs.Count)
 			{
-				throw ex("Incorrect number of subscripts");
+				throw new Ex("Incorrect number of subscripts");
 			}
-			exprs.semant(e);
+			exprs.Semant(e);
 			exprs.CastTo(Type.Int, e);
-			for(int k = 0; k < exprs.Count; ++k)
-			{
-				if(exprs.exprs[k] is ConstNode t)
-				{
-					if(t.intValue() >= vec_type.sizes[k])
-					{
-						throw ex("Blitz array subscript out of range");
-					}
-				}
-			}
 			sem_type = vec_type.elementType;
 		}
 		//public override TNode Translate(Codegen g)

@@ -1,17 +1,20 @@
 using System.Collections.Generic;
+using Blitz3D.Parsing.Nodes;
 
 namespace Blitz3D.Parsing
 {
 	public enum DECL
 	{
-		FUNC=1,
-		ARRAY=2,
-		STRUCT=4,
 		//NOT vars
-		GLOBAL=8,
-		LOCAL=16,
-		PARAM=32,
-		FIELD=64 //ARE vars
+		FUNC	= 1<<0,
+		ARRAY	= 1<<1,
+		STRUCT	= 1<<2,
+		
+		//ARE vars
+		GLOBAL	= 1<<3,
+		LOCAL	= 1<<4,
+		PARAM	= 1<<5,
+		FIELD	= 1<<6,
 	}
 
 	public class Decl
@@ -19,19 +22,13 @@ namespace Blitz3D.Parsing
 		public readonly string name;
 		public readonly Type type; //type
 		public readonly DECL kind;
-		public int offset;
-		public readonly ConstType defType; //default value
-		public Decl(string s, Type t, DECL k, ConstType d = null)
+		public readonly ExprNode defType; //ConstType //default value
+		public Decl(string s, Type t, DECL k, ExprNode d = null)
 		{
 			name = s;
 			type = t;
 			kind = k;
 			defType = d;
-		}
-
-		public virtual void getName(ref string buff)
-		{
-			buff = name;
 		}
 	}
 
@@ -51,13 +48,11 @@ namespace Blitz3D.Parsing
 			return null;
 		}
 
-		public Decl insertDecl(string s, Type t, DECL kind, ConstType d = null)
+		public Decl insertDecl(string name, Type type, DECL kind, ExprNode defType = null)
 		{
-			if(findDecl(s)!=null)
-			{
-				return null;
-			}
-			Decl n = new Decl(s, t, kind, d);
+			if(findDecl(name)!=null){return null;}
+
+			Decl n = new Decl(name, type, kind, defType);
 			decls.Add(n);
 			return n;
 		}

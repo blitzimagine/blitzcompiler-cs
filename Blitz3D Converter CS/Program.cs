@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using Blitz3D.Parsing;
 using Blitz3D.Parsing.Nodes;
@@ -76,19 +75,13 @@ namespace Blitz3D
 				{
 					Console.Error.WriteLine($"Failed to write output to '{fileOut}'.");
 					Console.Error.WriteLine(e);
+					return;
 				}
-				ConvertInclude(parser);
+				ConvertIncludes(parser);
 			}
 			catch(Ex x)
 			{
-				Console.Write($"\"{x.file}\":");
-				if(x.pos is Point pos)
-				{
-					int row = pos.Y + 1;
-					int col = pos.X + 1;
-					Console.Write($"{row}:{col}:");
-				}
-				Console.WriteLine(x.ex);
+				Console.WriteLine(x.Message);
 			}
 		}
 
@@ -119,7 +112,7 @@ namespace Blitz3D
 			return output.ToString();
 		}
 
-		private static void ConvertInclude(Parser parser)
+		private static void ConvertIncludes(Parser parser)
 		{
 			foreach(var include in parser.included)
 			{

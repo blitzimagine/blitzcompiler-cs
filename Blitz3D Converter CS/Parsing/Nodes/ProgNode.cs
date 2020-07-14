@@ -22,11 +22,11 @@ namespace Blitz3D.Parsing.Nodes
 
 	public class ProgNode:Node
 	{
-		public readonly DeclSeqNode consts;
-		public readonly DeclSeqNode structs;
-		public readonly DeclSeqNode funcs;
-		public readonly DeclSeqNode datas;
-		public readonly StmtSeqNode stmts;
+		private readonly DeclSeqNode consts;
+		private readonly DeclSeqNode structs;
+		private readonly DeclSeqNode funcs;
+		private readonly DeclSeqNode datas;
+		private readonly StmtSeqNode stmts;
 
 		//public Environ sem_env;
 
@@ -64,7 +64,7 @@ namespace Blitz3D.Parsing.Nodes
 
 		public IEnumerable<string> WriteData()
 		{
-			string thisClass = Path.GetFileNameWithoutExtension(stmts.file);
+			string thisClass = Path.GetFileNameWithoutExtension(stmts.file).Replace('-','_');
 			List<string> lines = new List<string>();
 			
 			//int k;
@@ -217,12 +217,17 @@ namespace Blitz3D.Parsing.Nodes
 		}
 	}
 
-	public class IncludeFileNode:Node
+	public class FileNode:Node
 	{
 		private readonly string fileName;
+
+		private readonly DeclSeqNode consts;
+		private readonly DeclSeqNode structs;
+		private readonly DeclSeqNode funcs;
+		private readonly DeclSeqNode datas;
 		public StmtSeqNode stmts;
 
-		public IncludeFileNode(string fileName/*, StmtSeqNode stmts*/)
+		public FileNode(string fileName)
 		{
 			this.fileName = fileName;
 		}
@@ -230,13 +235,10 @@ namespace Blitz3D.Parsing.Nodes
 		public IEnumerable<string> WriteData()
 		{
 			string thisClass = Path.GetFileNameWithoutExtension(fileName).Replace('-','_');
-			List<string> lines = new List<string>();
-
 			List<string> globalVars = new List<string>();
 			List<string> usingFiles = new List<string>();
 
-			lines.Add($"static {thisClass}()");
-			lines.Add("{");
+			List<string> progStmts = new List<string>();
 			foreach(string s in stmts.WriteData())
 			{
 				if(s.StartsWith("using static "))
@@ -249,16 +251,21 @@ namespace Blitz3D.Parsing.Nodes
 				}
 				else
 				{
-					lines.Add(s);
+					progStmts.Add(s);
 				}
 			}
-			lines.Add("}");
-			lines.InsertRange(0, globalVars);
 
-			lines.InsertRange(0,new[]{$"public static class {thisClass}","{"});
+			List<string> lines = new List<string>();
+			lines.AddRange(usingFiles);
+			lines.Add($"public static class {thisClass}");
+			lines.Add("{");
+			lines.AddRange(globalVars);
+			lines.Add($"static {thisClass}()");
+			lines.Add("{");
+			lines.AddRange(progStmts);
+			lines.Add("}");
 			lines.Add("}");
 			
-			lines.InsertRange(0, usingFiles);
 			return lines;
 		}
 	}

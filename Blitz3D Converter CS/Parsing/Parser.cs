@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -17,7 +16,7 @@ namespace Blitz3D.Parsing
 		}
 
 		private string incfile;
-		public readonly Dictionary<string,IncludeFileNode> included = new Dictionary<string,IncludeFileNode>();
+		public readonly Dictionary<string,FileNode> included = new Dictionary<string,FileNode>();
 
 		private Tokenizer toker;
 		private Dictionary<string, DimNode> arrayDecls = new Dictionary<string, DimNode>();
@@ -86,10 +85,12 @@ namespace Blitz3D.Parsing
 							Tokenizer t_toker = toker;
 							toker = i_toker;
 
-							include = new IncludeFileNode(inc);
+							include = new FileNode(inc);
 							included.Add(incfile, include);
-
+							
+							//Assign stmts after adding to dictionary so we know that it already exists.
 							include.stmts = parseStmtSeq(scope);
+
 							toker.AssertCurr(Keyword.EOF, exp, "end-of-file");
 
 							toker = t_toker;
@@ -109,15 +110,25 @@ namespace Blitz3D.Parsing
 							if(toker.Curr == Keyword.ParenOpen)
 							{
 								//ugly lookahead for optional '()' around statement params
-								int nest = 1, k;
-								for(k = 1; ; ++k)
+								int nest = 1;
+								int k;
+								for(k = 1; nest>0; k++)
 								{
 									Keyword c = toker.LookAhead(k);
-									if(isTerm(c)) throw ex("Mismatched brackets");
-									else if(c == Keyword.ParenOpen) ++nest;
-									else if(c == Keyword.ParenClose && (--nest)==0) break;
+									if(isTerm(c))
+									{
+										throw ex("Mismatched brackets");
+									}
+									else if(c == Keyword.ParenOpen)
+									{
+										nest++;
+									}
+									else if(c == Keyword.ParenClose)
+									{
+										nest--;
+									}
 								}
-								if(isTerm(toker.LookAhead(++k)))
+								if(isTerm(toker.LookAhead(k)))
 								{
 									toker.Next();
 									exprs = parseExprSeq();
@@ -128,7 +139,10 @@ namespace Blitz3D.Parsing
 									exprs = parseExprSeq();
 								}
 							}
-							else exprs = parseExprSeq();
+							else
+							{
+								exprs = parseExprSeq();
+							}
 							CallNode call = new CallNode(ident, tag, exprs);
 							result = new ExprStmtNode(call);
 						}
@@ -164,7 +178,10 @@ namespace Blitz3D.Parsing
 						ExprNode expr = null;
 						StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
 						Keyword curr = toker.Curr;
-						if(curr != Keyword.UNTIL && curr != Keyword.FOREVER) throw exp("'Until' or 'Forever'");
+						if(curr != Keyword.UNTIL && curr != Keyword.FOREVER)
+						{
+							throw exp("'Until' or 'Forever'");
+						}
 						toker.Next();
 						if(curr == Keyword.UNTIL) expr = parseExpr(false);
 						result = new RepeatNode(stmts2, expr);
@@ -175,7 +192,7 @@ namespace Blitz3D.Parsing
 						toker.Next();
 						ExprNode expr = parseExpr(false);
 						SelectNode selNode = new SelectNode(expr);
-						for(;;)
+						while(!toker.TrySkip(Keyword.ENDSELECT))
 						{
 							toker.SkipWhile(isTerm);
 							if(toker.TrySkip(Keyword.CASE))
@@ -184,18 +201,15 @@ namespace Blitz3D.Parsing
 								if(exprs.Count==0) throw exp("expression sequence");
 								StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
 								selNode.Add(new CaseNode(exprs, stmts2));
-								continue;
 							}
 							else if(toker.TrySkip(Keyword.DEFAULT))
 							{
 								selNode.defStmts = parseStmtSeq(STMTS.BLOCK);
-								continue;
 							}
-							else if(toker.TrySkip(Keyword.ENDSELECT))
+							else
 							{
-								break;
+								throw exp("'Case', 'Default' or 'End Select'");
 							}
-							throw exp("'Case', 'Default' or 'End Select'");
 						}
 						result = selNode;
 					}
@@ -226,7 +240,7 @@ namespace Blitz3D.Parsing
 								toker.Next();
 								step = parseExpr(false);
 							}
-							else step = new IntConstNode(1);
+							else step = new IntConstNode("1");
 							stmts2 = parseStmtSeq(STMTS.BLOCK);
 							toker.AssertSkip(Keyword.NEXT, exp, "'Next'");
 							result = new ForNode(var, from, to, step, stmts2);
@@ -365,7 +379,7 @@ namespace Blitz3D.Parsing
 					{
 						toker.Next();
 						string t = parseIdent();
-						result = new LabelNode(t, datas.Count);
+						result = new LabelNode(t);
 						lastLabel = t;
 					}
 					break;
@@ -457,7 +471,10 @@ namespace Blitz3D.Parsing
 				{
 					toker.Next();
 					ExprSeqNode exprs = parseExprSeq();
-					if(exprs.exprs.Count != 1 || toker.Curr != Keyword.BracketClose) throw exp("']'");
+					if(exprs.exprs.Count != 1 || toker.Curr != Keyword.BracketClose)
+					{
+						throw exp("']'");
+					}
 					toker.Next();
 					ExprNode expr = new VarExprNode(var);
 					var = new VectorVarNode(expr, exprs);
@@ -637,7 +654,7 @@ namespace Blitz3D.Parsing
 			if(toker.TrySkip(Keyword.NOT))
 			{
 				ExprNode expr = parseExpr1(false);
-				return new RelExprNode(Keyword.EQ, expr, new IntConstNode(0));
+				return new RelExprNode(Keyword.EQ, expr, new IntConstNode("0"));
 			}
 			return parseExpr1(opt);
 		}
@@ -768,7 +785,8 @@ namespace Blitz3D.Parsing
 					result = parseUniExpr(false);
 					if(c == Keyword.BITNOT)
 					{
-						result = new BinExprNode(Keyword.XOR, result, new IntConstNode(-1));
+						//TODO: Make this unary again
+						result = new BinExprNode(Keyword.XOR, result, new IntConstNode("-1"));
 					}
 					else
 					{
@@ -812,35 +830,33 @@ namespace Blitz3D.Parsing
 					return new NullNode();
 				case Keyword.INTCONST:
 				{
-					return new IntConstNode(toker.Take(int.Parse));
+					return new IntConstNode(toker.TakeText());
 				}
 				case Keyword.FLOATCONST:
 				{
-					return new FloatConstNode(toker.Take(float.Parse));
+					return new FloatConstNode(toker.TakeText());
 				}
 				case Keyword.STRINGCONST:
 				{
-					//Trim the quotes
-					string t = toker.TakeText();
-					return new StringConstNode(t.Substring(1, t.Length - 2));
+					return new StringConstNode(toker.TakeText());
 				}
 				case Keyword.BINCONST:
 				{
-					return new IntConstNode(Convert.ToInt32(toker.TakeText(),2));
+					return new IntConstNode(toker.TakeText());
 				}
 				case Keyword.HEXCONST:
 				{
-					return new IntConstNode(Convert.ToInt32(toker.TakeText(),16));
+					return new IntConstNode(toker.TakeText());
 				}
 				case Keyword.PI:
 					toker.Next();
-					return new FloatConstNode(MathF.PI /*3.1415926535897932384626433832795f*/);
+					return new FloatConstNode("MathF.PI" /*3.1415926535897932384626433832795f*/);
 				case Keyword.BBTRUE:
 					toker.Next();
-					return new IntConstNode(1);
+					return new IntConstNode("1");
 				case Keyword.BBFALSE:
 					toker.Next();
-					return new IntConstNode(0);
+					return new IntConstNode("0");
 				case Keyword.IDENT:
 					string ident = toker.TakeText();
 					string tag = parseTypeTag();

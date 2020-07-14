@@ -292,20 +292,21 @@ namespace Blitz3D.Parsing
 
 			public readonly int from;
 
-			public Token(Keyword keyword, int from, int to, string line)
+			public Token(Keyword keyword, string text)
 			{
 				Keyword = keyword;
-				Text = line.Substring(from, to - from);;
+				Text = text;
 				if(Keyword == Keyword.IDENT)
 				{
 					Text = Utils.WrapIfCSharpKeyword(Text);
 				}
+			}
 
+			public Token(Keyword keyword, int from, int to, string line):this(keyword,line.Substring(from, to - from))
+			{
 				this.from = from;
 			}
 		}
-
-
 
 		private void Nextline()
 		{
@@ -371,7 +372,7 @@ namespace Blitz3D.Parsing
 					{
 						k++;
 					}
-					curr = new Token(Keyword.BINCONST, from+1, k, line);
+					curr = new Token(Keyword.BINCONST, "0b"+line.Substring(from+1, k-from-1));
 				}
 				else if(c == '$' && IsHexDigit(line[k + 1]))
 				{
@@ -380,7 +381,7 @@ namespace Blitz3D.Parsing
 					{
 						k++;
 					}
-					curr = new Token(Keyword.HEXCONST, from+1, k, line);
+					curr = new Token(Keyword.HEXCONST, "0x"+line.Substring(from+1, k-from-1));
 				}
 				else if(char.IsLetter(c))
 				{

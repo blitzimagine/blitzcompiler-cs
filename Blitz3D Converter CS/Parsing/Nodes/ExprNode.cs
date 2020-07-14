@@ -9,20 +9,24 @@ namespace Blitz3D.Parsing.Nodes
 	//////////////////////////////////
 	public abstract class ExprNode:Node
 	{
+		/// <summary>The resulting type from evaluating the expression</summary>
 		public Type sem_type = null;
+		public bool NeedsSemant = true;
+
+		//public virtual Type Sem_Type => sem_type;
 
 		public ExprNode CastTo(Type ty, Environ e)
 		{
 			if(!sem_type.CanCastTo(ty))
 			{
-				throw ex("Illegal type conversion");
+				throw new Ex("Illegal type conversion");
 			}
-
-			ExprNode cast = new CastNode(this, ty);
-			return cast.Semant(e);
+			ExprNode expr = this;
+			CastNode.CastIfNeeded(ref expr, ty, e);
+			return expr;
 		}
 
-		public abstract ExprNode Semant(Environ e);
+		public virtual void Semant(Environ e){}
 
 		public abstract string JoinedWriteData();
 	}
@@ -38,11 +42,11 @@ namespace Blitz3D.Parsing.Nodes
 
 		public int Count => exprs.Count;
 
-		public void semant(Environ e)
+		public void Semant(Environ e)
 		{
 			for(int k = 0; k < exprs.Count; ++k)
 			{
-				if(exprs[k]!=null) exprs[k] = exprs[k].Semant(e);
+				exprs[k]?.Semant(e);
 			}
 		}
 		//public TNode translate(Codegen g, bool userlib)
@@ -82,7 +86,10 @@ namespace Blitz3D.Parsing.Nodes
 		//}
 		public void CastTo(DeclSeq decls, Environ e, bool userlib)
 		{
-			if(exprs.Count > decls.Count) throw ex("Too many parameters");
+			if(exprs.Count > decls.Count)
+			{
+				throw new Ex("Too many parameters");
+			}
 			for(int k = 0; k < decls.Count; ++k)
 			{
 				Decl d = decls.decls[k];
@@ -98,7 +105,7 @@ namespace Blitz3D.Parsing.Nodes
 							}
 							else
 							{
-								throw ex("Illegal type conversion");
+								throw new Ex("Illegal type conversion");
 							}
 						}
 						continue;
@@ -110,9 +117,9 @@ namespace Blitz3D.Parsing.Nodes
 				{
 					if(d.defType is null)
 					{
-						throw ex("Not enough parameters");
+						throw new Ex("Not enough parameters");
 					}
-					ExprNode expr = constValue(d.defType);
+					ExprNode expr = d.defType;
 					if(k < exprs.Count) exprs[k] = expr;
 					else exprs.Add(expr);
 				}
@@ -144,40 +151,22 @@ namespace Blitz3D.Parsing.Nodes
 			type = ty;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			if(expr.sem_type is null)
+			if(expr.NeedsSemant)
 			{
-				expr = expr.Semant(e);
-			}
-
-			if(expr is ConstNode c)
-			{
-				ExprNode e2;
-				if(type == Type.Int)
-				{
-					e2 = new IntConstNode(c.intValue());
-				}
-				else if(type == Type.Float)
-				{
-					e2 = new FloatConstNode(c.floatValue());
-				}
-				else
-				{
-					e2 = new StringConstNode(c.stringValue());
-				}
-				return e2;
+				expr.Semant(e);
 			}
 
 			sem_type = type;
-			return this;
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData()
 		{
 			Type from = expr.sem_type;
-			Type to = sem_type;
-			if(from == sem_type || from == Type.Null)
+			Type to = type;
+			if(from == type || from == Type.Null)
 			{
 				return expr.JoinedWriteData();
 			}
@@ -196,6 +185,18 @@ namespace Blitz3D.Parsing.Nodes
 			}
 			return $"({to.Name})({expr.JoinedWriteData()})";
 		}
+
+		public static void CastIfNeeded(ref ExprNode expr, Type ty, Environ e)
+		{
+			if(expr.sem_type != ty)
+			{
+				expr = new CastNode(expr, ty);
+				if(e != null)
+				{
+					expr.Semant(e);
+				}
+			}
+		}
 	}
 
 	///////////////////
@@ -203,9 +204,11 @@ namespace Blitz3D.Parsing.Nodes
 	///////////////////
 	public class CallNode:ExprNode
 	{
-		public string ident, tag;
-		public ExprSeqNode exprs;
-		public Decl sem_decl;
+		private readonly string ident;
+		private readonly string tag;
+		private readonly ExprSeqNode exprs;
+		private Decl sem_decl;
+
 		public CallNode(string i, string t, ExprSeqNode e)
 		{
 			ident = i;
@@ -213,23 +216,23 @@ namespace Blitz3D.Parsing.Nodes
 			exprs = e;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			Type t = e.findType(tag);
 			sem_decl = e.findFunc(ident);
 			if(sem_decl is null || (sem_decl.kind & DECL.FUNC)==0)
 			{
-				throw ex("Function '" + ident + "' not found");
+				throw new Ex($"Function '{ident}' not found");
 			}
 			FuncType f = (FuncType)sem_decl.type;
 			if(t!=null && f.returnType != t)
 			{
-				throw ex("incorrect function return type");
+				throw new Ex("incorrect function return type");
 			}
-			exprs.semant(e);
+			exprs.Semant(e);
 			exprs.CastTo(f.@params, e, f.cfunc);
 			sem_type = f.returnType;
-			return this;
+			NeedsSemant = false;
 		}
 		//public override TNode Translate(Codegen g)
 		//{
@@ -272,22 +275,17 @@ namespace Blitz3D.Parsing.Nodes
 	/////////////////////////
 	public class VarExprNode:ExprNode
 	{
-		public VarNode var;
+		private readonly VarNode var;
 		public VarExprNode(VarNode v)
 		{
 			var = v;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			var.Semant(e);
 			sem_type = var.sem_type;
-			if(sem_type is ConstType c)
-			{
-				ExprNode expr = constValue(c);
-				return expr;
-			}
-			return this;
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData() => var.JoinedWriteData();
@@ -295,69 +293,32 @@ namespace Blitz3D.Parsing.Nodes
 
 	public abstract class ConstNode:ExprNode
 	{
-		public override ExprNode Semant(Environ e) => this;
+		private readonly string literal;
+		public ConstNode(string literal, Type type)
+		{
+			this.literal = literal;
+			sem_type = type;
+		}
 
-		public abstract int intValue();
-		public abstract float floatValue();
-		public abstract string stringValue();
+		public override string JoinedWriteData() => literal;
 	}
 
-	//////////////////////
-	// Integer constant //
-	//////////////////////
+	///<summary>Integer constant</summary>
 	public class IntConstNode:ConstNode
 	{
-		public int value;
-		public IntConstNode(int n)
-		{
-			value = n;
-			sem_type = Type.Int;
-		}
-
-		public override int intValue() => value;
-		public override float floatValue() => value;
-
-		public override string stringValue() => value.ToString();
-
-		public override string JoinedWriteData() => value.ToString();
+		public IntConstNode(string literal):base(literal, Type.Int){}
 	}
 
-	////////////////////
-	// Float constant //
-	////////////////////
+	///<summary>Float constant</summary>
 	public class FloatConstNode:ConstNode
 	{
-		public float value;
-		public FloatConstNode(float f)
-		{
-			value = f;
-			sem_type = Type.Float;
-		}
-
-		public override int intValue() => (int)MathF.Round(value);
-		public override float floatValue() => value;
-		public override string stringValue() => value.ToString();
-
-		public override string JoinedWriteData() => value.ToString()+'f';
+		public FloatConstNode(string literal):base(literal+'f', Type.Float){}
 	}
 
-	/////////////////////
-	// String constant //
-	/////////////////////
+	///<summary>String constant</summary>
 	public class StringConstNode:ConstNode
 	{
-		private readonly string value;
-		public StringConstNode(string s)
-		{
-			value = s;
-			sem_type = Type.String;
-		}
-
-		public override int intValue() => int.Parse(value);
-		public override float floatValue() => float.Parse(value);
-		public override string stringValue() => value;
-
-		public override string JoinedWriteData() => '"'+value+'"';
+		public StringConstNode(string literal):base(literal, Type.String){}
 	}
 
 	////////////////////
@@ -373,84 +334,16 @@ namespace Blitz3D.Parsing.Nodes
 			this.expr = expr;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.Semant(e);
+			expr.Semant(e);
 			sem_type = expr.sem_type;
-			if(sem_type != Type.Int && sem_type != Type.Float) throw ex("Illegal operator for type");
-			if(expr is ConstNode c)
-			{
-				ExprNode e2 = null;
-				if(sem_type == Type.Int)
-				{
-					switch(op)
-					{
-						case Keyword.POSITIVE:
-							e2 = new IntConstNode(+c.intValue());
-							break;
-						case Keyword.NEGATIVE:
-							e2 = new IntConstNode(-c.intValue());
-							break;
-						case Keyword.ABS:
-							e2 = new IntConstNode(c.intValue() >= 0 ? c.intValue() : -c.intValue());
-							break;
-						case Keyword.SGN:
-							e2 = new IntConstNode(c.intValue() > 0 ? 1 : (c.intValue() < 0 ? -1 : 0));
-							break;
-					}
-				}
-				else
-				{
-					switch(op)
-					{
-						case Keyword.POSITIVE:
-							e2 = new FloatConstNode(+c.floatValue());
-							break;
-						case Keyword.NEGATIVE:
-							e2 = new FloatConstNode(-c.floatValue());
-							break;
-						case Keyword.ABS:
-							e2 = new FloatConstNode(c.floatValue() >= 0 ? c.floatValue() : -c.floatValue());
-							break;
-						case Keyword.SGN:
-							e2 = new FloatConstNode(c.floatValue() > 0 ? 1 : (c.floatValue() < 0 ? -1 : 0));
-							break;
-					}
-				}
-				return e2;
-			}
-			return this;
+			NeedsSemant = false;
+			//if(sem_type != Type.Int && sem_type != Type.Float)
+			//{
+			//	throw new Ex("Illegal operator for type");
+			//}
 		}
-		//public override TNode Translate(Codegen g)
-		//{
-		//	IR n = 0;
-		//	TNode l = expr.Translate(g);
-		//	if(sem_type == Type.int_type)
-		//	{
-		//		switch(op)
-		//		{
-		//			case Keyword.POSITIVE: return l;
-		//			case Keyword.NEGATIVE:
-		//				n = IR.NEG;
-		//				break;
-		//			case Keyword.ABS: return call("__bbAbs", l);
-		//			case Keyword.SGN: return call("__bbSgn", l);
-		//		}
-		//	}
-		//	else
-		//	{
-		//		switch(op)
-		//		{
-		//			case Keyword.POSITIVE: return l;
-		//			case Keyword.NEGATIVE:
-		//				n = IR.FNEG;
-		//				break;
-		//			case Keyword.ABS: return fcall("__bbFAbs", l);
-		//			case Keyword.SGN: return fcall("__bbFSgn", l);
-		//		}
-		//	}
-		//	return new TNode(n, l, null);
-		//}
 
 		public override string JoinedWriteData() => op switch
 		{
@@ -477,27 +370,14 @@ namespace Blitz3D.Parsing.Nodes
 			this.rhs = rhs;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			lhs = lhs.Semant(e);
+			lhs.Semant(e);
 			lhs = lhs.CastTo(Type.Int, e);
-			rhs = rhs.Semant(e);
+			rhs.Semant(e);
 			rhs = rhs.CastTo(Type.Int, e);
-			if(lhs is ConstNode lc && rhs is ConstNode rc)
-			{
-				return op switch
-				{
-					Keyword.AND => new IntConstNode(lc.intValue() & rc.intValue()),
-					Keyword.OR => new IntConstNode(lc.intValue() | rc.intValue()),
-					Keyword.XOR => new IntConstNode(lc.intValue() ^ rc.intValue()),
-					Keyword.SHL => new IntConstNode(lc.intValue() << rc.intValue()),
-					Keyword.SHR => new IntConstNode((int)((uint)lc.intValue() >> rc.intValue())),
-					Keyword.SAR => new IntConstNode(lc.intValue() >> rc.intValue()),
-					_ => null,
-				};
-			}
 			sem_type = Type.Int;
-			return this;
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData() => op switch
@@ -527,18 +407,18 @@ namespace Blitz3D.Parsing.Nodes
 			this.rhs = rhs;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			lhs = lhs.Semant(e);
-			rhs = rhs.Semant(e);
+			lhs.Semant(e);
+			rhs.Semant(e);
 			if(lhs.sem_type is StructType || rhs.sem_type is StructType)
 			{
-				throw ex("Arithmetic operator cannot be applied to custom type objects");
+				throw new Ex("Arithmetic operator cannot be applied to custom type objects");
 			}
 			if(lhs.sem_type == Type.String || rhs.sem_type == Type.String)
 			{
 				//one side is a string - only + operator...
-				if(op != Keyword.POSITIVE) throw ex("Operator cannot be applied to strings");
+				if(op != Keyword.POSITIVE) throw new Ex("Operator cannot be applied to strings");
 				sem_type = Type.String;
 			}
 			else if(op == Keyword.POW || lhs.sem_type == Type.Float || rhs.sem_type == Type.Float)
@@ -551,124 +431,10 @@ namespace Blitz3D.Parsing.Nodes
 				//must be 2 ints
 				sem_type = Type.Int;
 			}
+			NeedsSemant = false;
 			lhs = lhs.CastTo(sem_type, e);
 			rhs = rhs.CastTo(sem_type, e);
-			if(rhs is ConstNode rc)
-			{
-				if(op == Keyword.DIV || op == Keyword.MOD)
-				{
-					if((sem_type == Type.Int && rc.intValue()==0) || (sem_type == Type.Float && rc.floatValue()==0.0))
-					{
-						throw ex("Division by zero");
-					}
-				}
-				if(lhs is ConstNode lc)
-				{
-					ExprNode expr = null;
-					if(sem_type == Type.String)
-					{
-						expr = new StringConstNode(lc.stringValue() + rc.stringValue());
-					}
-					else if(sem_type == Type.Int)
-					{
-						switch(op)
-						{
-							case Keyword.ADD:
-								expr = new IntConstNode(lc.intValue() + rc.intValue());
-								break;
-							case Keyword.SUB:
-								expr = new IntConstNode(lc.intValue() - rc.intValue());
-								break;
-							case Keyword.MUL:
-								expr = new IntConstNode(lc.intValue() * rc.intValue());
-								break;
-							case Keyword.DIV:
-								expr = new IntConstNode(lc.intValue() / rc.intValue());
-								break;
-							case Keyword.MOD:
-								expr = new IntConstNode(lc.intValue() % rc.intValue());
-								break;
-						}
-					}
-					else
-					{
-						switch(op)
-						{
-							case Keyword.ADD:
-								expr = new FloatConstNode(lc.floatValue() + rc.floatValue());
-								break;
-							case Keyword.SUB:
-								expr = new FloatConstNode(lc.floatValue() - rc.floatValue());
-								break;
-							case Keyword.MUL:
-								expr = new FloatConstNode(lc.floatValue() * rc.floatValue());
-								break;
-							case Keyword.DIV:
-								expr = new FloatConstNode(lc.floatValue() / rc.floatValue());
-								break;
-							case Keyword.MOD:
-								expr = new FloatConstNode(lc.floatValue() % rc.floatValue());
-								break;
-							case Keyword.POW:
-								expr = new FloatConstNode(MathF.Pow(lc.floatValue(), rc.floatValue()));
-								break;
-						}
-					}
-					return expr;
-				}
-			}
-			return this;
 		}
-		//public override TNode Translate(Codegen g)
-		//{
-		//	TNode l = lhs.Translate(g);
-		//	TNode r = rhs.Translate(g);
-		//	if(sem_type == Type.string_type)
-		//	{
-		//		return call("__bbStrConcat", l, r);
-		//	}
-		//	IR n = 0;
-		//	if(sem_type == Type.int_type)
-		//	{
-		//		switch(op)
-		//		{
-		//			case Keyword.ADD:
-		//				n = IR.ADD;
-		//				break;
-		//			case Keyword.SUB:
-		//				n = IR.SUB;
-		//				break;
-		//			case Keyword.MUL:
-		//				n = IR.MUL;
-		//				break;
-		//			case Keyword.DIV:
-		//				n = IR.DIV;
-		//				break;
-		//			case Keyword.MOD: return call("__bbMod", l, r);
-		//		}
-		//	}
-		//	else
-		//	{
-		//		switch(op)
-		//		{
-		//			case Keyword.ADD:
-		//				n = IR.FADD;
-		//				break;
-		//			case Keyword.SUB:
-		//				n = IR.FSUB;
-		//				break;
-		//			case Keyword.MUL:
-		//				n = IR.FMUL;
-		//				break;
-		//			case Keyword.DIV:
-		//				n = IR.FDIV;
-		//				break;
-		//			case Keyword.MOD: return fcall("__bbFMod", l, r);
-		//			case Keyword.POW: return fcall("__bbFPow", l, r);
-		//		}
-		//	}
-		//	return new TNode(n, l, r);
-		//}
 
 		public override string JoinedWriteData() => op switch
 		{
@@ -698,13 +464,13 @@ namespace Blitz3D.Parsing.Nodes
 			this.rhs = rhs;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			lhs = lhs.Semant(e);
-			rhs = rhs.Semant(e);
+			lhs.Semant(e);
+			rhs.Semant(e);
 			if(lhs.sem_type is StructType || rhs.sem_type is StructType)
 			{
-				if(op != Keyword.EQ && op != Keyword.NE) throw ex("Illegal operator for custom type objects");
+				if(op != Keyword.EQ && op != Keyword.NE) throw new Ex("Illegal operator for custom type objects");
 				opType = lhs.sem_type != Type.Null ? lhs.sem_type : rhs.sem_type;
 			}
 			else if(lhs.sem_type == Type.String || rhs.sem_type == Type.String)
@@ -720,88 +486,9 @@ namespace Blitz3D.Parsing.Nodes
 				opType = Type.Int;
 			}
 			sem_type = Type.Int;
+			NeedsSemant = false;
 			lhs = lhs.CastTo(opType, e);
 			rhs = rhs.CastTo(opType, e);
-			ConstNode lc = lhs as ConstNode;
-			ConstNode rc = rhs as ConstNode;
-			if(lc!=null && rc!=null)
-			{
-				ExprNode expr = null;
-				if(opType == Type.String)
-				{
-					switch(op)
-					{
-						case Keyword.LT:
-							expr = new IntConstNode(lc.stringValue().CompareTo(rc.stringValue())<0 ? 1 : 0);
-							break;
-						case Keyword.EQ:
-							expr = new IntConstNode(lc.stringValue().CompareTo(rc.stringValue()) == 0 ? 1 : 0);
-							break;
-						case Keyword.GT:
-							expr = new IntConstNode(lc.stringValue().CompareTo(rc.stringValue()) > 0 ? 1 : 0);
-							break;
-						case Keyword.LE:
-							expr = new IntConstNode(lc.stringValue().CompareTo(rc.stringValue()) <= 0 ? 1 : 0);
-							break;
-						case Keyword.NE:
-							expr = new IntConstNode(lc.stringValue().CompareTo(rc.stringValue()) != 0 ? 1 : 0);
-							break;
-						case Keyword.GE:
-							expr = new IntConstNode(lc.stringValue().CompareTo(rc.stringValue()) >= 0 ? 1 : 0);
-							break;
-					}
-				}
-				else if(opType == Type.Float)
-				{
-					switch(op)
-					{
-						case Keyword.LT:
-							expr = new IntConstNode(lc.floatValue().CompareTo(rc.floatValue()) < 0 ? 1 : 0);
-							break;
-						case Keyword.EQ:
-							expr = new IntConstNode(lc.floatValue().CompareTo(rc.floatValue()) == 0 ? 1 : 0);
-							break;
-						case Keyword.GT:
-							expr = new IntConstNode(lc.floatValue().CompareTo(rc.floatValue()) > 0 ? 1 : 0);
-							break;
-						case Keyword.LE:
-							expr = new IntConstNode(lc.floatValue().CompareTo(rc.floatValue()) <= 0 ? 1 : 0);
-							break;
-						case Keyword.NE:
-							expr = new IntConstNode(lc.floatValue().CompareTo(rc.floatValue()) != 0 ? 1 : 0);
-							break;
-						case Keyword.GE:
-							expr = new IntConstNode(lc.floatValue().CompareTo(rc.floatValue()) >= 0 ? 1 : 0);
-							break;
-					}
-				}
-				else
-				{
-					switch(op)
-					{
-						case Keyword.LT:
-							expr = new IntConstNode(lc.intValue().CompareTo(rc.intValue()) < 0 ? 1 : 0);
-							break;
-						case Keyword.EQ:
-							expr = new IntConstNode(lc.intValue().CompareTo(rc.intValue()) == 0 ? 1 : 0);
-							break;
-						case Keyword.GT:
-							expr = new IntConstNode(lc.intValue().CompareTo(rc.intValue()) > 0 ? 1 : 0);
-							break;
-						case Keyword.LE:
-							expr = new IntConstNode(lc.intValue().CompareTo(rc.intValue()) <= 0 ? 1 : 0);
-							break;
-						case Keyword.NE:
-							expr = new IntConstNode(lc.intValue().CompareTo(rc.intValue()) != 0 ? 1 : 0);
-							break;
-						case Keyword.GE:
-							expr = new IntConstNode(lc.intValue().CompareTo(rc.intValue()) >= 0 ? 1 : 0);
-							break;
-					}
-				}
-				return expr;
-			}
-			return this;
 		}
 
 		public override string JoinedWriteData()
@@ -842,18 +529,18 @@ namespace Blitz3D.Parsing.Nodes
 		{
 			ident = i;
 		}
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			sem_type = e.findType(ident);
 			if(sem_type is null)
 			{
-				throw ex("custom type name not found");
+				throw new Ex("custom type name not found");
 			}
 			if(!(sem_type is StructType))
 			{
-				throw ex("type is not a custom type");
+				throw new Ex("type is not a custom type");
 			}
-			return this;
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData() => $"new {ident}()";
@@ -866,11 +553,14 @@ namespace Blitz3D.Parsing.Nodes
 	{
 		public string ident;
 		public FirstNode(string i) { ident = i; }
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			sem_type = e.findType(ident);
-			if(sem_type is null) throw ex("custom type name name not found");
-			return this;
+			if(sem_type is null)
+			{
+				throw new Ex("custom type name name not found");
+			}
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData() => $"__bbObjFirst<{ident}>()";
@@ -886,11 +576,14 @@ namespace Blitz3D.Parsing.Nodes
 		{
 			ident = i;
 		}
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			sem_type = e.findType(ident);
-			if(sem_type is null) throw ex("custom type name not found");
-			return this;
+			if(sem_type is null)
+			{
+				throw new Ex("custom type name not found");
+			}
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData() => $"__bbObjLast<{ident}>()";
@@ -907,19 +600,19 @@ namespace Blitz3D.Parsing.Nodes
 			expr = e;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.Semant(e);
+			expr.Semant(e);
 			if(expr.sem_type == Type.Null)
 			{
-				throw ex("'After' cannot be used on 'Null'");
+				throw new Ex("'After' cannot be used on 'Null'");
 			}
 			if(!(expr.sem_type is StructType))
 			{
-				throw ex("'After' must be used with a custom type object");
+				throw new Ex("'After' must be used with a custom type object");
 			}
 			sem_type = expr.sem_type;
-			return this;
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData() => $"__bbObjNext({expr.JoinedWriteData()})";
@@ -936,19 +629,19 @@ namespace Blitz3D.Parsing.Nodes
 			expr = e;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.Semant(e);
+			expr.Semant(e);
 			if(expr.sem_type == Type.Null)
 			{
-				throw ex("'Before' cannot be used with 'Null'");
+				throw new Ex("'Before' cannot be used with 'Null'");
 			}
 			if(!(expr.sem_type is StructType))
 			{
-				throw ex("'Before' must be used with a custom type object");
+				throw new Ex("'Before' must be used with a custom type object");
 			}
 			sem_type = expr.sem_type;
-			return this;
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData() => $"__bbObjPrev({expr.JoinedWriteData()})";
@@ -959,10 +652,10 @@ namespace Blitz3D.Parsing.Nodes
 	/////////////////
 	public class NullNode:ExprNode
 	{
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			sem_type = Type.Null;
-			return this;
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData() => "null";
@@ -981,14 +674,20 @@ namespace Blitz3D.Parsing.Nodes
 			type_ident = t;
 		}
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.Semant(e);
+			expr.Semant(e);
 			expr = expr.CastTo(Type.Int, e);
 			sem_type = e.findType(type_ident);
-			if(sem_type is null) throw ex("custom type name not found");
-			if(!(sem_type is StructType)) throw ex("type is not a custom type");
-			return this;
+			if(sem_type is null)
+			{
+				throw new Ex("custom type name not found");
+			}
+			if(!(sem_type is StructType))
+			{
+				throw new Ex("type is not a custom type");
+			}
+			NeedsSemant = false;
 		}
 		//public override TNode Translate(Codegen g)
 		//{
@@ -1008,12 +707,12 @@ namespace Blitz3D.Parsing.Nodes
 		public ExprNode expr;
 		public ObjectHandleNode(ExprNode e) { expr = e; }
 
-		public override ExprNode Semant(Environ e)
+		public override void Semant(Environ e)
 		{
-			expr = expr.Semant(e);
-			if(!(expr.sem_type is StructType)) throw ex("'ObjectHandle' must be used with an object");
+			expr.Semant(e);
+			if(!(expr.sem_type is StructType)) throw new Ex("'ObjectHandle' must be used with an object");
 			sem_type = Type.Int;
-			return this;
+			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData() => $"__bbObjToHandle({expr.JoinedWriteData()})";

@@ -5,19 +5,32 @@ namespace Blitz3D
 {
 	public class Ex:Exception
 	{
-		public string ex; //what happened
-		public Point? pos; //source offset
+		public Point? pos;//source offset
 		public string file;
-		public Ex(string ex) : base(ex)
+		public Ex(string ex, Point? pos = null, string file = null):base(ex)
 		{
-			this.ex = ex;
-			pos = null;
-		}
-		public Ex(string ex, Point? pos, string t)
-		{
-			this.ex = ex;
 			this.pos = pos;
-			file = t;
+			this.file = file;
 		}
+
+		public override string Message
+		{
+			get
+			{
+				string ret = "";
+				if(file != null)
+				{
+					ret+=$"\"{file}\":";
+				}
+				if(pos is Point posVal)
+				{
+					int row = posVal.Y + 1;
+					int col = posVal.X + 1;
+					ret+=$"{row}:{col}:";
+				}
+				return ret + base.Message;
+			}
+		}
+
 	}
 }

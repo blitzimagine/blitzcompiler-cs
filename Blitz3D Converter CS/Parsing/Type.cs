@@ -14,7 +14,7 @@ namespace Blitz3D.Parsing
 		public readonly static Type Int = new IntType();
 		public readonly static Type Float = new FloatType();
 		public readonly static Type String = new StringType();
-		public readonly static Type Null = new StructType("Null");
+		public readonly static Type Null = new NullType();
 	}
 
 	public class FuncType:Type
@@ -24,6 +24,7 @@ namespace Blitz3D.Parsing
 		public readonly Type returnType;
 		public readonly DeclSeq @params;
 		public readonly bool userlib, cfunc;
+
 		public FuncType(Type t, DeclSeq p, bool ulib, bool cfn)
 		{
 			returnType = t;
@@ -39,6 +40,7 @@ namespace Blitz3D.Parsing
 
 		public readonly Type elementType;
 		public readonly int dims;
+
 		public ArrayType(Type t, int n)
 		{
 			elementType = t;
@@ -58,7 +60,7 @@ namespace Blitz3D.Parsing
 			ident = i;
 		}
 
-		public override bool CanCastTo(Type t) => t == this || t == Null || (this == Null && t is StructType);
+		public override bool CanCastTo(Type t) => t == this || t == Null;
 	}
 
 	public class ConstType:Type
@@ -95,18 +97,17 @@ namespace Blitz3D.Parsing
 		}
 	}
 
+	/// <summary>Blitz Array, this is like a C style array.</summary>
 	public class VectorType:Type
 	{
-		public override string Name => $"System.Collections.Generic.List<{elementType.Name}>";
+		public override string Name => $"{elementType.Name}[{new string(',', dimensions-1)}]";
 
-		public readonly string label;
 		public readonly Type elementType;
-		public readonly int[] sizes;
-		public VectorType(string l, Type t, int[] szs)
+		public readonly int dimensions;
+		public VectorType(Type t, int dim)
 		{
-			label = l;
 			elementType = t;
-			sizes = szs;
+			dimensions = dim;
 		}
 
 		public override bool CanCastTo(Type t)
@@ -115,8 +116,7 @@ namespace Blitz3D.Parsing
 
 			if(!(t is VectorType v)){return false;}
 			if(elementType != v.elementType){return false;}
-			if(sizes.Length != v.sizes.Length){return false;}
-			if(!Enumerable.SequenceEqual(sizes, v.sizes)){return false;}
+			if(dimensions != v.dimensions){return false;}
 			
 			return true;
 		}
@@ -149,5 +149,12 @@ namespace Blitz3D.Parsing
 		public override string Name => "string";
 
 		public override bool CanCastTo(Type t) => t == Int || t == Float || t == String;
+	}
+
+	public class NullType:StructType
+	{
+		public NullType():base("Null"){}
+
+		public override bool CanCastTo(Type t) => t is StructType;
 	}
 }

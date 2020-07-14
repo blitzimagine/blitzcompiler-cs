@@ -32,7 +32,7 @@ namespace Blitz3D.Parsing
 			text = "";
 
 			int t;
-			for(; ; )
+			for(;;)
 			{
 				while(char.IsWhiteSpace((char)input.Peek()))
 				{
@@ -102,7 +102,7 @@ namespace Blitz3D.Parsing
 				{
 					Type paramType = TakeType(sym, ref k);
 					string str = TakeIdentifier(sym, ref k);
-					ConstType defType = null;
+					ExprNode defType = null;
 					if(k<sym.Length && sym[k] == '=')
 					{
 						int from2 = ++k;
@@ -113,8 +113,7 @@ namespace Blitz3D.Parsing
 							{
 								k++;
 							}
-							string t3 = sym.Substring(from2 + 1, k - from2 - 1);
-							defType = new ConstType(t3);
+							defType = new StringConstNode(sym.Substring(from2, k - from2+1));
 							k++;
 						}
 						else
@@ -129,13 +128,11 @@ namespace Blitz3D.Parsing
 							}
 							if(paramType == Type.Int)
 							{
-								int n2 = int.Parse(sym.Substring(from2, k - from2));
-								defType = new ConstType(n2);
+								defType = new IntConstNode(sym.Substring(from2, k - from2));
 							}
 							else
 							{
-								float n2 = float.Parse(sym.Substring(from2, k - from2));
-								defType = new ConstType(n2);
+								defType = new FloatConstNode(sym.Substring(from2, k - from2));
 							}
 						}
 					}
@@ -250,25 +247,23 @@ namespace Blitz3D.Parsing
 								Type ty2 = null;
 								switch(bnext(input))
 								{
-									case '%':
-										ty2 = Type.Int;
-										break;
-									case '#':
-										ty2 = Type.Float;
-										break;
-									case '$':
-										ty2 = Type.String;
-										break;
-									case '*':
-										ty2 = Type.Null;
-										break;
+									case '%':ty2 = Type.Int;break;
+									case '#':ty2 = Type.Float;break;
+									case '$':ty2 = Type.String;break;
+									case '*':ty2 = Type.Null;break;
 								}
-								if(ty2!=null) bnext(input);
-								else ty2 = Type.Int;
+								if(ty2!=null)
+								{
+									bnext(input);
+								}
+								else
+								{
+									ty2 = Type.Int;
+								}
 
-								ConstType defType = null;
+								//ConstType defType = null;
 
-								Decl d = @params.insertDecl(arg, ty2, DECL.PARAM, defType);
+								@params.insertDecl(arg, ty2, DECL.PARAM/*, defType*/);
 
 								if(curr != ',') break;
 								bnext(input);

@@ -1,7 +1,7 @@
+using System;
 using System.Collections.Generic;
-using System.Drawing;
 
-namespace Blitz3D.Parsing
+namespace Blitz3D.Converter.Parsing
 {
 	///<summary>An environ represent a stack frame block.</summary>
 	public class Environ
@@ -27,11 +27,11 @@ namespace Blitz3D.Parsing
 			funcLabel = f;
 		}
 
-		public Decl findDecl(string s)
+		public Decl findDecl(string id)
 		{
 			for(Environ e = this; e!=null; e = e.globals)
 			{
-				Decl d = e.decls.findDecl(s);
+				Decl d = e.decls.findDecl(id);
 				if(d!=null)
 				{
 					if((d.kind & (DECL.LOCAL | DECL.PARAM))!=0)
@@ -57,9 +57,12 @@ namespace Blitz3D.Parsing
 		}
 		public Type findType(string s)
 		{
-			if(s == "%") return Type.Int;
-			if(s == "#") return Type.Float;
-			if(s == "$") return Type.String;
+			switch(s)
+			{
+				case "%":return Type.Int;
+				case "#":return Type.Float;
+				case "$":return Type.String;
+			}
 			for(Environ e = this; e!=null; e = e.globals)
 			{
 				Decl d = e.typeDecls.findDecl(s);
@@ -71,24 +74,34 @@ namespace Blitz3D.Parsing
 			return null;
 		}
 
-
-		//TODO: Make this TryAddLabel?
-		public Label findLabel(string name)
+		/// <summary>Finds label if it exists, otherwise creates one.</summary>
+		public Label GetLabel(string id)
 		{
-			for(int k = 0; k < labels.Count; ++k)
+			if(string.IsNullOrEmpty(id))
 			{
-				if(labels[k].name == name)
+				return Label.__DATA;
+			}
+			id = id.ToLowerInvariant();
+			//Find existing label
+			foreach(Label label in labels)
+			{
+				if(label.ID == id)
 				{
-					return labels[k];
+					return label;
 				}
 			}
-			return null;
-		}
-		public Label insertLabel(string name, Point? def, Point? src)
-		{
-			Label l = new Label(name, def, src);
+			//Create new label
+			Label l = new Label(id);
 			labels.Add(l);
 			return l;
+		}
+
+		public Label DefineLabel(string id, string name)
+		{
+			Label label = GetLabel(id);
+			if(label.Name!=null){throw new Exception($"Label already defined: {name}");}
+			label.Name = name;
+			return label;
 		}
 	}
 }

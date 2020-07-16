@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Blitz3D
+namespace Blitz3D.Converter
 {
 	public static class Utils
 	{

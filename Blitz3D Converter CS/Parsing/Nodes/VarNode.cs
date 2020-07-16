@@ -1,7 +1,4 @@
-using System.Collections.Generic;
-using Blitz3D.Compiling;
-
-namespace Blitz3D.Parsing.Nodes
+namespace Blitz3D.Converter.Parsing.Nodes
 {
 	public abstract class VarNode:Node
 	{
@@ -39,15 +36,6 @@ namespace Blitz3D.Parsing.Nodes
 	{
 		public Decl sem_decl;
 
-		public DeclVarNode(Decl d = null)
-		{
-			sem_decl = d;
-			if(d!=null)
-			{
-				sem_type = d.type;
-			}
-		}
-
 		//public override TNode Translate(Codegen g)
 		//{
 		//	if(sem_decl.kind == DECL.GLOBAL)
@@ -67,7 +55,18 @@ namespace Blitz3D.Parsing.Nodes
 		//}
 		public override bool isObjParam() => sem_type is StructType && sem_decl.kind == DECL.PARAM;
 
-		public override string JoinedWriteData() => sem_decl.name;
+		public override string JoinedWriteData() => sem_decl.Name;
+	}
+
+	public class BaseDeclVarNode:DeclVarNode
+	{
+		public BaseDeclVarNode(Decl d = null)
+		{
+			sem_decl = d;
+			sem_type = d?.type;
+		}
+
+		public override string JoinedWriteData() => sem_decl.Name;
 	}
 
 	///////////////
@@ -84,20 +83,23 @@ namespace Blitz3D.Parsing.Nodes
 		}
 		public override void Semant(Environ e)
 		{
-			if(sem_decl!=null) return;
-			Type t = tagType(tag, e) ?? Type.Int;
-			if((sem_decl = e.findDecl(ident))!=null)
+			if(sem_decl!=null)
 			{
-				if((sem_decl.kind & (DECL.GLOBAL | DECL.LOCAL | DECL.PARAM))==0)
-				{
-					throw new Ex("Identifier '" + sem_decl.name + "' may not be used like this");
-				}
+				return;
+			}
+			Type t = tagType(tag, e) ?? Type.Int;
+			sem_decl = e.findDecl(ident);
+			if(sem_decl!=null)
+			{
 				Type ty = sem_decl.type;
 				if(ty is ConstType constType)
 				{
 					ty = constType.valueType;
 				}
-				if(tag.Length>0 && t != ty) throw new Ex("Variable type mismatch");
+				if(tag.Length>0 && t != ty)
+				{
+					throw new Ex("Variable type mismatch");
+				}
 			}
 			else
 			{
@@ -107,7 +109,7 @@ namespace Blitz3D.Parsing.Nodes
 			sem_type = sem_decl.type;
 		}
 
-		public override string JoinedWriteData() => ident;
+		public override string JoinedWriteData() => sem_decl.Name;
 	}
 
 	/////////////////
@@ -149,7 +151,7 @@ namespace Blitz3D.Parsing.Nodes
 			sem_type = a.elementType;
 		}
 
-		public override string JoinedWriteData() => $"{ident}[{exprs.JoinedWriteData()}]";
+		public override string JoinedWriteData() => $"{sem_decl.Name}[{exprs.JoinedWriteData()}]";
 	}
 
 	///////////////
@@ -160,6 +162,7 @@ namespace Blitz3D.Parsing.Nodes
 		public ExprNode expr;
 		public readonly string ident, tag;
 		public Decl sem_field;
+
 		public FieldVarNode(ExprNode e, string i, string t)
 		{
 			expr = e;
@@ -170,7 +173,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			expr.Semant(e);
-			if(!(expr.sem_type is StructType s))
+			if(!(expr.Sem_Type is StructType s))
 			{
 				throw new Ex("Variable must be a Type");
 			}
@@ -182,7 +185,7 @@ namespace Blitz3D.Parsing.Nodes
 			sem_type = sem_field.type;
 		}
 
-		public override string JoinedWriteData() => $"{expr.JoinedWriteData()}.{ident}";
+		public override string JoinedWriteData() => $"{expr.JoinedWriteData()}.{sem_field.Name}";
 	}
 
 	////////////////
@@ -202,7 +205,7 @@ namespace Blitz3D.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			expr.Semant(e);
-			if(!(expr.sem_type is VectorType vec_type))
+			if(!(expr.Sem_Type is VectorType vec_type))
 			{
 				throw new Ex("Variable must be a Blitz array");
 			}

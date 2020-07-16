@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Blitz3D.Parsing.Nodes
+namespace Blitz3D.Converter.Parsing.Nodes
 {
 	public abstract class Node
 	{
@@ -26,12 +26,7 @@ namespace Blitz3D.Parsing.Nodes
 		{
 			if(tag.Length>0)
 			{
-				Type t = e.findType(tag);
-				if(t is null)
-				{
-					throw new Ex($"Type \"{tag}\" not found");
-				}
-				return t;
+				return e.findType(tag);
 			}
 			return null;
 		}

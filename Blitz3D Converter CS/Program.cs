@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Blitz3D.Parsing;
-using Blitz3D.Parsing.Nodes;
+using Blitz3D.Converter.Parsing;
+using Blitz3D.Converter.Parsing.Nodes;
 
-namespace Blitz3D
+namespace Blitz3D.Converter
 {
 	public static class Program
 	{

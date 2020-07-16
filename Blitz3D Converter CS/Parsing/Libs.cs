@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-using Blitz3D.Compiling;
-using Blitz3D.Parsing.Nodes;
+using Blitz3D.Converter.Parsing.Nodes;
 
-namespace Blitz3D.Parsing
+namespace Blitz3D.Converter.Parsing
 {
 	public class Libs
 	{
@@ -96,7 +95,7 @@ namespace Blitz3D.Parsing
 				
 				//global!
 				Type funcType = TakeType(sym, ref k);
-				string name = TakeIdentifier(sym, ref k).ToLowerInvariant();
+				string name = TakeIdentifier(sym, ref k);
 				DeclSeq @params = new DeclSeq();
 				while(k<sym.Length)
 				{
@@ -181,7 +180,7 @@ namespace Blitz3D.Parsing
 
 		private (FileInfo file, string err)? loadUserLib(FileInfo[] userlibs)
 		{
-			HashSet<string> _ulibkws = new HashSet<string>();
+			HashSet<string> _ulibkws = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			foreach(FileInfo userlib in userlibs)
 			{
 				string t = "userlibs/" + userlib.Name;
@@ -212,14 +211,11 @@ namespace Blitz3D.Parsing
 						if(lib.Length==0) return (userlib,"function decl without lib directive");
 
 						string id = text;
-						string lower_id = id.ToLowerInvariant();
 
-						if(_ulibkws.Contains(lower_id))
+						if(!_ulibkws.Add(id))
 						{
 							return (userlib,"duplicate identifier");
 						}
-
-						_ulibkws.Add(lower_id);
 
 						Type ty = bnext(input) switch
 						{
@@ -261,9 +257,7 @@ namespace Blitz3D.Parsing
 									ty2 = Type.Int;
 								}
 
-								//ConstType defType = null;
-
-								@params.insertDecl(arg, ty2, DECL.PARAM/*, defType*/);
+								@params.insertDecl(arg, ty2, DECL.PARAM);
 
 								if(curr != ',') break;
 								bnext(input);
@@ -275,7 +269,7 @@ namespace Blitz3D.Parsing
 
 						FuncType fn = new FuncType(ty, @params, true, true);
 
-						runtimeEnviron.funcDecls.insertDecl(lower_id, fn, DECL.FUNC);
+						runtimeEnviron.funcDecls.insertDecl(id, fn, DECL.FUNC);
 
 						if(bnext(input) == ':')
 						{
@@ -286,7 +280,7 @@ namespace Blitz3D.Parsing
 							bnext(input);
 						}
 
-						userFuncs.Add(new UserFunc(lower_id, id, lib));
+						//userFuncs.Add(new UserFunc(id.ToLowerInvariant(), id, lib));
 					}
 				}
 			}

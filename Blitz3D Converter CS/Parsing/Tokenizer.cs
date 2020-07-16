@@ -4,11 +4,11 @@ using System.Drawing;
 using System.IO;
 using System.Text;
 
-namespace Blitz3D.Parsing
+namespace Blitz3D.Converter.Parsing
 {
-	public enum Keyword:int
+	public enum TokenType:int
 	{
-		//Not actually a keyword, this is end of file
+		/// <summary>End Of File</summary>
 		EOF = -1,
 
 		EQ = '=',
@@ -35,7 +35,21 @@ namespace Blitz3D.Parsing
 
 		Backslash = '\\',
 
-		DIM=0x8000,
+		LE = 0x1000,
+		GE,
+		NE,
+		IDENT,
+		INTCONST,
+		BINCONST,
+		HEXCONST,
+		FLOATCONST,
+		STRINGCONST,
+
+
+		#region Keywords
+		KeywordsStart = 0x8000,
+
+		DIM,
 		GOTO,
 		GOSUB,
 		EXIT,
@@ -44,7 +58,9 @@ namespace Blitz3D.Parsing
 		THEN,
 		ELSE,
 		ENDIF,
+		END_IF = ENDIF,
 		ELSEIF,
+		ELSE_IF = ELSEIF,
 		WHILE,
 		WEND,
 		FOR,
@@ -52,18 +68,18 @@ namespace Blitz3D.Parsing
 		STEP,
 		NEXT,
 		FUNCTION,
-		ENDFUNCTION,
+		END_FUNCTION,
 		TYPE,
-		ENDTYPE,
+		END_TYPE,
 		EACH,
 		GLOBAL,
 		LOCAL,
 		FIELD,
-		BBCONST,
+		CONST,
 		SELECT,
 		CASE,
 		DEFAULT,
-		ENDSELECT,
+		END_SELECT,
 		REPEAT,
 		UNTIL,
 		FOREVER,
@@ -74,23 +90,23 @@ namespace Blitz3D.Parsing
 		SGN,
 		MOD,
 		PI,
-		BBTRUE,
-		BBFALSE,
-		BBINT,
-		BBFLOAT,
-		BBSTR,
+		TRUE,
+		FALSE,
+		INT,
+		FLOAT,
+		STR,
 		INCLUDE,
 
-		BBNEW,
-		BBDELETE,
+		NEW,
+		DELETE,
 		FIRST,
 		LAST,
 		INSERT,
 		BEFORE,
 		AFTER,
-		BBNULL,
+		NULL,
 		OBJECT,
-		BBHANDLE,
+		HANDLE,
 
 		AND,
 		OR,
@@ -98,90 +114,54 @@ namespace Blitz3D.Parsing
 		NOT,
 		SHL,
 		SHR,
-		SAR,
-
-		LE,
-		GE,
-		NE,
-		IDENT,
-		INTCONST,
-		BINCONST,
-		HEXCONST,
-		FLOATCONST,
-		STRINGCONST
+		SAR
+		#endregion
 	}
+
+	public class Token
+	{
+		public Token NextToken = null;
+
+		public readonly TokenType Type;
+
+		public readonly string Text;
+
+		public readonly int from;
+
+		public Token(TokenType keyword, string text)
+		{
+			Type = keyword;
+			Text = text;
+			if(Type == TokenType.IDENT)
+			{
+				Text = Utils.WrapIfCSharpKeyword(Text);
+			}
+		}
+
+		public Token(TokenType keyword, int from, int to, string line):this(keyword,line.Substring(from, to - from))
+		{
+			this.from = from;
+		}
+	}
+
 	/// <summary>The Toker converts an inout stream into tokens for use by the parser.</summary>
 	public class Tokenizer
 	{
-		private static readonly Dictionary<string,Keyword> lowerTokes = new Dictionary<string, Keyword>
+		private readonly IReadOnlyDictionary<string,TokenType> lowerTokes = GetKeywordDictionary();
+
+		public static IReadOnlyDictionary<string,TokenType> GetKeywordDictionary()
 		{
-			{"dim", Keyword.DIM},
-			{"goto", Keyword.GOTO},
-			{"gosub", Keyword.GOSUB},
-			{"return", Keyword.RETURN},
-			{"exit", Keyword.EXIT},
-			{"if", Keyword.IF},
-			{"then", Keyword.THEN},
-			{"else", Keyword.ELSE},
-			{"endif", Keyword.ENDIF},
-			{"end if", Keyword.ENDIF},
-			{"elseif", Keyword.ELSEIF},
-			{"else if", Keyword.ELSEIF},
-			{"while", Keyword.WHILE},
-			{"wend", Keyword.WEND},
-			{"for", Keyword.FOR},
-			{"to", Keyword.TO},
-			{"step", Keyword.STEP},
-			{"next", Keyword.NEXT},
-			{"function", Keyword.FUNCTION},
-			{"end function", Keyword.ENDFUNCTION},
-			{"type", Keyword.TYPE},
-			{"end type", Keyword.ENDTYPE},
-			{"each", Keyword.EACH},
-			{"local", Keyword.LOCAL},
-			{"global", Keyword.GLOBAL},
-			{"field", Keyword.FIELD},
-			{"const", Keyword.BBCONST},
-			{"select", Keyword.SELECT},
-			{"case", Keyword.CASE},
-			{"default", Keyword.DEFAULT},
-			{"end select", Keyword.ENDSELECT},
-			{"repeat", Keyword.REPEAT},
-			{"until", Keyword.UNTIL},
-			{"forever", Keyword.FOREVER},
-			{"data", Keyword.DATA},
-			{"read", Keyword.READ},
-			{"restore", Keyword.RESTORE},
-			{"abs", Keyword.ABS},
-			{"sgn", Keyword.SGN},
-			{"mod", Keyword.MOD},
-			{"pi", Keyword.PI},
-			{"true", Keyword.BBTRUE},
-			{"false", Keyword.BBFALSE},
-			{"int", Keyword.BBINT},
-			{"float", Keyword.BBFLOAT},
-			{"str", Keyword.BBSTR},
-			{"include", Keyword.INCLUDE},
-
-			{"new", Keyword.BBNEW},
-			{"delete", Keyword.BBDELETE},
-			{"first", Keyword.FIRST},
-			{"last", Keyword.LAST},
-			{"insert", Keyword.INSERT},
-			{"before", Keyword.BEFORE},
-			{"after", Keyword.AFTER},
-			{"null", Keyword.BBNULL},
-			{"object", Keyword.OBJECT},
-			{"handle", Keyword.BBHANDLE},
-
-			{"and", Keyword.AND},
-			{"or", Keyword.OR},
-			{"xor", Keyword.XOR},
-			{"not", Keyword.NOT},
-			{"shl", Keyword.SHL},
-			{"shr", Keyword.SHR},
-			{"sar", Keyword.SAR}
-		};
+			Dictionary<string, TokenType> keywords = new Dictionary<string, TokenType>(StringComparer.OrdinalIgnoreCase);
+			foreach(string name in Enum.GetNames(typeof(TokenType)))
+			{
+				TokenType type = Enum.Parse<TokenType>(name);
+				if(type>TokenType.KeywordsStart)
+				{
+					keywords.Add(name.Replace('_', ' '), type);
+				}
+			}
+			return keywords;
+		}
 
 		private readonly StreamReader input;
 		private int curr_row;
@@ -194,9 +174,12 @@ namespace Blitz3D.Parsing
 		}
 
 		public Point Pos => new Point(Current.from, curr_row);
-		public Keyword Curr => Current.Keyword;
 
-		public Keyword Next()
+		private Token Current;
+
+		public TokenType CurrType => Current.Type;
+
+		public TokenType NextType()
 		{
 			if(Current != null)
 			{
@@ -206,73 +189,70 @@ namespace Blitz3D.Parsing
 			{
 				Nextline();
 			}
-			return Current.Keyword;
+			return Current.Type;
 		}
 
 		/// <summary>Assert on Curr (non-consuming)</summary>
-		public void AssertCurr(Keyword keyword, Func<string,Exception> handler, string message)
+		public void AssertCurr(TokenType keyword, Func<string,Exception> handler, string message)
 		{
-			if(Curr!=keyword){throw handler(message);}
-		}
-
-		/// <summary>Move to next and then Assert</summary>
-		public void AssertNext(Keyword keyword, Func<string,Exception> handler, string message)
-		{
-			if(Next()!=keyword){throw handler(message);}
+			if(CurrType!=keyword)
+			{
+				throw handler(message);
+			}
 		}
 
 		/// <summary>Assert on Curr, then move to next</summary>
-		public void AssertSkip(Keyword keyword, Func<string,Exception> handler, string message)
+		public void AssertSkip(TokenType keyword, Func<string,Exception> handler, string message)
 		{
-			if(Curr!=keyword){throw handler(message);}
-			Next();
-		}
-
-		public bool TryTake(out Keyword keyword, params Keyword[] keywords) => TryTake(out keyword, ((ICollection<Keyword>)keywords).Contains);
-
-		public bool TryTake(out Keyword keyword, Predicate<Keyword> condition)
-		{
-			keyword = Curr;
-			return TrySkip(condition);
-		}
-
-		public bool TrySkip(Keyword keyword) => TrySkip(c=>c==keyword);
-		public bool TrySkip(params Keyword[] keywords) => TrySkip(((ICollection<Keyword>)keywords).Contains);
-
-		public bool TrySkip(Predicate<Keyword> condition)
-		{
-			if(condition(Curr))
+			if(CurrType!=keyword)
 			{
-				Next();
+				throw handler(message);
+			}
+			NextType();
+		}
+
+		public bool TryTake(out TokenType keyword, params TokenType[] keywords)
+		{
+			keyword = CurrType;
+			return TrySkip(((ICollection<TokenType>)keywords).Contains);
+		}
+
+		public bool TrySkip(TokenType keyword) => TrySkip(c=>c==keyword);
+		//public bool TrySkip(params Keyword[] keywords) => TrySkip(((ICollection<Keyword>)keywords).Contains);
+
+		private bool TrySkip(Predicate<TokenType> condition)
+		{
+			if(condition(CurrType))
+			{
+				NextType();
 				return true;
 			}
 			return false;
 		}
 
-		public void SkipWhile(Keyword keyword) => SkipWhile(c=>c==keyword);
-		public void SkipWhile(params Keyword[] keywords) => SkipWhile(((ICollection<Keyword>)keywords).Contains);
+		public void SkipWhile(TokenType keyword) => SkipWhile(c=>c==keyword);
+		public void SkipWhile(params TokenType[] keywords) => SkipWhile(((ICollection<TokenType>)keywords).Contains);
 
-		public void SkipWhileNot(Keyword keyword) => SkipWhile(c=>c!=keyword);
-		public void SkipWhileNot(params Keyword[] keywords) => SkipWhile(c=>!((ICollection<Keyword>)keywords).Contains(c));
+		public void SkipWhileNot(TokenType keyword) => SkipWhile(c=>c!=keyword);
+		public void SkipWhileNot(params TokenType[] keywords) => SkipWhile(c=>!((ICollection<TokenType>)keywords).Contains(c));
 
-		public void SkipWhile(Predicate<Keyword> condition)
+		public void SkipWhile(Predicate<TokenType> condition)
 		{
-			while(condition(Curr)){Next();}
+			while(condition(CurrType)){NextType();}
 		}
 
-		public string TakeText()
+		public Token Take()
 		{
-			string text = Current.Text;
-			Next();
-			return text;
+			Token token = Current;
+			NextType();
+			return token;
 		}
 
-		public T Take<T>(Converter<string,T> converter) => converter(TakeText());
+		public TokenType TakeType() => Take().Type;
 
-		public string Text => Current.Text;
-		private Token Current;
+		public string TakeText() => Take().Text;
 
-		public Keyword LookAhead(int n)
+		public TokenType LookAhead(int n)
 		{
 			Token current = Current;
 			while(current!=null && n > 0)
@@ -280,40 +260,17 @@ namespace Blitz3D.Parsing
 				current = current.NextToken;
 				n--;
 			}
-			return current.Keyword;
+			return current.Type;
 		}
 
-		private class Token
-		{
-			public Token NextToken = null;
-
-			public readonly Keyword Keyword;
-			public readonly string Text;
-
-			public readonly int from;
-
-			public Token(Keyword keyword, string text)
-			{
-				Keyword = keyword;
-				Text = text;
-				if(Keyword == Keyword.IDENT)
-				{
-					Text = Utils.WrapIfCSharpKeyword(Text);
-				}
-			}
-
-			public Token(Keyword keyword, int from, int to, string line):this(keyword,line.Substring(from, to - from))
-			{
-				this.from = from;
-			}
-		}
+		
 
 		private void Nextline()
 		{
 			curr_row++;
 			if(input.EndOfStream)
 			{
-				Current = new Token(Keyword.EOF, 0, 1, unchecked((char)-1).ToString());
+				Current = new Token(TokenType.EOF, null);
 				return;
 			}
 			Current = null;
@@ -341,7 +298,7 @@ namespace Blitz3D.Parsing
 				int from = k;
 				if(c == '\n')
 				{
-					curr = new Token(Keyword.NEWLINE, from, ++k, line);
+					curr = new Token(TokenType.NEWLINE, from, ++k, line);
 				}
 				else if(c == '.' && char.IsDigit(line[k + 1]))
 				{
@@ -350,7 +307,7 @@ namespace Blitz3D.Parsing
 					{
 						k++;
 					}
-					curr = new Token(Keyword.FLOATCONST, from, k, line);
+					curr = new Token(TokenType.FLOATCONST, from, k, line);
 				}
 				else if(char.IsDigit(c))
 				{
@@ -358,11 +315,11 @@ namespace Blitz3D.Parsing
 					if(line[k] == '.')
 					{
 						for(++k; char.IsDigit(line[k]); ++k) { }
-						curr = new Token(Keyword.FLOATCONST, from, k, line);
+						curr = new Token(TokenType.FLOATCONST, from, k, line);
 					}
 					else
 					{
-						curr = new Token(Keyword.INTCONST, from, k, line);
+						curr = new Token(TokenType.INTCONST, from, k, line);
 					}
 				}
 				else if(c == '%' && (line[k + 1] == '0' || line[k + 1] == '1'))
@@ -372,7 +329,7 @@ namespace Blitz3D.Parsing
 					{
 						k++;
 					}
-					curr = new Token(Keyword.BINCONST, "0b"+line.Substring(from+1, k-from-1));
+					curr = new Token(TokenType.BINCONST, "0b"+line.Substring(from+1, k-from-1));
 				}
 				else if(c == '$' && IsHexDigit(line[k + 1]))
 				{
@@ -381,7 +338,7 @@ namespace Blitz3D.Parsing
 					{
 						k++;
 					}
-					curr = new Token(Keyword.HEXCONST, "0x"+line.Substring(from+1, k-from-1));
+					curr = new Token(TokenType.HEXCONST, "0x"+line.Substring(from+1, k-from-1));
 				}
 				else if(char.IsLetter(c))
 				{
@@ -390,7 +347,7 @@ namespace Blitz3D.Parsing
 						k++;
 					}
 
-					string ident = line.Substring(from, k - from).ToLower();
+					string ident = line.Substring(from, k - from);
 
 					if(line[k] == ' ' && char.IsLetter(line[k + 1]))
 					{
@@ -399,7 +356,7 @@ namespace Blitz3D.Parsing
 						{
 							t++;
 						}
-						string s = line.Substring(from, t - from).ToLower();
+						string s = line.Substring(from, t - from);
 						if(lowerTokes.ContainsKey(s))
 						{
 							k = t;
@@ -407,19 +364,13 @@ namespace Blitz3D.Parsing
 						}
 					}
 
-					if(!lowerTokes.TryGetValue(ident, out Keyword value))
+					if(lowerTokes.TryGetValue(ident, out TokenType value))
 					{
-						StringBuilder builder = new StringBuilder(line);
-						for(int i = from; i < k; i++)
-						{
-							builder[i] = char.ToLower(builder[i]);
-						}
-						line = builder.ToString();
-						curr = new Token(Keyword.IDENT, from, k, line);
+						curr = new Token(value, from, k, line);
 					}
 					else
 					{
-						curr = new Token(value, from, k, line);
+						curr = new Token(TokenType.IDENT, from, k, line);
 					}
 				}
 				else if(c == '"')
@@ -433,26 +384,26 @@ namespace Blitz3D.Parsing
 					{
 						k++;
 					}
-					curr = new Token(Keyword.STRINGCONST, from, k, line);
+					curr = new Token(TokenType.STRINGCONST, from, k, line);
 				}
 				else
 				{
 					int n = line[k + 1];
 					if((c == '<' && n == '>') || (c == '>' && n == '<'))
 					{
-						curr = new Token(Keyword.NE, from, k += 2, line);
+						curr = new Token(TokenType.NE, from, k += 2, line);
 					}
 					else if((c == '<' && n == '=') || (c == '=' && n == '<'))
 					{
-						curr = new Token(Keyword.LE, from, k += 2, line);
+						curr = new Token(TokenType.LE, from, k += 2, line);
 					}
 					else if((c == '>' && n == '=') || (c == '=' && n == '>'))
 					{
-						curr = new Token(Keyword.GE, from, k += 2, line);
+						curr = new Token(TokenType.GE, from, k += 2, line);
 					}
 					else 
 					{
-						curr = new Token((Keyword)c, from, ++k, line);
+						curr = new Token((TokenType)c, from, ++k, line);
 					}
 				}
 				curr = ref curr.NextToken;

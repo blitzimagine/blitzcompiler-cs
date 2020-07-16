@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
 
-namespace Blitz3D.Parsing.Nodes
+namespace Blitz3D.Converter.Parsing.Nodes
 {
 	public abstract class DeclNode:Node
 	{
@@ -90,7 +90,8 @@ namespace Blitz3D.Parsing.Nodes
 	////////////////////////////
 	public class VarDeclNode:DeclNode
 	{
-		public string ident, tag;
+		private readonly string ident;
+		private readonly string tag;
 		public DECL kind;
 		public bool constant;
 		public ExprNode expr;
@@ -117,36 +118,11 @@ namespace Blitz3D.Parsing.Nodes
 			{
 				expr.Semant(e);
 				expr = expr.CastTo(ty, e);
-				//if(constant || (kind & DECL.PARAM)!=0)
-				//{
-				//	if(!(expr is ConstNode c))
-				//	{
-				//		throw new Ex("Expression must be constant");
-				//	}
-				//	if(ty == Type.Int)
-				//	{
-				//		ty = new ConstType(c.intValue());
-				//	}
-				//	else if(ty == Type.Float)
-				//	{
-				//		ty = new ConstType(c.floatValue());
-				//	}
-				//	else
-				//	{
-				//		ty = new ConstType(c.stringValue());
-				//	}
-				//	e.types.Add(ty);
-				//	expr = null;
-				//}
 				//if((kind & DECL.PARAM)!=0)
 				//{
 				//	defType = (ConstType)ty;
 				//	ty = defType.valueType;
 				//}
-			}
-			else if(constant)
-			{
-				throw new Ex("Constants must be initialized");
 			}
 
 			Decl decl = d.insertDecl(ident, ty, kind, expr);
@@ -154,9 +130,9 @@ namespace Blitz3D.Parsing.Nodes
 			{
 				throw new Ex("Duplicate variable name");
 			}
-			if(expr!=null)
+			if(expr != null)
 			{
-				sem_var = new DeclVarNode(decl);
+				sem_var = new BaseDeclVarNode(decl);
 			}
 		}
 
@@ -176,22 +152,6 @@ namespace Blitz3D.Parsing.Nodes
 			}
 			yield return builder.ToString();
 		}
-
-		public string WriteData_InitStmtOnly()
-		{
-			if(expr != null)
-			{
-				return $"{ident} = {expr.JoinedWriteData()};";
-			}
-			return null;
-		}
-
-		public string WriteData_DeclStmtOnly()
-		{
-			string accessors = GetAccessors(kind, constant);
-			string typeName = type.Name;//Type.FromTag(tag).Name;
-			return $"{accessors}{typeName} {ident};";
-		}
 	}
 
 	//////////////////////////
@@ -199,7 +159,7 @@ namespace Blitz3D.Parsing.Nodes
 	//////////////////////////
 	public class FuncDeclNode:DeclNode
 	{
-		public readonly string ident;
+		private readonly string ident;
 		/// <summary>Return type</summary>
 		public readonly string tag;
 		public DeclSeqNode @params;
@@ -223,7 +183,6 @@ namespace Blitz3D.Parsing.Nodes
 			sem_type = new FuncType(t, decls, false, false);
 			if(d.insertDecl(ident, sem_type, DECL.FUNC) is null)
 			{
-				sem_type = null;
 				throw new Ex("duplicate identifier");
 			}
 			e.types.Add(sem_type);
@@ -237,7 +196,10 @@ namespace Blitz3D.Parsing.Nodes
 			for(k = 0; k < sem_type.@params.Count; ++k)
 			{
 				Decl d = sem_type.@params.decls[k];
-				if(decls.insertDecl(d.name, d.type, d.kind) is null) throw new Ex("duplicate identifier");
+				if(decls.insertDecl(d.Name, d.type, d.kind) is null)
+				{
+					throw new Ex("duplicate identifier");
+				}
 			}
 
 			stmts.Semant(sem_env);
@@ -303,7 +265,6 @@ namespace Blitz3D.Parsing.Nodes
 			sem_type = new StructType(ident);
 			if(d.insertDecl(ident, sem_type, DECL.STRUCT) is null)
 			{
-				sem_type = null;
 				throw new Ex("Duplicate identifier");
 			}
 			e.types.Add(sem_type);
@@ -383,7 +344,7 @@ namespace Blitz3D.Parsing.Nodes
 		{
 			expr.Semant(e);
 
-			if(expr.sem_type == Type.String)
+			if(expr.Sem_Type == Type.String)
 			{
 				str_label = genLabel();
 			}
@@ -391,7 +352,7 @@ namespace Blitz3D.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			string ret = $"{dataVarName}.Add<{expr.sem_type.Name}>({expr.JoinedWriteData()});";
+			string ret = $"{dataVarName}.Add<{expr.Sem_Type.Name}>({expr.JoinedWriteData()});";
 			if(str_label?.Length>0)
 			{
 				ret = $"/*{str_label}*/{ret}";
@@ -399,13 +360,6 @@ namespace Blitz3D.Parsing.Nodes
 			yield return ret;
 		}
 		public string WriteData_InstanceDeclaration() => $"public static readonly BlitzData {dataVarName} = new BlitzData();";
-
-		//Old genereic type ones
-		//public override IEnumerable<string> WriteData()
-		//{
-		//	yield return $"/*BlitzData<{expr.sem_type.Name}> {str_label}*/ {dataVarName}.Add({expr.JoinedWriteData()});";
-		//}
-		//public string GetDataInstanceDeclaration() => $"public static readonly BlitzData<{expr.sem_type.Name}> {dataVarName} = new BlitzData<{expr.sem_type.Name}>();";
 	}
 
 	////////////////////////
@@ -432,7 +386,6 @@ namespace Blitz3D.Parsing.Nodes
 			sem_type = new VectorType(ty, exprs.Count);
 			if(d.insertDecl(ident, sem_type, kind) is null)
 			{
-				sem_type = null;
 				throw new Ex("Duplicate identifier");
 			}
 			env.types.Add(sem_type);

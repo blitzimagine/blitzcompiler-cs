@@ -1,6 +1,4 @@
-using System.Linq;
-
-namespace Blitz3D.Parsing
+namespace Blitz3D.Converter.Parsing
 {
 	public abstract class Type
 	{
@@ -9,7 +7,7 @@ namespace Blitz3D.Parsing
 		//operators
 		public virtual bool CanCastTo(Type t) => this == t;
 
-		//built in types
+		//built-in types
 		public readonly static Type Void = new VoidType();
 		public readonly static Type Int = new IntType();
 		public readonly static Type Float = new FloatType();

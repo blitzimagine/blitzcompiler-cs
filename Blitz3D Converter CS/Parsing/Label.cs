@@ -1,18 +1,9 @@
-using System.Drawing;
-
-namespace Blitz3D.Parsing
+namespace Blitz3D.Converter.Parsing
 {
-	public class Label
+	public class Label:Identifier
 	{
-		public string name; //name of label
-		public Point? def;	//pos of defn
-		public Point? @ref;  //goto/restore src
+		public static readonly Label __DATA = new Label("__DATA"){Name = "__DATA"};
 
-		public Label(string n, Point? d, Point? r)
-		{
-			name = n;
-			def = d;
-			@ref = r;
-		}
+		public Label(string id):base(id){}
 	}
 }

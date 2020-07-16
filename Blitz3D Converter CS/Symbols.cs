@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace Blitz3D.Compiling
+namespace Blitz3D.Converter
 {
 	public static class Symbols
 	{

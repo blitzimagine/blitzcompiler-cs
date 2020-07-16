@@ -1,7 +1,7 @@
 using System;
 using System.Drawing;
 
-namespace Blitz3D
+namespace Blitz3D.Converter
 {
 	public class Ex:Exception
 	{

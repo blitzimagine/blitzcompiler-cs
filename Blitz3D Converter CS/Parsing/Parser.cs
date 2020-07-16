@@ -1,9 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using Blitz3D.Parsing.Nodes;
+using Blitz3D.Converter.Parsing.Nodes;
 
-namespace Blitz3D.Parsing
+namespace Blitz3D.Converter.Parsing
 {
 	///<summary>The parser builds an abstact syntax tree from input tokens.</summary>
 	public class Parser
@@ -19,14 +20,14 @@ namespace Blitz3D.Parsing
 		public readonly Dictionary<string,FileNode> included = new Dictionary<string,FileNode>();
 
 		private Tokenizer toker;
-		private Dictionary<string, DimNode> arrayDecls = new Dictionary<string, DimNode>();
+		private Dictionary<string, DimNode> arrayDecls = new Dictionary<string, DimNode>(StringComparer.OrdinalIgnoreCase);
 
 		private DeclSeqNode consts;
 		private DeclSeqNode structs;
 		private DeclSeqNode funcs;
 		private DeclSeqNode datas;
 
-		private static bool isTerm(Keyword c) => c == (Keyword)':' || c == Keyword.NEWLINE;
+		private static bool isTerm(TokenType c) => c == (TokenType)':' || c == TokenType.NEWLINE;
 
 		public Parser(Tokenizer t) => toker = t;
 
@@ -41,7 +42,10 @@ namespace Blitz3D.Parsing
 
 			StmtSeqNode stmts = parseStmtSeq(STMTS.PROG);	
 			
-			toker.AssertCurr(Keyword.EOF, exp, "end-of-file");
+			if(toker.CurrType!=TokenType.EOF)
+			{
+				throw exp("end-of-file");
+			}
 
 			return new ProgNode(consts, structs, funcs, datas, stmts);
 		}
@@ -52,27 +56,25 @@ namespace Blitz3D.Parsing
 			string lastLabel = null;
 			for(;;)
 			{
-				while(toker.Curr == (Keyword)':' || (scope != STMTS.LINE && toker.Curr == Keyword.NEWLINE))
+				while(toker.CurrType == (TokenType)':' || (scope != STMTS.LINE && toker.CurrType == TokenType.NEWLINE))
 				{
-					toker.Next();
+					toker.NextType();
 				}
 				StmtNode result = null;
 
 				Point pos = toker.Pos;
 
-				Keyword currKeyWord = toker.Curr;
+				TokenType currKeyWord = toker.CurrType;
 				switch(currKeyWord)
 				{
-					case Keyword.INCLUDE:
+					case TokenType.INCLUDE:
 					{
-						toker.AssertNext(Keyword.STRINGCONST, exp, "include filename");
+						toker.NextType();
 
 						string inc = toker.TakeText();
-						inc = inc.Substring(1, inc.Length - 2);
+						inc = inc.Substring(1, inc.Length - 2).ToLowerInvariant();
 
-						//WIN32 KLUDGE//
-						inc = Path.GetFullPath(inc);
-						inc = inc.ToLowerInvariant();
+						string includeClassPath = inc;
 
 						if(!included.TryGetValue(inc, out var include))
 						{
@@ -85,54 +87,57 @@ namespace Blitz3D.Parsing
 							Tokenizer t_toker = toker;
 							toker = i_toker;
 
-							include = new FileNode(inc);
+							include = new FileNode(includeClassPath);
 							included.Add(incfile, include);
 							
 							//Assign stmts after adding to dictionary so we know that it already exists.
 							include.stmts = parseStmtSeq(scope);
 
-							toker.AssertCurr(Keyword.EOF, exp, "end-of-file");
+							if(toker.CurrType!=TokenType.EOF)
+							{
+								throw exp("end-of-file");
+							}
 
 							toker = t_toker;
 							incfile = t_inc;
 						}
-						result = new IncludeNode(incfile, include);
+						result = new IncludeNode(include);
 					}
 					break;
-					case Keyword.IDENT:
+					case TokenType.IDENT:
 					{
 						string ident = toker.TakeText();
 						string tag = parseTypeTag();
-						if(!arrayDecls.ContainsKey(ident) && toker.Curr != Keyword.EQ && toker.Curr != Keyword.Backslash && toker.Curr != Keyword.BracketOpen)
+						if(!arrayDecls.ContainsKey(ident) && toker.CurrType != TokenType.EQ && toker.CurrType != TokenType.Backslash && toker.CurrType != TokenType.BracketOpen)
 						{
 							//must be a function
 							ExprSeqNode exprs;
-							if(toker.Curr == Keyword.ParenOpen)
+							if(toker.CurrType == TokenType.ParenOpen)
 							{
 								//ugly lookahead for optional '()' around statement params
 								int nest = 1;
 								int k;
 								for(k = 1; nest>0; k++)
 								{
-									Keyword c = toker.LookAhead(k);
+									TokenType c = toker.LookAhead(k);
 									if(isTerm(c))
 									{
 										throw ex("Mismatched brackets");
 									}
-									else if(c == Keyword.ParenOpen)
+									else if(c == TokenType.ParenOpen)
 									{
 										nest++;
 									}
-									else if(c == Keyword.ParenClose)
+									else if(c == TokenType.ParenClose)
 									{
 										nest--;
 									}
 								}
 								if(isTerm(toker.LookAhead(k)))
 								{
-									toker.Next();
+									toker.NextType();
 									exprs = parseExprSeq();
-									toker.AssertSkip(Keyword.ParenClose, exp,"')'");
+									toker.AssertSkip(TokenType.ParenClose, exp,"')'");
 								}
 								else
 								{
@@ -150,59 +155,58 @@ namespace Blitz3D.Parsing
 						{
 							//must be a var
 							VarNode var = parseVar(ident, tag);
-							toker.AssertSkip(Keyword.EQ, exp, "variable assignment");
+							toker.AssertSkip(TokenType.EQ, exp, "variable assignment");
 							ExprNode expr = parseExpr(false);
 							result = new AsgnNode(var, expr);
 						}
 					}
 					break;
-					case Keyword.IF:
+					case TokenType.IF:
 					{
-						toker.Next();
+						toker.NextType();
 						result = parseIf();
-						if(toker.Curr == Keyword.ENDIF) toker.Next();
+						toker.TrySkip(TokenType.ENDIF);
 					}
 					break;
-					case Keyword.WHILE:
+					case TokenType.WHILE:
 					{
-						toker.Next();
+						toker.NextType();
 						ExprNode expr = parseExpr(false);
 						StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
-						toker.AssertSkip(Keyword.WEND, exp, "'Wend'");
+						toker.AssertSkip(TokenType.WEND, exp, "'Wend'");
 						result = new WhileNode(expr, stmts2);
 					}
 					break;
-					case Keyword.REPEAT:
+					case TokenType.REPEAT:
 					{
-						toker.Next();
+						toker.NextType();
 						ExprNode expr = null;
 						StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
-						Keyword curr = toker.Curr;
-						if(curr != Keyword.UNTIL && curr != Keyword.FOREVER)
+						TokenType curr = toker.CurrType;
+						if(curr != TokenType.UNTIL && curr != TokenType.FOREVER)
 						{
 							throw exp("'Until' or 'Forever'");
 						}
-						toker.Next();
-						if(curr == Keyword.UNTIL) expr = parseExpr(false);
+						toker.NextType();
+						if(curr == TokenType.UNTIL) expr = parseExpr(false);
 						result = new RepeatNode(stmts2, expr);
 					}
 					break;
-					case Keyword.SELECT:
+					case TokenType.SELECT:
 					{
-						toker.Next();
+						toker.NextType();
 						ExprNode expr = parseExpr(false);
 						SelectNode selNode = new SelectNode(expr);
-						while(!toker.TrySkip(Keyword.ENDSELECT))
+						while(!toker.TrySkip(TokenType.END_SELECT))
 						{
 							toker.SkipWhile(isTerm);
-							if(toker.TrySkip(Keyword.CASE))
+							if(toker.TrySkip(TokenType.CASE))
 							{
 								ExprSeqNode exprs = parseExprSeq();
-								if(exprs.Count==0) throw exp("expression sequence");
 								StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
 								selNode.Add(new CaseNode(exprs, stmts2));
 							}
-							else if(toker.TrySkip(Keyword.DEFAULT))
+							else if(toker.TrySkip(TokenType.DEFAULT))
 							{
 								selNode.defStmts = parseStmtSeq(STMTS.BLOCK);
 							}
@@ -214,68 +218,68 @@ namespace Blitz3D.Parsing
 						result = selNode;
 					}
 					break;
-					case Keyword.FOR:
+					case TokenType.FOR:
 					{
 						VarNode var;
 						StmtSeqNode stmts2;
-						toker.Next();
+						toker.NextType();
 						var = parseVar();
-						toker.AssertSkip(Keyword.EQ, exp, "variable assignment");
-						if(toker.TrySkip(Keyword.EACH))
+						toker.AssertSkip(TokenType.EQ, exp, "variable assignment");
+						if(toker.TrySkip(TokenType.EACH))
 						{
 							string ident = parseIdent();
 							stmts2 = parseStmtSeq(STMTS.BLOCK);
-							toker.AssertSkip(Keyword.NEXT, exp, "'Next'");
+							toker.AssertSkip(TokenType.NEXT, exp, "'Next'");
 							result = new ForEachNode(var, ident, stmts2);
 						}
 						else
 						{
 							ExprNode from, to, step;
 							from = parseExpr(false);
-							toker.AssertSkip(Keyword.TO, exp, "'TO'");
+							toker.AssertSkip(TokenType.TO, exp, "'TO'");
 							to = parseExpr(false);
 							//step...
-							if(toker.Curr == Keyword.STEP)
+							if(toker.CurrType == TokenType.STEP)
 							{
-								toker.Next();
+								toker.NextType();
 								step = parseExpr(false);
 							}
 							else step = new IntConstNode("1");
 							stmts2 = parseStmtSeq(STMTS.BLOCK);
-							toker.AssertSkip(Keyword.NEXT, exp, "'Next'");
+							toker.AssertSkip(TokenType.NEXT, exp, "'Next'");
 							result = new ForNode(var, from, to, step, stmts2);
 						}
 					}
 					break;
-					case Keyword.EXIT:
+					case TokenType.EXIT:
 					{
-						toker.Next();
+						toker.NextType();
 						result = new ExitNode();
 					}
 					break;
-					case Keyword.GOTO:
+					case TokenType.GOTO:
 					{
-						toker.Next();
+						toker.NextType();
 						result = new GotoNode(parseIdent());
 					}
 					break;
-					case Keyword.GOSUB:
+					case TokenType.GOSUB:
 					{
-						toker.Next();
+						toker.NextType();
 						result = new GosubNode(parseIdent());
 					}
 					break;
-					case Keyword.RETURN:
+					case TokenType.RETURN:
 					{
-						toker.Next();
+						toker.NextType();
 						result = new ReturnNode(parseExpr(true));
 					}
 					break;
-					case Keyword.BBDELETE:
+					case TokenType.DELETE:
 					{
-						if(toker.Next() == Keyword.EACH)
+						if(toker.NextType() == TokenType.EACH)
 						{
-							toker.Next();
+							toker.NextType();
 							string t = parseIdent();
 							result = new DeleteEachNode(t);
 						}
@@ -286,98 +290,94 @@ namespace Blitz3D.Parsing
 						}
 					}
 					break;
-					case Keyword.INSERT:
+					case TokenType.INSERT:
 					{
-						toker.Next();
+						toker.NextType();
 						ExprNode expr1 = parseExpr(false);
-						if(toker.Curr != Keyword.BEFORE && toker.Curr != Keyword.AFTER) throw exp("'Before' or 'After'");
-						bool before = toker.Curr == Keyword.BEFORE;
-						toker.Next();
+						bool before = toker.TakeType() == TokenType.BEFORE;//If not Keyword.BEFORE, then Keyword.AFTER
 						ExprNode expr2 = parseExpr(false);
 						result = new InsertNode(expr1, expr2, before);
 					}
 					break;
-					case Keyword.READ:
+					case TokenType.READ:
 						do
 						{
-							toker.Next();
+							toker.NextType();
 							VarNode var = parseVar();
 							StmtNode stmt = new ReadNode(var);
 							stmt.pos = pos;
 							pos = toker.Pos;
 							stmts.Add(stmt);
-						} while(toker.Curr == Keyword.COMMA);
+						} while(toker.CurrType == TokenType.COMMA);
 						break;
-					case Keyword.RESTORE:
-						if(toker.Next() == Keyword.IDENT)
+					case TokenType.RESTORE:
+						if(toker.NextType() == TokenType.IDENT)
 						{
 							result = new RestoreNode(toker.TakeText());
 						}
-						else result = new RestoreNode("");
+						else
+						{
+							result = new RestoreNode("");
+						}
 						break;
-					case Keyword.DATA:
-						if(scope != STMTS.PROG) throw ex("'Data' can only appear in main program");
+					case TokenType.DATA:
 						do
 						{
-							toker.Next();
+							toker.NextType();
 							ExprNode expr = parseExpr(false);
 							datas.Add(new DataDeclNode(expr, lastLabel));
-						} while(toker.Curr == Keyword.COMMA);
+						} while(toker.CurrType == TokenType.COMMA);
 						break;
-					case Keyword.TYPE:
-						if(scope != STMTS.PROG) throw ex("'Type' can only appear in main program");
-						toker.Next();
+					case TokenType.TYPE:
+						toker.NextType();
 						structs.Add(parseStructDecl());
 						break;
-					case Keyword.BBCONST:
-						if(scope != STMTS.PROG) throw ex("'Const' can only appear in main program");
+					case TokenType.CONST:
 						do
 						{
-							toker.Next();
+							toker.NextType();
 							consts.Add(parseVarDecl(DECL.GLOBAL, true));
-						} while(toker.Curr == Keyword.COMMA);
+						} while(toker.CurrType == TokenType.COMMA);
 						break;
-					case Keyword.FUNCTION:
-						if(scope != STMTS.PROG) throw ex("'Function' can only appear in main program");
-						toker.Next();
+					case TokenType.FUNCTION:
+						toker.NextType();
 						funcs.Add(parseFuncDecl());
 						break;
-					case Keyword.DIM:
+					case TokenType.DIM:
 						do
 						{
-							toker.Next();
+							toker.NextType();
 							StmtNode stmt = parseArrayDecl();
 							stmt.pos = pos;
 							pos = toker.Pos;
 							stmts.Add(stmt);
-						} while(toker.Curr == Keyword.COMMA);
+						} while(toker.CurrType == TokenType.COMMA);
 						break;
-					case Keyword.LOCAL:
+					case TokenType.LOCAL:
 						do
 						{
-							toker.Next();
+							toker.NextType();
 							DeclNode d = parseVarDecl(DECL.LOCAL, false);
 							StmtNode stmt = new DeclStmtNode(d);
 							stmt.pos = pos;
 							pos = toker.Pos;
 							stmts.Add(stmt);
-						} while(toker.Curr == Keyword.COMMA);
+						} while(toker.CurrType == TokenType.COMMA);
 						break;
-					case Keyword.GLOBAL:
-						if(scope != STMTS.PROG) throw ex("'Global' can only appear in main program");
+					case TokenType.GLOBAL:
 						do
 						{
-							toker.Next();
+							toker.NextType();
 							DeclNode d = parseVarDecl(DECL.GLOBAL, false);
 							StmtNode stmt = new DeclStmtNode(d);
 							stmt.pos = pos;
 							pos = toker.Pos;
 							stmts.Add(stmt);
-						} while(toker.Curr == Keyword.COMMA);
+						} while(toker.CurrType == TokenType.COMMA);
 						break;
-					case (Keyword)'.':
+					case (TokenType)'.':
 					{
-						toker.Next();
+						toker.NextType();
 						string t = parseIdent();
 						result = new LabelNode(t);
 						lastLabel = t;
@@ -394,7 +394,7 @@ namespace Blitz3D.Parsing
 				}
 				if(lastLabel!=null)
 				{
-					if(currKeyWord!=Keyword.DATA && currKeyWord!=(Keyword)'.')
+					if(currKeyWord!=TokenType.DATA && currKeyWord!=(TokenType)'.')
 					{
 						lastLabel = null;
 					}
@@ -403,24 +403,24 @@ namespace Blitz3D.Parsing
 		}
 
 		private Ex ex(string s) => new Ex(s, toker.Pos, incfile);
-		private Ex exp(string s) => toker.Curr switch
+		private Ex exp(string s) => toker.CurrType switch
 		{
-			Keyword.NEXT => ex("'Next' without 'For'"),
-			Keyword.WEND => ex("'Wend' without 'While'"),
-			Keyword.ELSE => ex("'Else' without 'If'"),
-			Keyword.ELSEIF => ex("'Elseif' without 'If'"),
-			Keyword.ENDIF => ex("'Endif' without 'If'"),
-			Keyword.ENDFUNCTION => ex("'End Function' without 'Function'"),
-			Keyword.UNTIL => ex("'Until' without 'Repeat'"),
-			Keyword.FOREVER => ex("'Forever' without 'Repeat'"),
-			Keyword.CASE => ex("'Case' without 'Select'"),
-			Keyword.ENDSELECT => ex("'End Select' without 'Select'"),
+			TokenType.NEXT => ex("'Next' without 'For'"),
+			TokenType.WEND => ex("'Wend' without 'While'"),
+			TokenType.ELSE => ex("'Else' without 'If'"),
+			TokenType.ELSEIF => ex("'Elseif' without 'If'"),
+			TokenType.ENDIF => ex("'Endif' without 'If'"),
+			TokenType.END_FUNCTION => ex("'End Function' without 'Function'"),
+			TokenType.UNTIL => ex("'Until' without 'Repeat'"),
+			TokenType.FOREVER => ex("'Forever' without 'Repeat'"),
+			TokenType.CASE => ex("'Case' without 'Select'"),
+			TokenType.END_SELECT => ex("'End Select' without 'Select'"),
 			_ => ex("Expecting " + s),
 		};
 
 		private string parseIdent()
 		{
-			if(toker.Curr != Keyword.IDENT)
+			if(toker.CurrType != TokenType.IDENT)
 			{
 				throw exp("identifier");
 			}
@@ -429,12 +429,12 @@ namespace Blitz3D.Parsing
 
 		private string parseTypeTag()
 		{
-			switch(toker.Curr)
+			switch(toker.CurrType)
 			{
-				case (Keyword)'%': toker.Next(); return "%";
-				case (Keyword)'#': toker.Next(); return "#";
-				case (Keyword)'$': toker.Next(); return "$";
-				case (Keyword)'.': toker.Next(); return parseIdent();
+				case (TokenType)'%': toker.NextType(); return "%";
+				case (TokenType)'#': toker.NextType(); return "#";
+				case (TokenType)'$': toker.NextType(); return "$";
+				case (TokenType)'.': toker.NextType(); return parseIdent();
 				default: return "";
 			}
 		}
@@ -448,34 +448,34 @@ namespace Blitz3D.Parsing
 		private VarNode parseVar(string ident, string tag)
 		{
 			VarNode var;
-			if(toker.Curr == Keyword.ParenOpen)
+			if(toker.CurrType == TokenType.ParenOpen)
 			{
-				toker.Next();
+				toker.NextType();
 				ExprSeqNode exprs = parseExprSeq();
-				toker.AssertSkip(Keyword.ParenClose, exp, "')'");
+				toker.AssertSkip(TokenType.ParenClose, exp, "')'");
 				var = new ArrayVarNode(ident, tag, exprs);
 			}
 			else var = new IdentVarNode(ident, tag);
 
 			for(;;)
 			{
-				if(toker.Curr == Keyword.Backslash)
+				if(toker.CurrType == TokenType.Backslash)
 				{
-					toker.Next();
+					toker.NextType();
 					string ident2 = parseIdent();
 					string tag2 = parseTypeTag();
 					ExprNode expr = new VarExprNode(var);
 					var = new FieldVarNode(expr, ident2, tag2);
 				}
-				else if(toker.Curr == Keyword.BracketOpen)
+				else if(toker.CurrType == TokenType.BracketOpen)
 				{
-					toker.Next();
+					toker.NextType();
 					ExprSeqNode exprs = parseExprSeq();
-					if(exprs.exprs.Count != 1 || toker.Curr != Keyword.BracketClose)
+					if(exprs.exprs.Count != 1 || toker.CurrType != TokenType.BracketClose)
 					{
 						throw exp("']'");
 					}
-					toker.Next();
+					toker.NextType();
 					ExprNode expr = new VarExprNode(var);
 					var = new VectorVarNode(expr, exprs);
 				}
@@ -493,32 +493,30 @@ namespace Blitz3D.Parsing
 			StmtSeqNode stmts, elseOpt = null;
 
 			expr = parseExpr(false);
-			if(toker.Curr == Keyword.THEN) toker.Next();
+			toker.TrySkip(TokenType.THEN);
 
-			bool blkif = isTerm(toker.Curr);
+			bool blkif = isTerm(toker.CurrType);
 			stmts = parseStmtSeq(blkif ? STMTS.BLOCK : STMTS.LINE);
 
-			if(toker.Curr == Keyword.ELSEIF)
+			if(toker.TrySkip(TokenType.ELSEIF))
 			{
 				Point pos = toker.Pos;
-				toker.Next();
 				IfNode ifnode = parseIf();
 				ifnode.pos = pos;
 				elseOpt = new StmtSeqNode(incfile);
 				elseOpt.Add(ifnode);
 			}
-			else if(toker.Curr == Keyword.ELSE)
+			else if(toker.TrySkip(TokenType.ELSE))
 			{
-				toker.Next();
 				elseOpt = parseStmtSeq(blkif ? STMTS.BLOCK : STMTS.LINE);
 			}
 			if(blkif)
 			{
-				toker.AssertCurr(Keyword.ENDIF, exp, "'EndIf'");
+				toker.AssertCurr(TokenType.ENDIF, exp, "'EndIf'");
 			}
 			else
 			{
-				toker.AssertCurr(Keyword.NEWLINE, exp, "end-of-line");
+				toker.AssertCurr(TokenType.NEWLINE, exp, "end-of-line");
 			}
 
 			return new IfNode(expr, stmts, elseOpt);
@@ -530,26 +528,26 @@ namespace Blitz3D.Parsing
 			string ident = parseIdent();
 			string tag = parseTypeTag();
 			DeclNode d;
-			if(toker.TrySkip(Keyword.BracketOpen))
+			if(toker.TrySkip(TokenType.BracketOpen))
 			{
 				if(constant)
 				{
 					throw ex("Blitz arrays may not be constant");
 				}
 				ExprSeqNode exprs = parseExprSeq();
-				if(exprs.Count != 1 || toker.Curr != Keyword.BracketClose)
+				if(exprs.Count != 1 || toker.CurrType != TokenType.BracketClose)
 				{
 					throw exp("']'");
 				}
-				toker.Next();
+				toker.NextType();
 				d = new VectorDeclNode(ident, tag, exprs, kind);
 			}
 			else
 			{
 				ExprNode expr = null;
-				if(toker.Curr == Keyword.EQ)
+				if(toker.CurrType == TokenType.EQ)
 				{
-					toker.Next();
+					toker.NextType();
 					expr = parseExpr(false);
 				}
 				else if(constant)
@@ -567,9 +565,9 @@ namespace Blitz3D.Parsing
 			Point pos = toker.Pos;
 			string ident = parseIdent();
 			string tag = parseTypeTag();
-			toker.AssertSkip(Keyword.ParenOpen, exp, "'('");
+			toker.AssertSkip(TokenType.ParenOpen, exp, "'('");
 			ExprSeqNode exprs = parseExprSeq();
-			toker.AssertSkip(Keyword.ParenClose, exp, "')'");
+			toker.AssertSkip(TokenType.ParenClose, exp, "')'");
 			if(exprs.Count==0)
 			{
 				throw ex("can't have a 0 dimensional array");
@@ -586,27 +584,27 @@ namespace Blitz3D.Parsing
 			string tag = parseTypeTag();
 
 			DeclSeqNode @params = new DeclSeqNode();
-			toker.AssertSkip(Keyword.ParenOpen, exp, "'('");
-			if(!toker.TrySkip(Keyword.ParenClose))
+			toker.AssertSkip(TokenType.ParenOpen, exp, "'('");
+			if(!toker.TrySkip(TokenType.ParenClose))
 			{
 				for(;;)
 				{
 					@params.Add(parseVarDecl(DECL.PARAM, false));
-					if(toker.Curr != Keyword.COMMA) break;
-					toker.Next();
+					if(toker.CurrType != TokenType.COMMA) break;
+					toker.NextType();
 				}
-				toker.AssertSkip(Keyword.ParenClose, exp, "')'");
+				toker.AssertSkip(TokenType.ParenClose, exp, "')'");
 			}
 
 			StmtSeqNode stmts = parseStmtSeq(STMTS.BLOCK);
-			if(toker.Curr != Keyword.ENDFUNCTION)
+			if(toker.CurrType != TokenType.END_FUNCTION)
 			{
 				throw exp("'End Function'");
 			}
 			StmtNode ret = new ReturnNode(null);
 			ret.pos = toker.Pos;
 			stmts.Add(ret);
-			toker.Next();
+			toker.NextType();
 			DeclNode d = new FuncDeclNode(ident, tag, @params, stmts);
 			d.pos = pos;
 			d.file = incfile;
@@ -616,17 +614,17 @@ namespace Blitz3D.Parsing
 		{
 			Point pos = toker.Pos;
 			string ident = parseIdent();
-			toker.SkipWhile(Keyword.NEWLINE);
+			toker.SkipWhile(TokenType.NEWLINE);
 			DeclSeqNode fields = new DeclSeqNode();
-			while(toker.TrySkip(Keyword.FIELD))
+			while(toker.TrySkip(TokenType.FIELD))
 			{
 				do
 				{
 					fields.Add(parseVarDecl(DECL.FIELD, false));
-				} while(toker.TrySkip(Keyword.COMMA));
-				toker.SkipWhile(Keyword.NEWLINE);
+				} while(toker.TrySkip(TokenType.COMMA));
+				toker.SkipWhile(TokenType.NEWLINE);
 			}
-			toker.AssertSkip(Keyword.ENDTYPE, exp, "'Field' or 'End Type'");
+			toker.AssertSkip(TokenType.END_TYPE, exp, "'Field' or 'End Type'");
 			DeclNode d = new StructDeclNode(ident, fields);
 			d.pos = pos;
 			d.file = incfile;
@@ -640,7 +638,7 @@ namespace Blitz3D.Parsing
 			while(parseExpr(opt) is ExprNode e)
 			{
 				exprs.Add(e);
-				if(!toker.TrySkip(Keyword.COMMA))
+				if(!toker.TrySkip(TokenType.COMMA))
 				{
 					break;
 				}
@@ -651,10 +649,10 @@ namespace Blitz3D.Parsing
 
 		private ExprNode parseExpr(bool opt)
 		{
-			if(toker.TrySkip(Keyword.NOT))
+			if(toker.TrySkip(TokenType.NOT))
 			{
 				ExprNode expr = parseExpr1(false);
-				return new RelExprNode(Keyword.EQ, expr, new IntConstNode("0"));
+				return new RelExprNode(TokenType.EQ, expr, new IntConstNode("0"));
 			}
 			return parseExpr1(opt);
 		}
@@ -663,7 +661,7 @@ namespace Blitz3D.Parsing
 			ExprNode lhs = parseExpr2(opt);
 			if(lhs is null) return null;
 
-			while(toker.TryTake(out Keyword c, Keyword.AND, Keyword.OR, Keyword.XOR))
+			while(toker.TryTake(out TokenType c, TokenType.AND, TokenType.OR, TokenType.XOR))
 			{
 				ExprNode rhs = parseExpr2(false);
 				lhs = new BinExprNode(c, lhs, rhs);
@@ -675,7 +673,7 @@ namespace Blitz3D.Parsing
 			ExprNode lhs = parseExpr3(opt);
 			if(lhs is null) return null;
 
-			while(toker.TryTake(out Keyword c, Keyword.LT, Keyword.GT, Keyword.EQ, Keyword.LE, Keyword.GE, Keyword.NE))
+			while(toker.TryTake(out TokenType c, TokenType.LT, TokenType.GT, TokenType.EQ, TokenType.LE, TokenType.GE, TokenType.NE))
 			{
 				ExprNode rhs = parseExpr3(false);
 				lhs = new RelExprNode(c, lhs, rhs);
@@ -687,7 +685,7 @@ namespace Blitz3D.Parsing
 			ExprNode lhs = parseExpr4(opt);
 			if(lhs is null) return null;
 
-			while(toker.TryTake(out Keyword c, Keyword.ADD, Keyword.SUB))
+			while(toker.TryTake(out TokenType c, TokenType.ADD, TokenType.SUB))
 			{
 				ExprNode rhs = parseExpr4(false);
 				lhs = new ArithExprNode(c, lhs, rhs);
@@ -699,7 +697,7 @@ namespace Blitz3D.Parsing
 			ExprNode lhs = parseExpr5(opt);
 			if(lhs is null) return null;
 
-			while(toker.TryTake(out Keyword c, Keyword.SHL, Keyword.SHR, Keyword.SAR))
+			while(toker.TryTake(out TokenType c, TokenType.SHL, TokenType.SHR, TokenType.SAR))
 			{
 				ExprNode rhs = parseExpr5(false);
 				lhs = new BinExprNode(c, lhs, rhs);
@@ -710,7 +708,7 @@ namespace Blitz3D.Parsing
 		{
 			ExprNode lhs = parseExpr6(opt);
 			if(lhs is null) return null;
-			while(toker.TryTake(out Keyword c, Keyword.MUL, Keyword.DIV, Keyword.MOD))
+			while(toker.TryTake(out TokenType c, TokenType.MUL, TokenType.DIV, TokenType.MOD))
 			{
 				ExprNode rhs = parseExpr6(false);
 				lhs = new ArithExprNode(c, lhs, rhs);
@@ -721,7 +719,7 @@ namespace Blitz3D.Parsing
 		{
 			ExprNode lhs = parseUniExpr(opt);
 			if(lhs is null) return null;
-			while(toker.TryTake(out Keyword c, Keyword.POW))
+			while(toker.TryTake(out TokenType c, TokenType.POW))
 			{
 				ExprNode rhs = parseUniExpr(false);
 				lhs = new ArithExprNode(c, lhs, rhs);
@@ -733,60 +731,60 @@ namespace Blitz3D.Parsing
 		{
 			ExprNode result;
 
-			Keyword c = toker.Curr;
+			TokenType c = toker.CurrType;
 			switch(c)
 			{
-				case Keyword.BBINT:
-					toker.Next();
-					toker.TrySkip((Keyword)'%');
+				case TokenType.INT:
+					toker.NextType();
+					toker.TrySkip((TokenType)'%');
 					result = parseUniExpr(false);
 					result = new CastNode(result, Type.Int);
 					break;
-				case Keyword.BBFLOAT:
-					toker.Next();
-					toker.TrySkip((Keyword)'#');
+				case TokenType.FLOAT:
+					toker.NextType();
+					toker.TrySkip((TokenType)'#');
 					result = parseUniExpr(false);
 					result = new CastNode(result, Type.Float);
 					break;
-				case Keyword.BBSTR:
-					toker.Next();
-					toker.TrySkip((Keyword)'$');
+				case TokenType.STR:
+					toker.NextType();
+					toker.TrySkip((TokenType)'$');
 					result = parseUniExpr(false);
 					result = new CastNode(result, Type.String);
 					break;
-				case Keyword.OBJECT:
-					toker.Next();
-					toker.TrySkip((Keyword)'.');
+				case TokenType.OBJECT:
+					toker.NextType();
+					toker.TrySkip((TokenType)'.');
 					string t = parseIdent();
 					result = parseUniExpr(false);
 					result = new ObjectCastNode(result, t);
 					break;
-				case Keyword.BBHANDLE:
-					toker.Next();
+				case TokenType.HANDLE:
+					toker.NextType();
 					result = parseUniExpr(false);
 					result = new ObjectHandleNode(result);
 					break;
-				case Keyword.BEFORE:
-					toker.Next();
+				case TokenType.BEFORE:
+					toker.NextType();
 					result = parseUniExpr(false);
 					result = new BeforeNode(result);
 					break;
-				case Keyword.AFTER:
-					toker.Next();
+				case TokenType.AFTER:
+					toker.NextType();
 					result = parseUniExpr(false);
 					result = new AfterNode(result);
 					break;
-				case Keyword.POSITIVE:
-				case Keyword.NEGATIVE:
-				case Keyword.BITNOT:
-				case Keyword.ABS:
-				case Keyword.SGN:
-					toker.Next();
+				case TokenType.POSITIVE:
+				case TokenType.NEGATIVE:
+				case TokenType.BITNOT:
+				case TokenType.ABS:
+				case TokenType.SGN:
+					toker.NextType();
 					result = parseUniExpr(false);
-					if(c == Keyword.BITNOT)
+					if(c == TokenType.BITNOT)
 					{
 						//TODO: Make this unary again
-						result = new BinExprNode(Keyword.XOR, result, new IntConstNode("-1"));
+						result = new BinExprNode(TokenType.XOR, result, new IntConstNode("-1"));
 					}
 					else
 					{
@@ -801,71 +799,71 @@ namespace Blitz3D.Parsing
 		}
 		private ExprNode parsePrimary(bool opt)
 		{
-			switch(toker.Curr)
+			switch(toker.CurrType)
 			{
-				case Keyword.ParenOpen:
+				case TokenType.ParenOpen:
 				{
-					toker.Next();
+					toker.NextType();
 					ExprNode expr = parseExpr(false);
-					toker.AssertSkip(Keyword.ParenClose, exp, "')'");
+					toker.AssertSkip(TokenType.ParenClose, exp, "')'");
 					return expr;
 				}
-				case Keyword.BBNEW:
+				case TokenType.NEW:
 				{
-					toker.Next();
+					toker.NextType();
 					return new NewNode(parseIdent());
 				}
-				case Keyword.FIRST:
+				case TokenType.FIRST:
 				{
-					toker.Next();
+					toker.NextType();
 					return new FirstNode(parseIdent());
 				}
-				case Keyword.LAST:
+				case TokenType.LAST:
 				{
-					toker.Next();
+					toker.NextType();
 					return new LastNode(parseIdent());
 				}
-				case Keyword.BBNULL:
-					toker.Next();
+				case TokenType.NULL:
+					toker.NextType();
 					return new NullNode();
-				case Keyword.INTCONST:
+				case TokenType.INTCONST:
 				{
 					return new IntConstNode(toker.TakeText());
 				}
-				case Keyword.FLOATCONST:
+				case TokenType.FLOATCONST:
 				{
 					return new FloatConstNode(toker.TakeText());
 				}
-				case Keyword.STRINGCONST:
+				case TokenType.STRINGCONST:
 				{
 					return new StringConstNode(toker.TakeText());
 				}
-				case Keyword.BINCONST:
+				case TokenType.BINCONST:
 				{
 					return new IntConstNode(toker.TakeText());
 				}
-				case Keyword.HEXCONST:
+				case TokenType.HEXCONST:
 				{
 					return new IntConstNode(toker.TakeText());
 				}
-				case Keyword.PI:
-					toker.Next();
+				case TokenType.PI:
+					toker.NextType();
 					return new FloatConstNode("MathF.PI" /*3.1415926535897932384626433832795f*/);
-				case Keyword.BBTRUE:
-					toker.Next();
+				case TokenType.TRUE:
+					toker.NextType();
 					return new IntConstNode("1");
-				case Keyword.BBFALSE:
-					toker.Next();
+				case TokenType.FALSE:
+					toker.NextType();
 					return new IntConstNode("0");
-				case Keyword.IDENT:
+				case TokenType.IDENT:
 					string ident = toker.TakeText();
 					string tag = parseTypeTag();
-					if(toker.Curr == Keyword.ParenOpen && !arrayDecls.ContainsKey(ident))
+					if(toker.CurrType == TokenType.ParenOpen && !arrayDecls.ContainsKey(ident))
 					{
 						//must be a func
-						toker.Next();
+						toker.NextType();
 						ExprSeqNode exprs = parseExprSeq();
-						toker.AssertSkip(Keyword.ParenClose, exp, "')'");
+						toker.AssertSkip(TokenType.ParenClose, exp, "')'");
 						return new CallNode(ident, tag, exprs);
 					}
 					else

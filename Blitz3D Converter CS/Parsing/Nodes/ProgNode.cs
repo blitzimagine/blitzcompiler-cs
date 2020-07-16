@@ -1,11 +1,14 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace Blitz3D.Parsing.Nodes
+namespace Blitz3D.Converter.Parsing.Nodes
 {
 	public class UserFunc
 	{
-		public string ident, proc, lib;
+		public readonly string ident;
+		public readonly string proc;
+		public readonly string lib;
+
 		public UserFunc(UserFunc t)
 		{
 			ident = t.ident;
@@ -44,8 +47,6 @@ namespace Blitz3D.Parsing.Nodes
 		//////////////////
 		public Environ Semant(Environ e)
 		{
-			StmtSeqNode.Reset(stmts.file, genLabel());
-
 			Environ env = new Environ(genLabel(), Type.Int, 0, e);
 
 			consts.Proto(env.decls, env);
@@ -97,14 +98,6 @@ namespace Blitz3D.Parsing.Nodes
 			
 			////emit return
 			//g.code(ret());
-
-			////check labels
-			//for(k = 0; k < sem_env.labels.Count; ++k)
-			//{
-			//	if(sem_env.labels[k].def < 0)
-			//		ex("Undefined label '" + sem_env.labels[k].name + "'",
-			//		   sem_env.labels[k].@ref, stmts.file);
-			//}
 
 			////leave main program
 			//g.label(sem_env.funcLabel + "_leave");
@@ -219,7 +212,7 @@ namespace Blitz3D.Parsing.Nodes
 
 	public class FileNode:Node
 	{
-		private readonly string fileName;
+		public readonly string fileName;
 
 		private readonly DeclSeqNode consts;
 		private readonly DeclSeqNode structs;
@@ -229,7 +222,7 @@ namespace Blitz3D.Parsing.Nodes
 
 		public FileNode(string fileName)
 		{
-			this.fileName = fileName;
+			this.fileName = Path.GetFileName(fileName);
 		}
 
 		public IEnumerable<string> WriteData()

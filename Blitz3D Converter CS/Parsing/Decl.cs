@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Blitz3D.Parsing.Nodes;
+using Blitz3D.Converter.Parsing.Nodes;
 
-namespace Blitz3D.Parsing
+namespace Blitz3D.Converter.Parsing
 {
 	public enum DECL
 	{
@@ -17,15 +17,14 @@ namespace Blitz3D.Parsing
 		FIELD	= 1<<6,
 	}
 
-	public class Decl
+	public class Decl:Identifier
 	{
-		public readonly string name;
 		public readonly Type type; //type
 		public readonly DECL kind;
 		public readonly ExprNode defType; //ConstType //default value
-		public Decl(string s, Type t, DECL k, ExprNode d = null)
+		public Decl(string name, Type t, DECL k, ExprNode d = null):base(name)
 		{
-			name = s;
+			Name = name;
 			type = t;
 			kind = k;
 			defType = d;
@@ -36,11 +35,12 @@ namespace Blitz3D.Parsing
 	{
 		public readonly List<Decl> decls = new List<Decl>();
 
-		public Decl findDecl(string s)
+		public Decl findDecl(string id)
 		{
+			id = id.ToLowerInvariant();
 			foreach(Decl decl in decls)
 			{
-				if(decl.name == s)
+				if(decl.ID == id)
 				{
 					return decl;
 				}

@@ -139,7 +139,8 @@ namespace Blitz3D.Converter.Parsing
 				}
 
 				FuncType f = new FuncType(funcType, @params, false, cfunc);
-				runtimeEnviron.funcDecls.insertDecl(name, f, DECL.FUNC);
+				Decl decl = runtimeEnviron.funcDecls.insertDecl(name, f, DECL.FUNC);
+				decl.Name = "Blitz3D."+name;
 			}
 		}
 

@@ -20,7 +20,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			{
 				throw new Ex("Illegal type conversion");
 			}
-			if(Sem_Type != ty)
+			if(!Sem_Type.IsCastImplicit(ty))
 			{
 				ExprNode expr = new CastNode(this, ty);
 				if(e != null)
@@ -179,7 +179,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			{
 				return $"{to.Name}.Parse({expr.JoinedWriteData()})";
 			}
-			return $"({to.Name})({expr.JoinedWriteData()})";
+			return $"({to.Name}){expr.JoinedWriteData()}";
 		}
 	}
 
@@ -409,12 +409,11 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			}
 			else if(op == TokenType.POW || lhs.Sem_Type == Type.Float || rhs.Sem_Type == Type.Float)
 			{
-				//It's ^, or one side is a float
+				//Either POW, or one operand is a float
 				sem_type = Type.Float;
 			}
 			else
 			{
-				//must be 2 ints
 				sem_type = Type.Int;
 			}
 			NeedsSemant = false;

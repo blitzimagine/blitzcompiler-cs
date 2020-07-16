@@ -7,6 +7,8 @@ namespace Blitz3D.Converter.Parsing
 		//operators
 		public virtual bool CanCastTo(Type t) => this == t;
 
+		public virtual bool IsCastImplicit(Type t) => this == t;
+
 		//built-in types
 		public readonly static Type Void = new VoidType();
 		public readonly static Type Int = new IntType();
@@ -133,6 +135,8 @@ namespace Blitz3D.Converter.Parsing
 		public override string Name => "int";
 
 		public override bool CanCastTo(Type t) => t == Int || t == Float || t == String;
+
+		public override bool IsCastImplicit(Type t) => t == Float;
 	}
 
 	public class FloatType:Type

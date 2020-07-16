@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Text;
 
 namespace Blitz3D.Converter.Parsing
 {
@@ -263,8 +262,6 @@ namespace Blitz3D.Converter.Parsing
 			return current.Type;
 		}
 
-		
-
 		private void Nextline()
 		{
 			curr_row++;
@@ -311,10 +308,18 @@ namespace Blitz3D.Converter.Parsing
 				}
 				else if(char.IsDigit(c))
 				{
-					for(++k; char.IsDigit(line[k]); ++k) { }
+					k++;
+					while(char.IsDigit(line[k]))
+					{
+						k++;
+					}
 					if(line[k] == '.')
 					{
-						for(++k; char.IsDigit(line[k]); ++k) { }
+						k++;
+						while(char.IsDigit(line[k]))
+						{
+							k++;
+						}
 						curr = new Token(TokenType.FLOATCONST, from, k, line);
 					}
 					else

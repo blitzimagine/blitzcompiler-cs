@@ -56,6 +56,8 @@ namespace Blitz3D.Converter.Parsing
 			decls.Add(n);
 			return n;
 		}
+
+		public Decl AssertNewDecl(string name, Type type, DECL kind, ExprNode defType = null) => insertDecl(name, type, kind, defType) ?? throw new Ex("Duplicate identifier");
 		public int Count => decls.Count;
 	}
 }

@@ -19,6 +19,8 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			return $"_{++genLabel_cnt}";
 		}
 
+		public virtual void Semant(Environ e){}
+
 		/////////////////////////////////
 		// calculate the type of a tag //
 		/////////////////////////////////

@@ -122,10 +122,9 @@ namespace Blitz3D.Converter.Parsing
 		public Token NextToken = null;
 
 		public readonly TokenType Type;
-
+		
+		//Represents a comment when Type is a NEWLINE
 		public readonly string Text;
-
-		public readonly int from;
 
 		public Token(TokenType keyword, string text)
 		{
@@ -137,10 +136,7 @@ namespace Blitz3D.Converter.Parsing
 			}
 		}
 
-		public Token(TokenType keyword, int from, int to, string line):this(keyword,line.Substring(from, to - from))
-		{
-			this.from = from;
-		}
+		public Token(TokenType keyword, int from, int to, string line):this(keyword,line.Substring(from, to - from)){}
 	}
 
 	/// <summary>The Toker converts an inout stream into tokens for use by the parser.</summary>
@@ -163,20 +159,17 @@ namespace Blitz3D.Converter.Parsing
 		}
 
 		private readonly StreamReader input;
-		private int curr_row;
 
 		public Tokenizer(StreamReader input)
 		{
 			this.input = input;
-			curr_row = -1;
 			Nextline();
 		}
-
-		public Point Pos => new Point(Current.from, curr_row);
 
 		private Token Current;
 
 		public TokenType CurrType => Current.Type;
+		public string CurrText => Current.Text;
 
 		public TokenType NextType()
 		{
@@ -264,7 +257,6 @@ namespace Blitz3D.Converter.Parsing
 
 		private void Nextline()
 		{
-			curr_row++;
 			if(input.EndOfStream)
 			{
 				Current = new Token(TokenType.EOF, null);
@@ -283,19 +275,22 @@ namespace Blitz3D.Converter.Parsing
 					k++;
 					continue;
 				}
-				else if(c == ';')
+				
+				int from = k;
+				if(c == ';')
 				{
+					from++;//Skip the ;
 					while(line[k] != '\n')
 					{
 						k++;
 					}
-					c = line[k];
+					curr = new Token(TokenType.NEWLINE, $"//{line.Substring(from, k-from)}");
+					k++;//Skip the \n
 				}
-
-				int from = k;
-				if(c == '\n')
+				else if(c == '\n')
 				{
-					curr = new Token(TokenType.NEWLINE, from, ++k, line);
+					k++;
+					curr = new Token(TokenType.NEWLINE, string.Empty);
 				}
 				else if(c == '.' && char.IsDigit(line[k + 1]))
 				{

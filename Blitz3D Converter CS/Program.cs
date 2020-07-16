@@ -93,9 +93,9 @@ namespace Blitz3D.Converter
 			return (parser.parse(inputFile.FullName), parser);
 		}
 
-		private static Environ Semant(ProgNode prog, Libs libs)
+		private static void Semant(ProgNode prog, Libs libs)
 		{
-			return prog.Semant(libs.runtimeEnviron);
+			prog.Semant(libs.runtimeEnviron);
 		}
 
 		private static string Convert(IEnumerable<string> prog)

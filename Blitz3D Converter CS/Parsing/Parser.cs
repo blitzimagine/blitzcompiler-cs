@@ -58,11 +58,13 @@ namespace Blitz3D.Converter.Parsing
 			{
 				while(toker.CurrType == (TokenType)':' || (scope != STMTS.LINE && toker.CurrType == TokenType.NEWLINE))
 				{
-					toker.NextType();
+					string text = toker.TakeText();
+					if(toker.CurrType == TokenType.NEWLINE)
+					{
+						stmts.AddComment(text);
+					}
 				}
 				StmtNode result = null;
-
-				Point pos = toker.Pos;
 
 				TokenType currKeyWord = toker.CurrType;
 				switch(currKeyWord)
@@ -208,7 +210,7 @@ namespace Blitz3D.Converter.Parsing
 							}
 							else if(toker.TrySkip(TokenType.DEFAULT))
 							{
-								selNode.defStmts = parseStmtSeq(STMTS.BLOCK);
+								selNode.Add(new DefaultCaseNode(parseStmtSeq(STMTS.BLOCK)));
 							}
 							else
 							{
@@ -305,8 +307,6 @@ namespace Blitz3D.Converter.Parsing
 							toker.NextType();
 							VarNode var = parseVar();
 							StmtNode stmt = new ReadNode(var);
-							stmt.pos = pos;
-							pos = toker.Pos;
 							stmts.Add(stmt);
 						} while(toker.CurrType == TokenType.COMMA);
 						break;
@@ -348,8 +348,6 @@ namespace Blitz3D.Converter.Parsing
 						{
 							toker.NextType();
 							StmtNode stmt = parseArrayDecl();
-							stmt.pos = pos;
-							pos = toker.Pos;
 							stmts.Add(stmt);
 						} while(toker.CurrType == TokenType.COMMA);
 						break;
@@ -359,8 +357,6 @@ namespace Blitz3D.Converter.Parsing
 							toker.NextType();
 							DeclNode d = parseVarDecl(DECL.LOCAL, false);
 							StmtNode stmt = new DeclStmtNode(d);
-							stmt.pos = pos;
-							pos = toker.Pos;
 							stmts.Add(stmt);
 						} while(toker.CurrType == TokenType.COMMA);
 						break;
@@ -370,8 +366,6 @@ namespace Blitz3D.Converter.Parsing
 							toker.NextType();
 							DeclNode d = parseVarDecl(DECL.GLOBAL, false);
 							StmtNode stmt = new DeclStmtNode(d);
-							stmt.pos = pos;
-							pos = toker.Pos;
 							stmts.Add(stmt);
 						} while(toker.CurrType == TokenType.COMMA);
 						break;
@@ -389,7 +383,6 @@ namespace Blitz3D.Converter.Parsing
 
 				if(result!=null)
 				{
-					result.pos = pos;
 					stmts.Add(result);
 				}
 				if(lastLabel!=null)
@@ -402,7 +395,7 @@ namespace Blitz3D.Converter.Parsing
 			}
 		}
 
-		private Ex ex(string s) => new Ex(s, toker.Pos, incfile);
+		private Ex ex(string s) => new Ex(s){file=incfile};
 		private Ex exp(string s) => toker.CurrType switch
 		{
 			TokenType.NEXT => ex("'Next' without 'For'"),
@@ -490,7 +483,8 @@ namespace Blitz3D.Converter.Parsing
 		private IfNode parseIf()
 		{
 			ExprNode expr;
-			StmtSeqNode stmts, elseOpt = null;
+			StmtSeqNode stmts = null;
+			StmtSeqNode elseOpt = null;
 
 			expr = parseExpr(false);
 			toker.TrySkip(TokenType.THEN);
@@ -500,9 +494,7 @@ namespace Blitz3D.Converter.Parsing
 
 			if(toker.TrySkip(TokenType.ELSEIF))
 			{
-				Point pos = toker.Pos;
 				IfNode ifnode = parseIf();
-				ifnode.pos = pos;
 				elseOpt = new StmtSeqNode(incfile);
 				elseOpt.Add(ifnode);
 			}
@@ -510,6 +502,7 @@ namespace Blitz3D.Converter.Parsing
 			{
 				elseOpt = parseStmtSeq(blkif ? STMTS.BLOCK : STMTS.LINE);
 			}
+			IfNode ret = new IfNode(expr, stmts, elseOpt);
 			if(blkif)
 			{
 				toker.AssertCurr(TokenType.ENDIF, exp, "'EndIf'");
@@ -519,12 +512,11 @@ namespace Blitz3D.Converter.Parsing
 				toker.AssertCurr(TokenType.NEWLINE, exp, "end-of-line");
 			}
 
-			return new IfNode(expr, stmts, elseOpt);
+			return ret;
 		}
 
 		private DeclNode parseVarDecl(DECL kind, bool constant)
 		{
-			Point pos = toker.Pos;
 			string ident = parseIdent();
 			string tag = parseTypeTag();
 			DeclNode d;
@@ -556,13 +548,11 @@ namespace Blitz3D.Converter.Parsing
 				}
 				d = new VarDeclNode(ident, tag, kind, constant, expr);
 			}
-			d.pos = pos;
 			d.file = incfile;
 			return d;
 		}
 		private DimNode parseArrayDecl()
 		{
-			Point pos = toker.Pos;
 			string ident = parseIdent();
 			string tag = parseTypeTag();
 			toker.AssertSkip(TokenType.ParenOpen, exp, "'('");
@@ -574,12 +564,10 @@ namespace Blitz3D.Converter.Parsing
 			}
 			DimNode d = new DimNode(ident, tag, exprs);
 			arrayDecls[ident] = d;
-			d.pos = pos;
 			return d;
 		}
 		private DeclNode parseFuncDecl()
 		{
-			Point pos = toker.Pos;
 			string ident = parseIdent();
 			string tag = parseTypeTag();
 
@@ -602,31 +590,35 @@ namespace Blitz3D.Converter.Parsing
 				throw exp("'End Function'");
 			}
 			StmtNode ret = new ReturnNode(null);
-			ret.pos = toker.Pos;
 			stmts.Add(ret);
 			toker.NextType();
 			DeclNode d = new FuncDeclNode(ident, tag, @params, stmts);
-			d.pos = pos;
 			d.file = incfile;
 			return d;
 		}
 		private DeclNode parseStructDecl()
 		{
-			Point pos = toker.Pos;
 			string ident = parseIdent();
-			toker.SkipWhile(TokenType.NEWLINE);
 			DeclSeqNode fields = new DeclSeqNode();
+			while(toker.CurrType == TokenType.NEWLINE)
+			{
+				fields.AddComment(toker.TakeText());
+			}
 			while(toker.TrySkip(TokenType.FIELD))
 			{
 				do
 				{
 					fields.Add(parseVarDecl(DECL.FIELD, false));
-				} while(toker.TrySkip(TokenType.COMMA));
-				toker.SkipWhile(TokenType.NEWLINE);
+				}
+				while(toker.TrySkip(TokenType.COMMA));
+				
+				while(toker.CurrType == TokenType.NEWLINE)
+				{
+					fields.AddComment(toker.TakeText());
+				}
 			}
 			toker.AssertSkip(TokenType.END_TYPE, exp, "'Field' or 'End Type'");
 			DeclNode d = new StructDeclNode(ident, fields);
-			d.pos = pos;
 			d.file = incfile;
 			return d;
 		}

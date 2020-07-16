@@ -31,8 +31,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		private readonly DeclSeqNode datas;
 		private readonly StmtSeqNode stmts;
 
-		//public Environ sem_env;
-
 		public ProgNode(DeclSeqNode c, DeclSeqNode s, DeclSeqNode f, DeclSeqNode d, StmtSeqNode ss)
 		{
 			consts = c;
@@ -45,7 +43,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		//////////////////
 		// The program! //
 		//////////////////
-		public Environ Semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			Environ env = new Environ(genLabel(), Type.Int, 0, e);
 
@@ -57,9 +55,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			funcs.Semant(env);
 			datas.Proto(env.decls, env);
 			datas.Semant(env);
-
-			//sem_env = env;
-			return env;
 		}
 
 
@@ -114,7 +109,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			List<string> usingFiles = new List<string>();
 			////program statements
 			lines.Add($"static {thisClass}()");
-			lines.Add("{");
 			foreach(string s in stmts.WriteData())
 			{
 				if(s.StartsWith("using static "))
@@ -130,12 +124,11 @@ namespace Blitz3D.Converter.Parsing.Nodes
 					lines.Add(s);
 				}
 			}
-			//data
-			lines.AddRange(datas.WriteData());
-			lines.Add("}");
+			//data, insert before the }
+			lines.InsertRange(lines.Count-1,datas.WriteData());
 
 			HashSet<string> dataVarAdded = new HashSet<string>();
-			foreach(var decl in datas.decls)
+			foreach(var decl in datas)
 			{
 				DataDeclNode dataDeclNode = (DataDeclNode)decl;
 				if(!dataVarAdded.Contains(dataDeclNode.dataVarName))
@@ -254,9 +247,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			lines.Add("{");
 			lines.AddRange(globalVars);
 			lines.Add($"static {thisClass}()");
-			lines.Add("{");
 			lines.AddRange(progStmts);
-			lines.Add("}");
 			lines.Add("}");
 			
 			return lines;

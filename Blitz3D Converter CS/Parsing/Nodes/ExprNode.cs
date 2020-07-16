@@ -32,8 +32,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			return this;
 		}
 
-		public virtual void Semant(Environ e){}
-
 		public abstract string JoinedWriteData();
 	}
 
@@ -48,7 +46,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public int Count => exprs.Count;
 
-		public void Semant(Environ e)
+		public override void Semant(Environ e)
 		{
 			for(int k = 0; k < exprs.Count; ++k)
 			{
@@ -458,7 +456,10 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			rhs.Semant(e);
 			if(lhs.Sem_Type is StructType || rhs.Sem_Type is StructType)
 			{
-				if(op != TokenType.EQ && op != TokenType.NE) throw new Ex("Illegal operator for custom type objects");
+				if(op != TokenType.EQ && op != TokenType.NE)
+				{
+					throw new Ex("Illegal operator for custom type objects");
+				}
 				opType = lhs.Sem_Type != Type.Null ? lhs.Sem_Type : rhs.Sem_Type;
 			}
 			else if(lhs.Sem_Type == Type.String || rhs.Sem_Type == Type.String)

@@ -21,10 +21,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		//	if(sem_type == Type.string_type) return call("__bbStrStore", t, n);
 		//	return move(n, mem(t));
 		//}
-		public virtual bool isObjParam() => false;
-
-		//addr of var
-		public virtual void Semant(Environ e){}
 
 		public abstract string JoinedWriteData();
 	}
@@ -53,7 +49,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		//	}
 		//	return base.store(g, n);
 		//}
-		public override bool isObjParam() => sem_type is StructType && sem_decl.kind == DECL.PARAM;
 
 		public override string JoinedWriteData() => sem_decl.Name;
 	}
@@ -77,6 +72,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		private readonly string ident;
 		private readonly string tag;
 		private bool declaration = false;
+
 		public IdentVarNode(string i, string t)
 		{
 			ident = i;
@@ -169,9 +165,11 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	///////////////
 	public class FieldVarNode:VarNode
 	{
-		public ExprNode expr;
-		public readonly string ident, tag;
-		public Decl sem_field;
+		private readonly ExprNode expr;
+		private readonly string ident;
+		private readonly string tag;
+
+		private Decl sem_field;
 
 		public FieldVarNode(ExprNode e, string i, string t)
 		{
@@ -183,11 +181,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			expr.Semant(e);
-			if(!(expr.Sem_Type is StructType s))
-			{
-				throw new Ex("Variable must be a Type");
-			}
-			sem_field = s.fields.findDecl(ident);
+			sem_field = ((StructType)expr.Sem_Type).fields.findDecl(ident);
 			if(sem_field is null)
 			{
 				throw new Ex("Type field not found");
@@ -203,9 +197,9 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	////////////////
 	public class VectorVarNode:VarNode
 	{
-		public ExprNode expr;
-		public readonly ExprSeqNode exprs;
-		public VectorType vec_type;
+		private readonly ExprNode expr;
+		private readonly ExprSeqNode exprs;
+
 		public VectorVarNode(ExprNode e, ExprSeqNode es)
 		{
 			expr = e;
@@ -227,28 +221,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			exprs.CastTo(Type.Int, e);
 			sem_type = vec_type.elementType;
 		}
-		//public override TNode Translate(Codegen g)
-		//{
-		//	int sz = 4;
-		//	TNode t = null;
-		//	for(int k = 0; k < exprs.Count; ++k)
-		//	{
-		//		TNode p;
-		//		ExprNode e = exprs.exprs[k];
-		//		if(e is ConstNode t2)
-		//		{
-		//			p = iconst(t2.intValue() * sz);
-		//		}
-		//		else
-		//		{
-		//			p = e.Translate(g);
-		//			p = mul(p, iconst(sz));
-		//		}
-		//		sz *= vec_type.sizes[k];
-		//		t = t!=null ? add(t, p) : p;
-		//	}
-		//	return add(t, expr.Translate(g));
-		//}
 
 		public override string JoinedWriteData() => $"{expr.JoinedWriteData()}[{exprs.JoinedWriteData()}]";
 	}

@@ -104,21 +104,9 @@ namespace Blitz3D.Converter.Parsing.Nodes
 						exprs[k] = exprs[k].CastTo(d.type, e);
 					}
 				}
-				else
+				else if(d.defType is null)
 				{
-					if(d.defType is null)
-					{
-						throw new Ex("Not enough parameters");
-					}
-					ExprNode expr = d.defType;
-					if(k < exprs.Count)
-					{
-						exprs[k] = expr;
-					}
-					else
-					{
-						exprs.Add(expr);
-					}
+					throw new Ex("Not enough parameters");
 				}
 			}
 		}
@@ -333,6 +321,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			TokenType.NEGATIVE => $"-{expr.JoinedWriteData()}",
 			TokenType.ABS => $"Math.Abs({expr.JoinedWriteData()})",
 			TokenType.SGN => $"Math.Sign({expr.JoinedWriteData()})",
+			TokenType.NOT => $"!{expr.JoinedWriteData()}",
 			_ => throw new Exception("Invalid operation")
 		};
 	}

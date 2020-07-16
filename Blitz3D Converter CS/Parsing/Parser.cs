@@ -644,7 +644,7 @@ namespace Blitz3D.Converter.Parsing
 			if(toker.TrySkip(TokenType.NOT))
 			{
 				ExprNode expr = parseExpr1(false);
-				return new RelExprNode(TokenType.EQ, expr, new IntConstNode("0"));
+				return new UniExprNode(TokenType.NOT, expr);//return new RelExprNode(TokenType.EQ, expr, new IntConstNode("0"));
 			}
 			return parseExpr1(opt);
 		}
@@ -773,15 +773,7 @@ namespace Blitz3D.Converter.Parsing
 				case TokenType.SGN:
 					toker.NextType();
 					result = parseUniExpr(false);
-					if(c == TokenType.BITNOT)
-					{
-						//TODO: Make this unary again
-						result = new BinExprNode(TokenType.XOR, result, new IntConstNode("-1"));
-					}
-					else
-					{
-						result = new UniExprNode(c, result);
-					}
+					result = new UniExprNode(c, result);
 					break;
 				default:
 					result = parsePrimary(opt);
@@ -843,10 +835,10 @@ namespace Blitz3D.Converter.Parsing
 					return new FloatConstNode("MathF.PI" /*3.1415926535897932384626433832795f*/);
 				case TokenType.TRUE:
 					toker.NextType();
-					return new IntConstNode("1");
+					return new IntConstNode("true");
 				case TokenType.FALSE:
 					toker.NextType();
-					return new IntConstNode("0");
+					return new IntConstNode("false");
 				case TokenType.IDENT:
 					string ident = toker.TakeText();
 					string tag = parseTypeTag();

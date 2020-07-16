@@ -76,6 +76,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	{
 		private readonly string ident;
 		private readonly string tag;
+		private bool declaration = false;
 		public IdentVarNode(string i, string t)
 		{
 			ident = i;
@@ -100,16 +101,25 @@ namespace Blitz3D.Converter.Parsing.Nodes
 				{
 					throw new Ex("Variable type mismatch");
 				}
+				declaration = false;
 			}
 			else
 			{
 				//ugly auto decl!
 				sem_decl = e.decls.insertDecl(ident, t, DECL.LOCAL);
+				declaration = true;
 			}
 			sem_type = sem_decl.type;
 		}
 
-		public override string JoinedWriteData() => sem_decl.Name;
+		public override string JoinedWriteData()
+		{
+			if(declaration)
+			{
+				return $"{sem_type.Name} {sem_decl.Name}";
+			}
+			return sem_decl.Name;
+		}
 	}
 
 	/////////////////

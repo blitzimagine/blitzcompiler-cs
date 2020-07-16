@@ -451,8 +451,17 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			string varIdent = var.JoinedWriteData();
-			yield return $"for({var.sem_type.Name} {varIdent} = {fromExpr.JoinedWriteData()}; {varIdent}<={toExpr.JoinedWriteData()}; {varIdent}+={stepExpr.JoinedWriteData()})";
+			string varIdent;
+			if(var is DeclVarNode declVarNode)
+			{
+				varIdent = declVarNode.sem_decl.Name;
+			}
+			else
+			{
+				varIdent = var.JoinedWriteData();
+			}
+
+			yield return $"for({var.JoinedWriteData()} = {fromExpr.JoinedWriteData()}; {varIdent}<={toExpr.JoinedWriteData()}; {varIdent}+={stepExpr.JoinedWriteData()})";
 			yield return "{";
 			foreach(string s in stmts.WriteData())
 			{
@@ -523,7 +532,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			yield return $"foreach(var {var.JoinedWriteData()} in Blitz.AllObjects<{sem_type.Name}>())";
+			yield return $"foreach({var.JoinedWriteData()} in Blitz.AllObjects<{sem_type.Name}>())";
 			yield return "{";
 			foreach(string s in stmts.WriteData())
 			{

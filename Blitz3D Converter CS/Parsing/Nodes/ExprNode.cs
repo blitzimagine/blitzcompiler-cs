@@ -238,7 +238,22 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		//	return t;
 		//}
 
-		public override string JoinedWriteData() => $"{sem_decl.Name}({exprs.JoinedWriteData()})";
+		public override string JoinedWriteData()
+		{
+			if(sem_decl.Name == "Blitz3D.Len")
+			{
+				return $"{exprs.JoinedWriteData()}.Length";
+			}
+			if(sem_decl.Name == "Blitz3D.Lower")
+			{
+				return $"{exprs.JoinedWriteData()}.ToLower()";
+			}
+			if(sem_decl.Name == "Blitz3D.Chr")
+			{
+				return $"(char){exprs.JoinedWriteData()}";
+			}
+			return $"{sem_decl.Name}({exprs.JoinedWriteData()})";
+		}
 	}
 
 	/////////////////////////
@@ -353,8 +368,8 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override string JoinedWriteData() => op switch
 		{
-			TokenType.AND => $"({lhs.JoinedWriteData()} & {rhs.JoinedWriteData()})",
-			TokenType.OR => $"({lhs.JoinedWriteData()} | {rhs.JoinedWriteData()})",
+			TokenType.AND => $"({lhs.JoinedWriteData()} && {rhs.JoinedWriteData()})",
+			TokenType.OR => $"({lhs.JoinedWriteData()} || {rhs.JoinedWriteData()})",
 			TokenType.XOR => $"({lhs.JoinedWriteData()} ^ {rhs.JoinedWriteData()})",
 			TokenType.SHL => $"({lhs.JoinedWriteData()} << {rhs.JoinedWriteData()})",
 			TokenType.SHR => $"(int)((uint){lhs.JoinedWriteData()} >> {rhs.JoinedWriteData()})",
@@ -473,12 +488,27 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			if(opType == Type.String)//Compare strings and objects
 			{
 				//TODO: Make sure this matches __bbStrCompare
-				return $"{lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()})";
+				//return $"{lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()})";
+				return op switch
+				{
+					TokenType.EQ => $"({lhs.JoinedWriteData()} == {rhs.JoinedWriteData()})",
+					TokenType.NE => $"({lhs.JoinedWriteData()} != {rhs.JoinedWriteData()})",
+					TokenType.LT => $"({lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()} < 0)",
+					TokenType.GT => $"({lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()} > 0)",
+					TokenType.LE => $"({lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()} <= 0)",
+					TokenType.GE => $"({lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()} >= 0)",
+					_ => throw new Exception("Invalid operation")
+				};
 			}
 			else if(opType is StructType)
 			{
 				//TODO: Add IComparable to struct by default? This would be __bbObjCompare
-				return $"{lhs.JoinedWriteData()}.CompareTo({rhs.JoinedWriteData()})";
+				return op switch
+				{
+					TokenType.EQ => $"{lhs.JoinedWriteData()}.Equals({rhs.JoinedWriteData()})",
+					TokenType.NE => $"!{lhs.JoinedWriteData()}.Equals({rhs.JoinedWriteData()})",
+					_ => throw new NotImplementedException()
+				};
 			}
 			else
 			{

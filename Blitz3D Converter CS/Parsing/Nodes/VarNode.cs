@@ -157,7 +157,16 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			sem_type = a.elementType;
 		}
 
-		public override string JoinedWriteData() => $"{sem_decl.Name}[{exprs.JoinedWriteData()}]";
+		public override string JoinedWriteData()
+		{
+			#region OpenWA only stuff
+			if(sem_decl.Name == "GameObject")
+			{
+				return $"GameObjects[{exprs.JoinedWriteData()}]";
+			}
+			#endregion
+			return $"{sem_decl.Name}[{exprs.JoinedWriteData()}]";
+		}
 	}
 
 	///////////////

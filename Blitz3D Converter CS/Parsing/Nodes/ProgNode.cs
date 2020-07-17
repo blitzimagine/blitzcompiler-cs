@@ -45,7 +45,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		//////////////////
 		public override void Semant(Environ e)
 		{
-			Environ env = new Environ(genLabel(), Type.Int, 0, e);
+			Environ env = new Environ(Type.Int, 0, e);
 
 			consts.Proto(env.decls, env);
 			structs.Proto(env.typeDecls, env);

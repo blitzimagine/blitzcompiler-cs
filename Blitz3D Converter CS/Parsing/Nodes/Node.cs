@@ -28,7 +28,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			if(tag.Length>0)
 			{
-				return e.findType(tag);
+				return e.FindType(tag);
 			}
 			return null;
 		}

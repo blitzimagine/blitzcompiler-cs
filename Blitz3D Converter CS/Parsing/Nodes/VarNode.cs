@@ -85,14 +85,14 @@ namespace Blitz3D.Converter.Parsing.Nodes
 				return;
 			}
 			Type t = tagType(tag, e) ?? Type.Int;
-			sem_decl = e.findDecl(ident);
+			sem_decl = e.FindDecl(ident);
 			if(sem_decl!=null)
 			{
 				Type ty = sem_decl.type;
-				if(ty is ConstType constType)
-				{
-					ty = constType.valueType;
-				}
+				//if(ty is ConstType constType)
+				//{
+				//	ty = constType.valueType;
+				//}
 				if(tag.Length>0 && t != ty)
 				{
 					throw new Ex("Variable type mismatch");
@@ -139,8 +139,8 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			exprs.Semant(e);
 			exprs.CastTo(Type.Int, e);
-			Type t = e.findType(tag);
-			sem_decl = e.findDecl(ident);
+			Type t = e.FindType(tag);
+			sem_decl = e.FindDecl(ident);
 			if(sem_decl is null || (sem_decl.kind & DECL.ARRAY)==0)
 			{
 				throw new Ex("Array not found");

@@ -9,7 +9,7 @@ namespace Blitz3D.Converter.Parsing
 	public class Libs
 	{
 		//linkLibs
-		public readonly Environ runtimeEnviron = new Environ("", Type.Int, 0, null);
+		public readonly Environ runtimeEnviron = new Environ(Type.Int, 0, null);
 		private readonly List<string> keyWords = new List<string>();
 		public readonly List<UserFunc> userFuncs = new List<UserFunc>();
 
@@ -138,7 +138,7 @@ namespace Blitz3D.Converter.Parsing
 					@params.insertDecl(str, paramType, DECL.PARAM, defType);
 				}
 
-				FuncType f = new FuncType(funcType, @params, false, cfunc);
+				FuncType f = new FuncType(funcType, @params, cfunc);
 				Decl decl = runtimeEnviron.funcDecls.insertDecl(name, f, DECL.FUNC);
 				decl.Name = "Blitz3D."+name;
 			}
@@ -268,7 +268,7 @@ namespace Blitz3D.Converter.Parsing
 
 						keyWords.Add(id);
 
-						FuncType fn = new FuncType(ty, @params, true, true);
+						FuncType fn = new FuncType(ty, @params, true);
 
 						runtimeEnviron.funcDecls.insertDecl(id, fn, DECL.FUNC);
 

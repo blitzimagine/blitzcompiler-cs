@@ -9,21 +9,19 @@ namespace Blitz3D.Converter.Parsing
 		public readonly int level;
 		public readonly DeclSeq decls = new DeclSeq();
 
-		public readonly Environ globals;
+		public readonly Environ parent;
 		public readonly Type returnType;
-		public readonly string funcLabel;
 
-		public Environ(string f, Type r, int l, Environ gs)
+		public Environ(Type returnType, int level, Environ parent)
 		{
-			level = l;
-			globals = gs;
-			returnType = r;
-			funcLabel = f;
+			this.level = level;
+			this.parent = parent;
+			this.returnType = returnType;
 		}
 
-		public Decl findDecl(string id)
+		public Decl FindDecl(string id)
 		{
-			for(Environ e = this; e!=null; e = e.globals)
+			for(Environ e = this; e!=null; e = e.parent)
 			{
 				if(e.decls.findDecl(id) is Decl d)
 				{
@@ -43,9 +41,9 @@ namespace Blitz3D.Converter.Parsing
 		
 		public readonly DeclSeq funcDecls = new DeclSeq();
 
-		public Decl findFunc(string s)
+		public Decl FindFunc(string s)
 		{
-			for(Environ e = this; e!=null; e = e.globals)
+			for(Environ e = this; e!=null; e = e.parent)
 			{
 				if(e.funcDecls.findDecl(s) is Decl d)
 				{
@@ -55,12 +53,9 @@ namespace Blitz3D.Converter.Parsing
 			return null;
 		}
 		
-
-		public readonly List<Type> types = new List<Type>();
-		
 		public readonly DeclSeq typeDecls = new DeclSeq();
 
-		public Type findType(string s)
+		public Type FindType(string s)
 		{
 			switch(s)
 			{
@@ -68,7 +63,7 @@ namespace Blitz3D.Converter.Parsing
 				case "#":return Type.Float;
 				case "$":return Type.String;
 			}
-			for(Environ e = this; e!=null; e = e.globals)
+			for(Environ e = this; e!=null; e = e.parent)
 			{
 				if(e.typeDecls.findDecl(s) is Decl d)
 				{
@@ -103,9 +98,9 @@ namespace Blitz3D.Converter.Parsing
 			return l;
 		}
 
-		public Label DefineLabel(string id, string name)
+		public Label DefineLabel(string name)
 		{
-			Label label = GetLabel(id);
+			Label label = GetLabel(name);
 			if(label.Name!=null)
 			{
 				throw new Exception($"Label already defined: {name}");

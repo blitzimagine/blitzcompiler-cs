@@ -53,41 +53,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 				exprs[k]?.Semant(e);
 			}
 		}
-		//public TNode translate(Codegen g, bool userlib)
-		//{
-		//	TNode t = null, l = null;
-		//	for(int k = 0; k < exprs.Count; ++k)
-		//	{
-		//		TNode q = exprs[k].Translate(g);
 
-		//		if(userlib)
-		//		{
-		//			Type ty = exprs[k].sem_type;
-		//			if(ty.stringType())
-		//			{
-		//				q = call("__bbStrToCStr", q);
-		//			}
-		//			else if(ty.structType()!=null)
-		//			{
-		//				q = new TNode(IR.MEM, q);
-		//			}
-		//			else if(ty == Type.void_type)
-		//			{
-		//				q = new TNode(IR.MEM, add(q, iconst(4)));
-		//			}
-		//		}
-
-		//		TNode p;
-		//		p = new TNode(IR.ARG, null, null, k * 4);
-		//		p = new TNode(IR.MEM, p, null);
-		//		p = new TNode(IR.MOVE, q, p);
-		//		p = new TNode(IR.SEQ, p, null);
-		//		if(l!=null) l.r = p;
-		//		else t = p;
-		//		l = p;
-		//	}
-		//	return t;
-		//}
 		public void CastTo(DeclSeq decls, Environ e, bool userlib)
 		{
 			if(exprs.Count > decls.Count)
@@ -190,8 +156,8 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override void Semant(Environ e)
 		{
-			Type t = e.findType(tag);
-			sem_decl = e.findFunc(ident);
+			Type t = e.FindType(tag);
+			sem_decl = e.FindFunc(ident);
 			if(sem_decl is null || (sem_decl.kind & DECL.FUNC)==0)
 			{
 				throw new Ex($"Function '{ident}' not found");
@@ -205,38 +171,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			exprs.CastTo(f.@params, e, f.cfunc);
 			NeedsSemant = false;
 		}
-		//public override TNode Translate(Codegen g)
-		//{
-		//	FuncType f = sem_decl.type.funcType();
-
-		//	TNode t;
-		//	TNode l = global("_f" + ident);
-		//	TNode r = exprs.translate(g, f.cfunc);
-
-		//	if(f.userlib)
-		//	{
-		//		l = new TNode(IR.MEM, l);
-		//		usedfuncs.Add(ident);
-		//	}
-
-		//	if(sem_type == Type.float_type)
-		//	{
-		//		t = new TNode(IR.FCALL, l, r, exprs.Count * 4);
-		//	}
-		//	else
-		//	{
-		//		t = new TNode(IR.CALL, l, r, exprs.Count * 4);
-		//	}
-
-		//	if(f.returnType.stringType())
-		//	{
-		//		if(f.cfunc)
-		//		{
-		//			t = call("__bbCStrToStr", t);
-		//		}
-		//	}
-		//	return t;
-		//}
 
 		public override string JoinedWriteData()
 		{
@@ -250,7 +184,11 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			}
 			if(sem_decl.Name == "Blitz3D.Chr")
 			{
-				return $"(char){exprs.JoinedWriteData()}";
+				return $"((char){exprs.JoinedWriteData()}).ToString()";
+			}
+			if(sem_decl.Name == "Blitz3D.KeyDown")
+			{
+				return $"Blitz3D.KeyDown((Keys){exprs.JoinedWriteData()})";
 			}
 			return $"{sem_decl.Name}({exprs.JoinedWriteData()})";
 		}
@@ -280,7 +218,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 	public abstract class ConstNode:ExprNode
 	{
-		private readonly string literal;
+		public readonly string literal;
 		public ConstNode(string literal)
 		{
 			this.literal = literal;
@@ -510,6 +448,16 @@ namespace Blitz3D.Converter.Parsing.Nodes
 					_ => throw new NotImplementedException()
 				};
 			}
+			else if(lhs.Sem_Type is StructType && rhs is IntConstNode c && c.literal=="0")
+			{
+				return op switch
+				{
+					TokenType.EQ => $"({lhs.JoinedWriteData()} == null)",
+					TokenType.GT => $"({lhs.JoinedWriteData()} != null)",
+					TokenType.NE => $"({lhs.JoinedWriteData()} != null)",
+					_ => throw new Exception("Invalid operation")
+				};
+			}
 			else
 			{
 				return op switch
@@ -539,7 +487,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override void Semant(Environ e)
 		{
-			sem_type = e.findType(ident);
+			sem_type = e.FindType(ident);
 			NeedsSemant = false;
 		}
 	}
@@ -667,15 +615,9 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			expr.Semant(e);
 			expr = expr.CastTo(Type.Int, e);
-			sem_type = e.findType(type_ident);
+			sem_type = e.FindType(type_ident);
 			NeedsSemant = false;
 		}
-		//public override TNode Translate(Codegen g)
-		//{
-		//	TNode t = expr.Translate(g);
-		//	t = call("__bbObjFromHandle", t, global("_t" + sem_type.structType().ident));
-		//	return t;
-		//}
 
 		public override string JoinedWriteData() => $"__bbObjFromHandle({expr.JoinedWriteData()}, {Sem_Type.Name})";
 	}

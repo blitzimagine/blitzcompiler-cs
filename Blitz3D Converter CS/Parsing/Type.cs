@@ -23,13 +23,12 @@ namespace Blitz3D.Converter.Parsing
 
 		public readonly Type returnType;
 		public readonly DeclSeq @params;
-		public readonly bool userlib, cfunc;
+		public readonly bool cfunc;
 
-		public FuncType(Type t, DeclSeq p, bool ulib, bool cfn)
+		public FuncType(Type t, DeclSeq p, bool cfn)
 		{
 			returnType = t;
 			@params = p;
-			userlib = ulib;
 			cfunc = cfn;
 		}
 	}
@@ -63,39 +62,39 @@ namespace Blitz3D.Converter.Parsing
 		public override bool CanCastTo(Type t) => t == this || t == Null;
 	}
 
-	public class ConstType:Type
-	{
-		public override string Name
-		{
-			get
-			{
-				if(valueType is IntType)return intValue.ToString();
-				if(valueType is FloatType)return floatValue.ToString();
-				return stringValue;
-			}
-		}
+	//public class ConstType:Type
+	//{
+	//	public override string Name
+	//	{
+	//		get
+	//		{
+	//			if(valueType is IntType)return intValue.ToString();
+	//			if(valueType is FloatType)return floatValue.ToString();
+	//			return stringValue;
+	//		}
+	//	}
 
-		public readonly Type valueType;
-		public readonly int intValue;
-		public readonly float floatValue;
-		public readonly string stringValue;
+	//	public readonly Type valueType;
+	//	public readonly int intValue;
+	//	public readonly float floatValue;
+	//	public readonly string stringValue;
 
-		public ConstType(int n)
-		{
-			valueType = Int;
-			intValue = n;
-		}
-		public ConstType(float n)
-		{
-			valueType = Float;
-			floatValue = n;
-		}
-		public ConstType(string n)
-		{
-			valueType = String;
-			stringValue = n;
-		}
-	}
+	//	public ConstType(int n)
+	//	{
+	//		valueType = Int;
+	//		intValue = n;
+	//	}
+	//	public ConstType(float n)
+	//	{
+	//		valueType = Float;
+	//		floatValue = n;
+	//	}
+	//	public ConstType(string n)
+	//	{
+	//		valueType = String;
+	//		stringValue = n;
+	//	}
+	//}
 
 	/// <summary>Blitz Array, this is like a C style array.</summary>
 	public class VectorType:Type

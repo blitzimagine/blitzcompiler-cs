@@ -199,13 +199,12 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			Type t = tagType(returnTag, e) ?? Type.Int;
 			DeclSeq decls = new DeclSeq();
 			@params.Proto(decls, e);
-			sem_type = new FuncType(t, decls, false, false);
+			sem_type = new FuncType(t, decls, false);
 			d.AssertNewDecl(ident, sem_type, DECL.FUNC);
-			e.types.Add(sem_type);
 		}
 		public override void Semant(Environ e)
 		{
-			sem_env = new Environ(genLabel(), sem_type.returnType, 1, e);
+			sem_env = new Environ(sem_type.returnType, 1, e);
 			DeclSeq decls = sem_env.decls;
 
 			int k;
@@ -277,7 +276,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			sem_type = new StructType(ident);
 			d.insertDecl(ident, sem_type, DECL.STRUCT);
-			e.types.Add(sem_type);
 		}
 		public override void Semant(Environ e)
 		{
@@ -398,7 +396,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 			sem_type = new VectorType(ty, exprs.Count);
 			d.insertDecl(ident, sem_type, kind);
-			env.types.Add(sem_type);
 		}
 		//public override void Translate(Codegen g)
 		//{

@@ -14,11 +14,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 	public class CommentStmtNode:StmtNode
 	{
-		public CommentStmtNode(string comment = null)
-		{
-			Comment = comment;
-		}
-
 		public override IEnumerable<string> WriteData()
 		{
 			yield return Comment;
@@ -152,7 +147,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			Type t = tagType(tag,e);
-			if(e.findDecl(ident) is Decl d)
+			if(e.FindDecl(ident) is Decl d)
 			{
 				if(!(d.type is ArrayType a) || a.dims != exprs.Count || (t!=null && a.elementType != t))
 				{
@@ -165,7 +160,6 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			{
 				sem_type = new ArrayType(t ?? Type.Int, exprs.Count);
 				sem_decl = e.decls.insertDecl(ident, sem_type, DECL.ARRAY);
-				e.types.Add(sem_type);
 			}
 			exprs.Semant(e);
 			exprs.CastTo(Type.Int, e);
@@ -210,6 +204,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	{
 		private VarNode var;
 		private ExprNode expr;
+
 		public AsgnNode(VarNode var, ExprNode expr)
 		{
 			this.var = var;
@@ -225,7 +220,14 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			yield return $"{var.JoinedWriteData()} = {expr.JoinedWriteData()};{Comment}";
+			if(var.sem_type is StructType && expr is IntConstNode c && c.literal=="0")
+			{
+				yield return $"{var.JoinedWriteData()} = null;{Comment}";
+			}
+			else
+			{
+				yield return $"{var.JoinedWriteData()} = {expr.JoinedWriteData()};{Comment}";
+			}
 		}
 	}
 
@@ -262,7 +264,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		}
 		public override void Semant(Environ e)
 		{
-			sem_label = e.DefineLabel(ident, ident);
+			sem_label = e.DefineLabel(ident);
 		}
 
 		public override IEnumerable<string> WriteData()
@@ -320,8 +322,9 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	public class IfNode:StmtNode
 	{
 		private ExprNode expr;
-		private StmtSeqNode stmts;
-		private StmtSeqNode elseOpt;
+		private readonly StmtSeqNode stmts;
+		private readonly StmtSeqNode elseOpt;
+
 		public IfNode(ExprNode e, StmtSeqNode s, StmtSeqNode o)
 		{
 			expr = e;
@@ -486,7 +489,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			var.Semant(e);
 			Type ty = var.sem_type;
 
-			sem_type = e.findType(typeIdent);
+			sem_type = e.FindType(typeIdent);
 
 			stmts.Semant(e);
 		}
@@ -623,7 +626,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		}
 		public override void Semant(Environ e)
 		{
-			sem_type = e.findType(typeIdent);
+			sem_type = e.FindType(typeIdent);
 		}
 
 		public override IEnumerable<string> WriteData()
@@ -819,7 +822,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			if(e.level > 0)
 			{
-				e = e.globals;
+				e = e.parent;
 			}
 			sem_label = e.GetLabel(ident);
 		}

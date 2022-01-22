@@ -28,27 +28,24 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public string Comment_Start;
 		public string Comment_End;
 
-		public readonly string file;
-		public readonly List<StmtNode> stmts = new List<StmtNode>();
+		public string File{get;}
+		public List<StmtNode> Stmts{get;} = new List<StmtNode>();
 		public StmtSeqNode(string f)
 		{
-			file = f;
+			File = f;
 		}
 
 		public override void Semant(Environ e)
 		{
-			for(int k = 0; k < stmts.Count; ++k)
+			foreach(var stmt in Stmts)
 			{
 				try
 				{
-					stmts[k].Semant(e);
+					stmt.Semant(e);
 				}
 				catch(Ex x)
 				{
-					if(x.file is null)
-					{
-						x.file = file;
-					}
+					x.File ??= File;
 					throw;
 				}
 			}
@@ -57,21 +54,21 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public void AddComment(string comment)
 		{
 			if(string.IsNullOrEmpty(comment)){return;}
-			if(stmts.Count==0 || stmts[stmts.Count-1].Comment != null)
+			if(Stmts.Count==0 || Stmts[Stmts.Count-1].Comment != null)
 			{
 				Add(new CommentStmtNode());
 			}
-			stmts[stmts.Count-1].Comment = comment;
+			Stmts[Stmts.Count-1].Comment = comment;
 		}
 
-		public void Add(StmtNode s) => stmts.Add(s);
+		public void Add(StmtNode s) => Stmts.Add(s);
 
-		public int Count => stmts.Count;
+		public int Count => Stmts.Count;
 
 		public IEnumerable<string> WriteData()
 		{
 			yield return "{"+Comment_Start;
-			foreach(var stmt in stmts)
+			foreach(var stmt in Stmts)
 			{
 				foreach(string s in stmt.WriteData())
 				{
@@ -99,7 +96,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public override IEnumerable<string> WriteData()
 		{
 			//TODO: Store include file data
-			yield return $"using static {Path.ChangeExtension(include.fileName,null).Replace('-','_')};{Comment}";
+			yield return $"using static {Path.ChangeExtension(include.FileName,null).Replace('-','_')};{Comment}";
 		}
 	}
 
@@ -117,7 +114,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override void Semant(Environ e)
 		{
-			decl.Proto(e.decls, e);
+			decl.Proto(e.Decls, e);
 			decl.Semant(e);
 		}
 
@@ -149,7 +146,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			Type t = tagType(tag,e);
 			if(e.FindDecl(ident) is Decl d)
 			{
-				if(!(d.type is ArrayType a) || a.dims != exprs.Count || (t!=null && a.elementType != t))
+				if(!(d.Type is ArrayType a) || a.Rank != exprs.Count || (t!=null && a.ElementType != t))
 				{
 					throw new Ex("Duplicate identifier");
 				}
@@ -159,7 +156,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			else
 			{
 				sem_type = new ArrayType(t ?? Type.Int, exprs.Count);
-				sem_decl = e.decls.insertDecl(ident, sem_type, DECL.ARRAY);
+				sem_decl = e.Decls.InsertDecl(ident, sem_type, DeclKind.Array);
 			}
 			exprs.Semant(e);
 			exprs.CastTo(Type.Int, e);
@@ -193,7 +190,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			yield return $"{sem_type.Name} {ident} = new {sem_type.elementType.Name}[{exprs.JoinedWriteData()}];{Comment}";
+			yield return $"{sem_type.Name} {ident} = new {sem_type.ElementType.Name}[{exprs.JoinedWriteData()}];{Comment}";
 		}
 	}
 
@@ -220,7 +217,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			if(var.sem_type is StructType && expr is IntConstNode c && c.literal=="0")
+			if(var.sem_type is StructType && expr is IntConstNode c && c.Literal=="0")
 			{
 				yield return $"{var.JoinedWriteData()} = null;{Comment}";
 			}
@@ -349,7 +346,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			}
 			if(elseOpt!=null)
 			{
-				if(elseOpt.Count == 1 && elseOpt.stmts[0] is IfNode elseIf)
+				if(elseOpt.Count == 1 && elseOpt.Stmts[0] is IfNode elseIf)
 				{
 					IEnumerator<string> elseIfEnumerator = elseIf.WriteData().GetEnumerator();
 					elseIfEnumerator.MoveNext();
@@ -549,23 +546,23 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override void Semant(Environ e)
 		{
-			if(e.level <= 0 && expr!=null)
+			if(e.Level <= 0 && expr!=null)
 			{
 				throw new Ex("Main program cannot return a value");
 			}
-			if(e.level > 0)
+			if(e.Level > 0)
 			{
 				if(expr is null)
 				{
-					if(e.returnType == Type.Float)
+					if(e.ReturnType == Type.Float)
 					{
 						expr = new FloatConstNode("0");
 					}
-					else if(e.returnType == Type.String)
+					else if(e.ReturnType == Type.String)
 					{
 						expr = new StringConstNode("\"\"");
 					}
-					else if(e.returnType is StructType)
+					else if(e.ReturnType is StructType)
 					{
 						expr = new NullNode();
 					}
@@ -575,7 +572,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 					}
 				}
 				expr.Semant(e);
-				expr = expr.CastTo(e.returnType, e);
+				expr = expr.CastTo(e.ReturnType, e);
 				//returnLabel = e.funcLabel + "_leave";
 			}
 		}
@@ -584,7 +581,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			if(expr is null)
 			{
-				yield return "return;{Comment}";
+				yield return $"return;{Comment}";
 			}
 			else
 			{
@@ -671,21 +668,21 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 	public class CaseNode:StmtNode
 	{
-		public readonly ExprSeqNode exprs;
-		public readonly StmtSeqNode stmts;
+		public ExprSeqNode Exprs{get;}
+		public StmtSeqNode Stmts{get;}
 		public CaseNode(ExprSeqNode e, StmtSeqNode s)
 		{
-			exprs = e;
-			stmts = s;
+			Exprs = e;
+			Stmts = s;
 		}
 
 		public override IEnumerable<string> WriteData()
 		{
-			foreach(var expr in exprs.exprs)
+			foreach(var expr in Exprs.Exprs)
 			{
 				yield return $"case {expr.JoinedWriteData()}:{Comment}";
 			}
-			foreach(string s in stmts.WriteData())
+			foreach(string s in Stmts.WriteData())
 			{
 				yield return s;
 			}
@@ -700,7 +697,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public override IEnumerable<string> WriteData()
 		{
 			yield return $"default:{Comment}";
-			foreach(string s in stmts.WriteData())
+			foreach(string s in Stmts.WriteData())
 			{
 				yield return s;
 			}
@@ -732,13 +729,13 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 			for(int k = 0; k < cases.Count; ++k)
 			{
-				CaseNode c = (CaseNode)cases.stmts[k];
-				if(c.exprs!=null)
+				CaseNode c = (CaseNode)cases.Stmts[k];
+				if(c.Exprs!=null)
 				{
-					c.exprs.Semant(e);
-					c.exprs.CastTo(ty, e);
+					c.Exprs.Semant(e);
+					c.Exprs.CastTo(ty, e);
 				}
-				c.stmts.Semant(e);
+				c.Stmts.Semant(e);
 			}
 			//defStmts?.Semant(e);
 		}
@@ -774,16 +771,30 @@ namespace Blitz3D.Converter.Parsing.Nodes
 				expr.Semant(e);
 				expr = expr.CastTo(Type.Int, e);
 			}
+			else
+			{
+
+			}
 		}
 
 		public override IEnumerable<string> WriteData()
 		{
-			yield return $"do{Comment}";
+			if(expr!=null)
+			{
+				yield return $"do{Comment}";
+			}
+			else
+			{
+				yield return $"while(true){Comment}";
+			}
 			foreach(string s in stmts.WriteData())
 			{
 				yield return s;
 			}
-			yield return $"while(!{expr.JoinedWriteData()});";
+			if(expr!=null)
+			{
+				yield return $"while(!{expr.JoinedWriteData()});";
+			}
 		}
 	}
 
@@ -820,9 +831,9 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		}
 		public override void Semant(Environ e)
 		{
-			if(e.level > 0)
+			if(e.Level > 0)
 			{
-				e = e.parent;
+				e = e.Parent;
 			}
 			sem_label = e.GetLabel(ident);
 		}

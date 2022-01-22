@@ -88,14 +88,14 @@ namespace Blitz3D.Converter
 		private static (ProgNode prog, Parser parser) Parse(FileInfo inputFile)
 		{
 			using StreamReader input = new StreamReader(inputFile.OpenRead());
-			Tokenizer toker = new Tokenizer(input);
+			Tokenizer toker = new Tokenizer(input, inputFile.FullName);
 			Parser parser = new Parser(toker);
-			return (parser.parse(inputFile.FullName), parser);
+			return (parser.parse(), parser);
 		}
 
 		private static void Semant(ProgNode prog, Libs libs)
 		{
-			prog.Semant(libs.runtimeEnviron);
+			prog.Semant(libs.RuntimeEnviron);
 		}
 
 		private static string Convert(IEnumerable<string> prog)
@@ -114,7 +114,7 @@ namespace Blitz3D.Converter
 
 		private static void ConvertIncludes(Parser parser)
 		{
-			foreach(var include in parser.included)
+			foreach(var include in parser.Included)
 			{
 				FileInfo fileOut = new FileInfo(Path.ChangeExtension(include.Key, ".cs"));
 				string output = Convert(include.Value.WriteData());

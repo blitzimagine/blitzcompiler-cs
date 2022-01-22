@@ -117,14 +117,14 @@ namespace Blitz3D.Converter.Parsing
 		#endregion
 	}
 
-	public class Token
+	public sealed class Token
 	{
 		public Token NextToken = null;
 
-		public readonly TokenType Type;
+		public TokenType Type{get;}
 		
 		//Represents a comment when Type is a NEWLINE
-		public readonly string Text;
+		public string Text{get;}
 
 		public Token(TokenType keyword, string text)
 		{
@@ -140,9 +140,9 @@ namespace Blitz3D.Converter.Parsing
 	}
 
 	/// <summary>The Toker converts an inout stream into tokens for use by the parser.</summary>
-	public class Tokenizer
+	public sealed class Tokenizer
 	{
-		private readonly IReadOnlyDictionary<string,TokenType> lowerTokes = GetKeywordDictionary();
+		private static readonly IReadOnlyDictionary<string,TokenType> lowerTokes = GetKeywordDictionary();
 
 		public static IReadOnlyDictionary<string,TokenType> GetKeywordDictionary()
 		{
@@ -160,9 +160,12 @@ namespace Blitz3D.Converter.Parsing
 
 		private readonly StreamReader input;
 
-		public Tokenizer(StreamReader input)
+		public string InputFile{get;}
+
+		public Tokenizer(StreamReader input, string inputFileName)
 		{
 			this.input = input;
+			InputFile = inputFileName;
 			Nextline();
 		}
 

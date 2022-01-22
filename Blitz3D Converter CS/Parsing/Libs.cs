@@ -9,9 +9,9 @@ namespace Blitz3D.Converter.Parsing
 	public class Libs
 	{
 		//linkLibs
-		public readonly Environ runtimeEnviron = new Environ(Type.Int, 0, null);
 		private readonly List<string> keyWords = new List<string>();
-		public readonly List<UserFunc> userFuncs = new List<UserFunc>();
+		public Environ RuntimeEnviron{get;} = new Environ(Type.Int, 0, null);
+		public List<UserFunc> UserFuncs{get;} = new List<UserFunc>();
 
 		private int curr;
 		private string text;
@@ -22,7 +22,7 @@ namespace Blitz3D.Converter.Parsing
 		{
 			Libs libs = new Libs();
 			libs.linkRuntime();
-			libs.linkUserLibs();
+			libs.LinkUserLibs();
 			return libs;
 		}
 
@@ -31,7 +31,7 @@ namespace Blitz3D.Converter.Parsing
 			text = "";
 
 			int t;
-			for(;;)
+			while(true)
 			{
 				while(char.IsWhiteSpace((char)input.Peek()))
 				{
@@ -60,9 +60,9 @@ namespace Blitz3D.Converter.Parsing
 				curr = -1;
 				return curr;
 			}
-			if(t == '\"')
+			if(t == '"')
 			{
-				while(input.Peek() != '\"')
+				while(input.Peek() != '"')
 				{
 					text += (char)input.Read();
 				}
@@ -105,10 +105,10 @@ namespace Blitz3D.Converter.Parsing
 					if(k<sym.Length && sym[k] == '=')
 					{
 						int from2 = ++k;
-						if(k<sym.Length && sym[k] == '\"')
+						if(k<sym.Length && sym[k] == '"')
 						{
 							k++;
-							while(sym[k] != '\"')
+							while(sym[k] != '"')
 							{
 								k++;
 							}
@@ -135,11 +135,11 @@ namespace Blitz3D.Converter.Parsing
 							}
 						}
 					}
-					@params.insertDecl(str, paramType, DECL.PARAM, defType);
+					@params.InsertDecl(str, paramType, DeclKind.Param, defType);
 				}
 
 				FuncType f = new FuncType(funcType, @params, cfunc);
-				Decl decl = runtimeEnviron.funcDecls.insertDecl(name, f, DECL.FUNC);
+				Decl decl = RuntimeEnviron.FuncDecls.InsertDecl(name, f, DeclKind.Func);
 				decl.Name = "Blitz3D."+name;
 			}
 		}
@@ -170,122 +170,151 @@ namespace Blitz3D.Converter.Parsing
 			return str.Substring(from, index - from);
 		}
 
-		private void linkUserLibs()
+		private void LinkUserLibs()
 		{
 			DirectoryInfo dir = new DirectoryInfo("userlibs");
-			if(dir.Exists && loadUserLib(dir.GetFiles("*.decls")) is (FileInfo file, string err))
-			{
-				throw new Exception($"Error in userlib '{file.Name}' - {err}");
-			}
-		}
-
-		private (FileInfo file, string err)? loadUserLib(FileInfo[] userlibs)
-		{
+			if(!dir.Exists){return;}
+			
+			FileInfo[] userlibs = dir.GetFiles("*.decls");
+				
 			HashSet<string> _ulibkws = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			foreach(FileInfo userlib in userlibs)
 			{
-				string t = "userlibs/" + userlib.Name;
-
-				string lib = "";
-				StreamReader input = new StreamReader(t);
-
-				bnext(input);
-				while(curr!=0)
+				if(!TryLoadUserLib(_ulibkws, userlib, out string err))
 				{
-					if(curr == '.')
-					{
-						if(bnext(input) != -1) return (userlib,"expecting identifier after '.'");
-
-						if(text == "lib")
-						{
-							if(bnext(input) != -2) return (userlib,"expecting string after lib directive");
-							lib = text;
-						}
-						else
-						{
-							return (userlib,"unknown decl directive");
-						}
-						bnext(input);
-					}
-					else if(curr == -1)
-					{
-						if(lib.Length==0) return (userlib,"function decl without lib directive");
-
-						string id = text;
-
-						if(!_ulibkws.Add(id))
-						{
-							return (userlib,"duplicate identifier");
-						}
-
-						Type ty = bnext(input) switch
-						{
-							'%' => Type.Int,
-							'#' => Type.Float,
-							'$' => Type.String,
-							_ => Type.Void,
-						};
-						if(ty != Type.Void)
-						{
-							bnext(input);
-						}
-
-						DeclSeq @params = new DeclSeq();
-
-						if(curr != '(') return (userlib,"expecting '(' after function identifier");
-						bnext(input);
-						if(curr != ')')
-						{
-							for(; ; )
-							{
-								if(curr != -1) break;
-								string arg = text;
-
-								Type ty2 = null;
-								switch(bnext(input))
-								{
-									case '%':ty2 = Type.Int;break;
-									case '#':ty2 = Type.Float;break;
-									case '$':ty2 = Type.String;break;
-									case '*':ty2 = Type.Null;break;
-								}
-								if(ty2!=null)
-								{
-									bnext(input);
-								}
-								else
-								{
-									ty2 = Type.Int;
-								}
-
-								@params.insertDecl(arg, ty2, DECL.PARAM);
-
-								if(curr != ',') break;
-								bnext(input);
-							}
-						}
-						if(curr != ')') return (userlib,"expecting ')' after function decl");
-
-						keyWords.Add(id);
-
-						FuncType fn = new FuncType(ty, @params, true);
-
-						runtimeEnviron.funcDecls.insertDecl(id, fn, DECL.FUNC);
-
-						if(bnext(input) == ':')
-						{
-							//real name?
-							bnext(input);
-							if(curr != -1 && curr != -2) return (userlib,"expecting identifier or string after alias");
-							id = text;
-							bnext(input);
-						}
-
-						//userFuncs.Add(new UserFunc(id.ToLowerInvariant(), id, lib));
-					}
+					throw new Exception($"Error in userlib '{userlib.Name}' - {err}");
 				}
 			}
-			return null;
+		}
+
+		private bool TryLoadUserLib(HashSet<string> _ulibkws, FileInfo userlib, out string err)
+		{
+			using StreamReader input = new StreamReader(userlib.OpenRead());
+			string lib = "";
+
+			bnext(input);
+			while(curr!=0)
+			{
+				if(curr == '.')
+				{
+					if(bnext(input) != -1)
+					{
+						err = "expecting identifier after '.'";
+						return false;
+					}
+
+					if(text == "lib")
+					{
+						if(bnext(input) != -2)
+						{
+							err = "expecting string after lib directive";
+							return false;
+						}
+						lib = text;
+					}
+					else
+					{
+						err = "unknown decl directive";
+						return false;
+					}
+					bnext(input);
+				}
+				else if(curr == -1)
+				{
+					if(lib.Length==0)
+					{
+						err = "function decl without lib directive";
+						return false;
+					}
+
+					string id = text;
+
+					if(!_ulibkws.Add(id))
+					{
+						err = "duplicate identifier";
+						return false;
+					}
+
+					Type ty = bnext(input) switch
+					{
+						'%' => Type.Int,
+						'#' => Type.Float,
+						'$' => Type.String,
+						_ => Type.Void,
+					};
+					if(ty != Type.Void)
+					{
+						bnext(input);
+					}
+
+					DeclSeq @params = new DeclSeq();
+
+					if(curr != '(')
+					{
+						err = "expecting '(' after function identifier";
+						return false;
+					}
+					bnext(input);
+					if(curr != ')')
+					{
+						while(true)
+						{
+							if(curr != -1) break;
+							string arg = text;
+
+							Type ty2 = null;
+							switch(bnext(input))
+							{
+								case '%':ty2 = Type.Int;break;
+								case '#':ty2 = Type.Float;break;
+								case '$':ty2 = Type.String;break;
+								case '*':ty2 = Type.Null;break;
+							}
+							if(ty2!=null)
+							{
+								bnext(input);
+							}
+							else
+							{
+								ty2 = Type.Int;
+							}
+
+							@params.InsertDecl(arg, ty2, DeclKind.Param);
+
+							if(curr != ',') break;
+							bnext(input);
+						}
+					}
+					if(curr != ')')
+					{
+						err = "expecting ')' after function decl";
+						return false;
+					}
+
+					keyWords.Add(id);
+
+					FuncType fn = new FuncType(ty, @params, true);
+
+					RuntimeEnviron.FuncDecls.InsertDecl(id, fn, DeclKind.Func);
+
+					if(bnext(input) == ':')
+					{
+						//real name?
+						bnext(input);
+						if(curr != -1 && curr != -2)
+						{
+							err = "expecting identifier or string after alias";
+							return false;
+						}
+						id = text;
+						bnext(input);
+					}
+
+					//userFuncs.Add(new UserFunc(id.ToLowerInvariant(), id, lib));
+				}
+			}
+			err = null;
+			return true;
 		}
 	}
 }

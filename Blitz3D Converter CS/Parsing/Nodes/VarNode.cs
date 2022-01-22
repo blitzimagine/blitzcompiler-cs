@@ -58,7 +58,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public BaseDeclVarNode(Decl d = null)
 		{
 			sem_decl = d;
-			sem_type = d?.type;
+			sem_type = d?.Type;
 		}
 
 		public override string JoinedWriteData() => sem_decl.Name;
@@ -88,7 +88,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			sem_decl = e.FindDecl(ident);
 			if(sem_decl!=null)
 			{
-				Type ty = sem_decl.type;
+				Type ty = sem_decl.Type;
 				//if(ty is ConstType constType)
 				//{
 				//	ty = constType.valueType;
@@ -102,10 +102,10 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			else
 			{
 				//ugly auto decl!
-				sem_decl = e.decls.insertDecl(ident, t, DECL.LOCAL);
+				sem_decl = e.Decls.InsertDecl(ident, t, DeclKind.Local);
 				declaration = true;
 			}
-			sem_type = sem_decl.type;
+			sem_type = sem_decl.Type;
 		}
 
 		public override string JoinedWriteData()
@@ -141,20 +141,20 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			exprs.CastTo(Type.Int, e);
 			Type t = e.FindType(tag);
 			sem_decl = e.FindDecl(ident);
-			if(sem_decl is null || (sem_decl.kind & DECL.ARRAY)==0)
+			if(sem_decl is null || (sem_decl.Kind & DeclKind.Array)==0)
 			{
 				throw new Ex("Array not found");
 			}
-			ArrayType a = (ArrayType)sem_decl.type;
-			if(t!=null && t != a.elementType)
+			ArrayType a = (ArrayType)sem_decl.Type;
+			if(t!=null && t!=a.ElementType)
 			{
 				throw new Ex("array type mismtach");
 			}
-			if(a.dims != exprs.Count)
+			if(a.Rank != exprs.Count)
 			{
 				throw new Ex("incorrect number of dimensions");
 			}
-			sem_type = a.elementType;
+			sem_type = a.ElementType;
 		}
 
 		public override string JoinedWriteData()
@@ -190,12 +190,12 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			expr.Semant(e);
-			sem_field = ((StructType)expr.Sem_Type).fields.findDecl(ident);
+			sem_field = ((StructType)expr.Sem_Type).Fields.FindDecl(ident);
 			if(sem_field is null)
 			{
 				throw new Ex("Type field not found");
 			}
-			sem_type = sem_field.type;
+			sem_type = sem_field.Type;
 		}
 
 		public override string JoinedWriteData() => $"{expr.JoinedWriteData()}.{sem_field.Name}";
@@ -222,13 +222,13 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			{
 				throw new Ex("Variable must be a Blitz array");
 			}
-			if(vec_type.dimensions != exprs.Count)
+			if(vec_type.Rank != exprs.Count)
 			{
 				throw new Ex("Incorrect number of subscripts");
 			}
 			exprs.Semant(e);
 			exprs.CastTo(Type.Int, e);
-			sem_type = vec_type.elementType;
+			sem_type = vec_type.ElementType;
 		}
 
 		public override string JoinedWriteData() => $"{expr.JoinedWriteData()}[{exprs.JoinedWriteData()}]";

@@ -5,21 +5,15 @@ namespace Blitz3D.Converter.Parsing.Nodes
 {
 	public class UserFunc
 	{
-		public readonly string ident;
-		public readonly string proc;
-		public readonly string lib;
+		public string Identifier{get;}
+		public string Proc{get;}
+		public string Lib{get;}
 
-		public UserFunc(UserFunc t)
-		{
-			ident = t.ident;
-			proc = t.proc;
-			lib = t.lib;
-		}
 		public UserFunc(string id, string pr, string lb)
 		{
-			ident = id;
-			proc = pr;
-			lib = lb;
+			Identifier = id;
+			Proc = pr;
+			Lib = lb;
 		}
 	}
 
@@ -47,20 +41,20 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			Environ env = new Environ(Type.Int, 0, e);
 
-			consts.Proto(env.decls, env);
-			structs.Proto(env.typeDecls, env);
+			consts.Proto(env.Decls, env);
+			structs.Proto(env.TypeDecls, env);
 			structs.Semant(env);
-			funcs.Proto(env.funcDecls, env);
+			funcs.Proto(env.FuncDecls, env);
 			stmts.Semant(env);
 			funcs.Semant(env);
-			datas.Proto(env.decls, env);
+			datas.Proto(env.Decls, env);
 			datas.Semant(env);
 		}
 
 
 		public IEnumerable<string> WriteData()
 		{
-			string thisClass = Path.GetFileNameWithoutExtension(stmts.file).Replace('-','_');
+			string thisClass = Path.GetFileNameWithoutExtension(stmts.File).Replace('-','_');
 			List<string> lines = new List<string>();
 			
 			//int k;
@@ -131,9 +125,9 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			foreach(var decl in datas)
 			{
 				DataDeclNode dataDeclNode = (DataDeclNode)decl;
-				if(!dataVarAdded.Contains(dataDeclNode.dataVarName))
+				if(!dataVarAdded.Contains(dataDeclNode.DataVarName))
 				{
-					dataVarAdded.Add(dataDeclNode.dataVarName);
+					dataVarAdded.Add(dataDeclNode.DataVarName);
 					globalVars.Add(dataDeclNode.WriteData_InstanceDeclaration());
 				}
 			}
@@ -205,25 +199,23 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 	public class FileNode:Node
 	{
-		public readonly string fileName;
+		public string FileName{get;}
 
-		private readonly DeclSeqNode consts;
-		private readonly DeclSeqNode structs;
-		private readonly DeclSeqNode funcs;
-		private readonly DeclSeqNode datas;
+		//private readonly DeclSeqNode consts;
+		//private readonly DeclSeqNode structs;
+		//private readonly DeclSeqNode funcs;
+		//private readonly DeclSeqNode datas;
 		public StmtSeqNode stmts;
 
 		public FileNode(string fileName)
 		{
-			this.fileName = Path.GetFileName(fileName);
+			FileName = Path.GetFileName(fileName);
 		}
 
 		public IEnumerable<string> WriteData()
 		{
-			string thisClass = Path.GetFileNameWithoutExtension(fileName).Replace('-','_');
 			List<string> globalVars = new List<string>();
 			List<string> usingFiles = new List<string>();
-
 			List<string> progStmts = new List<string>();
 			foreach(string s in stmts.WriteData())
 			{
@@ -241,6 +233,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 				}
 			}
 
+			string thisClass = Path.GetFileNameWithoutExtension(FileName).Replace('-','_');
 			List<string> lines = new List<string>();
 			lines.AddRange(usingFiles);
 			lines.Add($"public static class {thisClass}");

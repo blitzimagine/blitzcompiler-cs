@@ -1,6 +1,10 @@
 {
   "profiles": {
-    "Blitz3D Converter CS": {
+    "sbcv_df": {
+      "commandName": "Project",
+      "commandLineArgs": "sbcv_df/sbcv_df.bb"
+    },
+    "OpenWA": {
       "commandName": "Project",
       "commandLineArgs": "openwa/editor.bb"
     }

@@ -33,13 +33,13 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			return null;
 		}
 		
-		public static string GetAccessors(DECL kind, bool constant = false)
+		public static string GetAccessors(DeclKind kind, bool constant = false)
 		{
 			StringBuilder builder = new StringBuilder();
 			switch(kind)
 			{
-				case DECL.GLOBAL:builder.Append("public static ");break;
-				case DECL.FIELD:builder.Append("public ");break;
+				case DeclKind.Global:builder.Append("public static ");break;
+				case DeclKind.Field:builder.Append("public ");break;
 			}
 			if(constant && builder.Length>0)
 			{

@@ -40,37 +40,37 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	/////////////////////////////
 	public class ExprSeqNode:Node
 	{
-		public readonly List<ExprNode> exprs = new List<ExprNode>();
+		public List<ExprNode> Exprs{get;} = new List<ExprNode>();
 
-		public void Add(ExprNode e) => exprs.Add(e);
+		public void Add(ExprNode e) => Exprs.Add(e);
 
-		public int Count => exprs.Count;
+		public int Count => Exprs.Count;
 
 		public override void Semant(Environ e)
 		{
-			for(int k = 0; k < exprs.Count; ++k)
+			foreach(var expr in Exprs)
 			{
-				exprs[k]?.Semant(e);
+				expr?.Semant(e);
 			}
 		}
 
 		public void CastTo(DeclSeq decls, Environ e, bool userlib)
 		{
-			if(exprs.Count > decls.Count)
+			if(Exprs.Count > decls.Count)
 			{
 				throw new Ex("Too many parameters");
 			}
 			for(int k = 0; k < decls.Count; ++k)
 			{
-				Decl d = decls.decls[k];
-				if(k < exprs.Count && exprs[k]!=null)
+				Decl d = decls[k];
+				if(k < Exprs.Count && Exprs[k]!=null)
 				{
-					if(!userlib || !(d.type is StructType))
+					if(!userlib || !(d.Type is StructType))
 					{
-						exprs[k] = exprs[k].CastTo(d.type, e);
+						Exprs[k] = Exprs[k].CastTo(d.Type, e);
 					}
 				}
-				else if(d.defType is null)
+				else if(d.DefType is null)
 				{
 					throw new Ex("Not enough parameters");
 				}
@@ -78,13 +78,13 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		}
 		public void CastTo(Type t, Environ e)
 		{
-			for(int k = 0; k < exprs.Count; ++k)
+			for(int k = 0; k < Exprs.Count; ++k)
 			{
-				exprs[k] = exprs[k].CastTo(t, e);
+				Exprs[k] = Exprs[k].CastTo(t, e);
 			}
 		}
 
-		public string JoinedWriteData() => string.Join(", ", exprs.Select(e=>e.JoinedWriteData()));
+		public string JoinedWriteData() => string.Join(", ", Exprs.Select(e=>e.JoinedWriteData()));
 	}
 
 	//////////////////////////////////
@@ -92,13 +92,12 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	//////////////////////////////////
 	public class CastNode:ExprNode
 	{
-		public override Type Sem_Type => type;
+		public override Type Sem_Type{get;}
 		public ExprNode expr;
-		public Type type;
 		public CastNode(ExprNode ex, Type ty)
 		{
 			expr = ex;
-			type = ty;
+			Sem_Type = ty;
 		}
 
 		public override void Semant(Environ e)
@@ -113,8 +112,8 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public override string JoinedWriteData()
 		{
 			Type from = expr.Sem_Type;
-			Type to = type;
-			if(from == type || from == Type.Null)
+			Type to = Sem_Type;
+			if(from == Sem_Type || from == Type.Null)
 			{
 				return expr.JoinedWriteData();
 			}
@@ -138,14 +137,26 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	///////////////////
 	// Function call //
 	///////////////////
-	public class CallNode:ExprNode
+	public sealed class CallNode:ExprNode
 	{
 		private readonly string ident;
 		private readonly string tag;
 		private readonly ExprSeqNode exprs;
 		private Decl sem_decl;
 
-		public override Type Sem_Type => ((FuncType)sem_decl.type).returnType;
+		private string unknownFuncName = null;
+
+		public override Type Sem_Type
+		{
+			get
+			{
+				if(unknownFuncName == "getactivewindow")
+				{
+					return Type.Int;
+				}
+				return ((FuncType)sem_decl.Type).ReturnType;
+			}
+		}
 
 		public CallNode(string i, string t, ExprSeqNode e)
 		{
@@ -158,22 +169,34 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			Type t = e.FindType(tag);
 			sem_decl = e.FindFunc(ident);
-			if(sem_decl is null || (sem_decl.kind & DECL.FUNC)==0)
+			if(sem_decl is null || (sem_decl.Kind & DeclKind.Func)==0)
 			{
+				if(ident == "getactivewindow")
+				{
+					unknownFuncName = ident;
+					exprs.Semant(e);
+					//exprs.CastTo(f.Params, e, true);
+					NeedsSemant = false;
+					return;
+				}
 				throw new Ex($"Function '{ident}' not found");
 			}
-			FuncType f = (FuncType)sem_decl.type;
-			if(t!=null && f.returnType != t)
+			FuncType f = (FuncType)sem_decl.Type;
+			if(t!=null && f.ReturnType!=t)
 			{
 				throw new Ex("incorrect function return type");
 			}
 			exprs.Semant(e);
-			exprs.CastTo(f.@params, e, f.cfunc);
+			exprs.CastTo(f.Params, e, f.CFunc);
 			NeedsSemant = false;
 		}
 
 		public override string JoinedWriteData()
 		{
+			if(unknownFuncName!=null)
+			{
+				return  $"{unknownFuncName}({exprs.JoinedWriteData()})";
+			}
 			if(sem_decl.Name == "Blitz3D.Len")
 			{
 				return $"{exprs.JoinedWriteData()}.Length";
@@ -218,13 +241,13 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 	public abstract class ConstNode:ExprNode
 	{
-		public readonly string literal;
+		public string Literal{get;}
 		public ConstNode(string literal)
 		{
-			this.literal = literal;
+			Literal = literal;
 		}
 
-		public override string JoinedWriteData() => literal;
+		public override string JoinedWriteData() => Literal;
 	}
 
 	///<summary>Integer constant</summary>
@@ -448,7 +471,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 					_ => throw new NotImplementedException()
 				};
 			}
-			else if(lhs.Sem_Type is StructType && rhs is IntConstNode c && c.literal=="0")
+			else if(lhs.Sem_Type is StructType && rhs is IntConstNode c && c.Literal=="0")
 			{
 				return op switch
 				{
@@ -479,15 +502,15 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		private Type sem_type = null;
 		public override Type Sem_Type => sem_type;
 
-		protected readonly string ident;
+		protected string Ident{get;}
 		public ObjectExprNode(string i)
 		{
-			ident = i;
+			Ident = i;
 		}
 
 		public override void Semant(Environ e)
 		{
-			sem_type = e.FindType(ident);
+			sem_type = e.FindType(Ident);
 			NeedsSemant = false;
 		}
 	}

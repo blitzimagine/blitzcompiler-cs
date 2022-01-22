@@ -4,21 +4,23 @@ namespace Blitz3D.Converter
 {
 	public class Ex:Exception
 	{
-		public string file;
-		public Ex(string ex):base(ex){}
+		public string File;
+
+		public Ex(string ex, string file=null):base(ex)
+		{
+			File = file;
+		}
 
 		public override string Message
 		{
 			get
 			{
-				string ret = "";
-				if(file != null)
+				if(File != null)
 				{
-					ret+=$"\"{file}\":";
+					return $"\"{File}\":" + base.Message;
 				}
-				return ret + base.Message;
+				return base.Message;
 			}
 		}
-
 	}
 }

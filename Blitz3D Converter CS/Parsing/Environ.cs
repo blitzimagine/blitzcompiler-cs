@@ -1,31 +1,33 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Blitz3D.Converter.Parsing
 {
 	///<summary>An environ represent a stack frame block.</summary>
-	public class Environ
+	public class Environ:IEnumerable<Environ>
 	{
-		public readonly int level;
-		public readonly DeclSeq decls = new DeclSeq();
+		public int Level{get;}
 
-		public readonly Environ parent;
-		public readonly Type returnType;
+		public Environ Parent{get;}
+		public Type ReturnType{get;}
 
 		public Environ(Type returnType, int level, Environ parent)
 		{
-			this.level = level;
-			this.parent = parent;
-			this.returnType = returnType;
+			Level = level;
+			Parent = parent;
+			ReturnType = returnType;
 		}
+		
+		public DeclSeq Decls{get;} = new DeclSeq();
 
 		public Decl FindDecl(string id)
 		{
-			for(Environ e = this; e!=null; e = e.parent)
+			foreach(Environ e in this)
 			{
-				if(e.decls.findDecl(id) is Decl d)
+				if(e.Decls.FindDecl(id) is Decl d)
 				{
-					if((d.kind & (DECL.LOCAL | DECL.PARAM))==0)
+					if((d.Kind & (DeclKind.Local | DeclKind.Param))==0)
 					{
 						return d;
 					}
@@ -39,13 +41,13 @@ namespace Blitz3D.Converter.Parsing
 			return null;
 		}
 		
-		public readonly DeclSeq funcDecls = new DeclSeq();
+		public DeclSeq FuncDecls{get;} = new DeclSeq();
 
 		public Decl FindFunc(string s)
 		{
-			for(Environ e = this; e!=null; e = e.parent)
+			foreach(Environ e in this)
 			{
-				if(e.funcDecls.findDecl(s) is Decl d)
+				if(e.FuncDecls.FindDecl(s) is Decl d)
 				{
 					return d;
 				}
@@ -53,7 +55,7 @@ namespace Blitz3D.Converter.Parsing
 			return null;
 		}
 		
-		public readonly DeclSeq typeDecls = new DeclSeq();
+		public DeclSeq TypeDecls{get;} = new DeclSeq();
 
 		public Type FindType(string s)
 		{
@@ -63,11 +65,11 @@ namespace Blitz3D.Converter.Parsing
 				case "#":return Type.Float;
 				case "$":return Type.String;
 			}
-			for(Environ e = this; e!=null; e = e.parent)
+			foreach(Environ e in this)
 			{
-				if(e.typeDecls.findDecl(s) is Decl d)
+				if(e.TypeDecls.FindDecl(s) is Decl d)
 				{
-					return d.type as StructType;
+					return d.Type as StructType;
 				}
 			}
 			return null;
@@ -108,5 +110,14 @@ namespace Blitz3D.Converter.Parsing
 			label.Name = name;
 			return label;
 		}
+
+		public IEnumerator<Environ> GetEnumerator()
+		{
+			for(Environ e = this; e!=null; e = e.Parent)
+			{
+				yield return e;
+			}
+		}
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 	}
 }

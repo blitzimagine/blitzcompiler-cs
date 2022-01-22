@@ -10,53 +10,53 @@ namespace Blitz3D.Converter.Parsing
 		public virtual bool IsCastImplicit(Type t) => this == t;
 
 		//built-in types
-		public readonly static Type Void = new VoidType();
-		public readonly static Type Int = new IntType();
-		public readonly static Type Float = new FloatType();
-		public readonly static Type String = new StringType();
-		public readonly static Type Null = new NullType();
+		public static Type Void{get;} = new VoidType();
+		public static Type Int{get;} = new IntType();
+		public static Type Float{get;} = new FloatType();
+		public static Type String{get;} = new StringType();
+		public static Type Null{get;} = new NullType();
 	}
 
 	public class FuncType:Type
 	{
 		public override string Name => "__Func__";
 
-		public readonly Type returnType;
-		public readonly DeclSeq @params;
-		public readonly bool cfunc;
+		public Type ReturnType{get;}
+		public DeclSeq Params{get;}
+		public bool CFunc{get;}
 
 		public FuncType(Type t, DeclSeq p, bool cfn)
 		{
-			returnType = t;
-			@params = p;
-			cfunc = cfn;
+			ReturnType = t;
+			Params = p;
+			CFunc = cfn;
 		}
 	}
 
 	public class ArrayType:Type
 	{
-		public override string Name => $"{elementType.Name}[{new string(',', dims-1)}]";
+		public override string Name => $"{ElementType.Name}[{new string(',', Rank-1)}]";
 
-		public readonly Type elementType;
-		public readonly int dims;
+		public Type ElementType{get;}
+		/// <summary>Number of dimensions in an array</summary>
+		public int Rank{get;}
 
 		public ArrayType(Type t, int n)
 		{
-			elementType = t;
-			dims = n;
+			ElementType = t;
+			Rank = n;
 		}
 	}
 
 	public class StructType:Type
 	{
-		public override string Name => ident;
+		public override string Name{get;}
 
-		public readonly string ident;
-		public readonly DeclSeq fields = new DeclSeq();
+		public DeclSeq Fields{get;} = new DeclSeq();
 
 		public StructType(string i)
 		{
-			ident = i;
+			Name = i;
 		}
 
 		public override bool CanCastTo(Type t) => t == this || t == Null;
@@ -99,14 +99,15 @@ namespace Blitz3D.Converter.Parsing
 	/// <summary>Blitz Array, this is like a C style array.</summary>
 	public class VectorType:Type
 	{
-		public override string Name => $"{elementType.Name}[{new string(',', dimensions-1)}]";
+		public override string Name => $"{ElementType.Name}[{new string(',', Rank-1)}]";
 
-		public readonly Type elementType;
-		public readonly int dimensions;
+		public Type ElementType{get;}
+		///<summary>Number of dimensions</summary>
+		public int Rank{get;}
 		public VectorType(Type t, int dim)
 		{
-			elementType = t;
-			dimensions = dim;
+			ElementType = t;
+			Rank = dim;
 		}
 
 		public override bool CanCastTo(Type t)
@@ -114,8 +115,8 @@ namespace Blitz3D.Converter.Parsing
 			if(this == t){return true;}
 
 			if(!(t is VectorType v)){return false;}
-			if(elementType != v.elementType){return false;}
-			if(dimensions != v.dimensions){return false;}
+			if(ElementType != v.ElementType){return false;}
+			if(Rank != v.Rank){return false;}
 			
 			return true;
 		}

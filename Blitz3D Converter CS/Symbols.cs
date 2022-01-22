@@ -720,6 +720,8 @@ namespace Blitz3D.Converter
 
 		private static void dllFunctions(LinkSymbol linkSymbol)
 		{
+			linkSymbol("%getactivewindow");
+
 			linkSymbol("%HasFocus");
 			linkSymbol("%GetSpecialFolder%id%bank");
 			linkSymbol("api_MoveFile$a$b");

@@ -2,7 +2,7 @@
 {
 	public class Identifier
 	{
-		public readonly string ID;
+		public string ID{get;}
 
 		public string Name;
 

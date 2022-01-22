@@ -33,8 +33,12 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			return null;
 		}
 		
-		public static string GetAccessors(DeclKind kind, bool constant = false)
+		public static string GetAccessors(DeclKind kind, bool constant = false, Type type = null)
 		{
+			if(constant && type!=null && type.IsPrimative)
+			{
+				return "public const ";
+			}
 			StringBuilder builder = new StringBuilder();
 			switch(kind)
 			{

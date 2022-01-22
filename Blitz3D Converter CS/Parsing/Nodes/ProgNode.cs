@@ -118,6 +118,8 @@ namespace Blitz3D.Converter.Parsing.Nodes
 					lines.Add(s);
 				}
 			}
+			globalVars.AddRange(consts.WriteData());
+
 			//data, insert before the }
 			lines.InsertRange(lines.Count-1,datas.WriteData());
 

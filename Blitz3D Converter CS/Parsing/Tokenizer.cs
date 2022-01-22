@@ -74,7 +74,13 @@ namespace Blitz3D.Converter.Parsing
 		GLOBAL,
 		LOCAL,
 		FIELD,
+
+
+
+		//TODO: Is const working? See OpenSource in editor.bb
 		CONST,
+
+
 		SELECT,
 		CASE,
 		DEFAULT,
@@ -286,6 +292,10 @@ namespace Blitz3D.Converter.Parsing
 					while(line[k] != '\n')
 					{
 						k++;
+					}
+					if(line.Contains("required"))
+					{
+
 					}
 					curr = new Token(TokenType.NEWLINE, $"//{line.Substring(from, k-from)}");
 					k++;//Skip the \n

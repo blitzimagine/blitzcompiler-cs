@@ -4,17 +4,19 @@ namespace Blitz3D.Converter.Parsing
 	{
 		public abstract string Name{get;}
 
+		public virtual bool IsPrimative{get;}
+
 		//operators
 		public virtual bool CanCastTo(Type t) => this == t;
 
 		public virtual bool IsCastImplicit(Type t) => this == t;
 
 		//built-in types
-		public static Type Void{get;} = new VoidType();
-		public static Type Int{get;} = new IntType();
-		public static Type Float{get;} = new FloatType();
-		public static Type String{get;} = new StringType();
-		public static Type Null{get;} = new NullType();
+		public static Type Void => VoidType.Instance;
+		public static Type Int => IntType.Instance;
+		public static Type Float => FloatType.Instance;
+		public static Type String => StringType.Instance;
+		public static Type Null => NullType.Instance;
 	}
 
 	public class FuncType:Type
@@ -97,13 +99,14 @@ namespace Blitz3D.Converter.Parsing
 	//}
 
 	/// <summary>Blitz Array, this is like a C style array.</summary>
-	public class VectorType:Type
+	public sealed class VectorType:Type
 	{
 		public override string Name => $"{ElementType.Name}[{new string(',', Rank-1)}]";
 
 		public Type ElementType{get;}
 		///<summary>Number of dimensions</summary>
 		public int Rank{get;}
+
 		public VectorType(Type t, int dim)
 		{
 			ElementType = t;
@@ -123,39 +126,60 @@ namespace Blitz3D.Converter.Parsing
 	}
 
 
-	public class VoidType:Type
+	public sealed class VoidType:Type
 	{
+		public static VoidType Instance{get;} = new VoidType();
+
 		public override string Name => "void";
 
 		public override bool CanCastTo(Type t) => t == Void;
+
+		private VoidType(){}
 	}
 
-	public class IntType:Type
+	public sealed class IntType:Type
 	{
+		public static IntType Instance{get;} = new IntType();
+
 		public override string Name => "int";
+		public override bool IsPrimative => true;
 
 		public override bool CanCastTo(Type t) => t == Int || t == Float || t == String;
 
 		public override bool IsCastImplicit(Type t) => t == Float;
+
+		private IntType(){}
 	}
 
-	public class FloatType:Type
+	public sealed class FloatType:Type
 	{
+		public static FloatType Instance{get;} = new FloatType();
+
 		public override string Name => "float";
+		public override bool IsPrimative => true;
 
 		public override bool CanCastTo(Type t) => t == Int || t == Float || t == String;
+
+		private FloatType(){}
 	}
 
-	public class StringType:Type
+	public sealed class StringType:Type
 	{
+		public static StringType Instance{get;} = new StringType();
+
 		public override string Name => "string";
+		public override bool IsPrimative => true;
 
 		public override bool CanCastTo(Type t) => t == Int || t == Float || t == String;
+
+		private StringType(){}
 	}
 
-	public class NullType:StructType
+	public sealed class NullType:StructType
 	{
-		public NullType():base("Null"){}
+		public static NullType Instance{get;} = new NullType();
+
+		private NullType():base("Null"){}
 
 		public override bool CanCastTo(Type t) => t is StructType;
 	}

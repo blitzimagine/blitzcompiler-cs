@@ -131,7 +131,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	{
 		private readonly string ident;
 		private readonly string tag;
-		private ExprSeqNode exprs;
+		private readonly ExprSeqNode exprs;
 		private ArrayType sem_type;
 		private Decl sem_decl;
 		public DimNode(string i, string t, ExprSeqNode e)
@@ -199,7 +199,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	////////////////
 	public class AsgnNode:StmtNode
 	{
-		private VarNode var;
+		private readonly VarNode var;
 		private ExprNode expr;
 
 		public AsgnNode(VarNode var, ExprNode expr)
@@ -275,7 +275,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	////////////////////
 	public class GotoNode:StmtNode
 	{
-		private string ident;
+		private readonly string ident;
 		private Label sem_label;
 
 		public GotoNode(string s)
@@ -299,7 +299,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	///<summary>JSR/Jump subroutine</summary>
 	public class GosubNode:StmtNode
 	{
-		private string ident;
+		private readonly string ident;
 		private Label sem_label;
 		public GosubNode(string s)
 		{
@@ -595,7 +595,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	//////////////////////
 	public class DeleteNode:StmtNode
 	{
-		private ExprNode expr;
+		private readonly ExprNode expr;
 		public DeleteNode(ExprNode e)
 		{
 			expr = e;
@@ -637,7 +637,9 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	///////////////////////////
 	public class InsertNode:StmtNode
 	{
-		private ExprNode expr1, expr2;
+		private readonly ExprNode expr1;
+		private readonly ExprNode expr2;
+
 		private readonly bool before;
 		public InsertNode(ExprNode e1, ExprNode e2, bool b)
 		{
@@ -710,7 +712,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	////////////////////////
 	public class SelectNode:StmtNode
 	{
-		private ExprNode expr;//Switch on
+		private readonly ExprNode expr;//Switch on
 		//public StmtSeqNode defStmts;//Default case
 		//private readonly List<CaseNode> cases = new List<CaseNode>();
 		private readonly StmtSeqNode cases = new StmtSeqNode(null);

@@ -146,7 +146,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public override IEnumerable<string> WriteData()
 		{
 			StringBuilder builder = new StringBuilder();
-			string accessors = GetAccessors(kind, constant);
+			string accessors = GetAccessors(kind, constant, type);
 			string typeName = type.Name;//Type.FromTag(tag).Name;
 			builder.Append($"{accessors}{typeName} {ident}");
 			if(defExpr != null)
@@ -415,7 +415,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			string typeName = sem_type.Name;
 			string elementType = sem_type.ElementType.Name;
-			yield return $"{GetAccessors(kind,true)}{typeName} {ident} = new {elementType}[{exprs.JoinedWriteData()}];{Comment}";
+			yield return $"{GetAccessors(kind,true,sem_type)}{typeName} {ident} = new {elementType}[{exprs.JoinedWriteData()}];{Comment}";
 		}
 	}
 }

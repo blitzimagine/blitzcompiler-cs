@@ -88,7 +88,7 @@ namespace Blitz3D.Converter.Parsing
 							toker = i_toker;
 
 							include = new FileNode(includeClassPath);
-							included.Add(t_toker.InputFile, include);
+							included.Add(i_toker.InputFile, include);
 							
 							//Assign stmts after adding to dictionary so we know that it already exists.
 							include.stmts = parseStmtSeq(scope);

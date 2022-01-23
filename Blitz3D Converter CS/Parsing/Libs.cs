@@ -21,12 +21,12 @@ namespace Blitz3D.Converter.Parsing
 		public static Libs InitLibs()
 		{
 			Libs libs = new Libs();
-			libs.linkRuntime();
+			libs.LinkRuntime();
 			libs.LinkUserLibs();
 			return libs;
 		}
 
-		private int bnext(StreamReader input)//istream
+		private int BNext(StreamReader input)//istream
 		{
 			text = "";
 
@@ -75,7 +75,7 @@ namespace Blitz3D.Converter.Parsing
 			return curr;
 		}
 
-		private void linkRuntime()
+		private void LinkRuntime()
 		{
 			foreach(string sym in Symbols.GetLinkSymbols())
 			{
@@ -192,12 +192,12 @@ namespace Blitz3D.Converter.Parsing
 			using StreamReader input = new StreamReader(userlib.OpenRead());
 			string lib = "";
 
-			bnext(input);
+			BNext(input);
 			while(curr!=0)
 			{
 				if(curr == '.')
 				{
-					if(bnext(input) != -1)
+					if(BNext(input) != -1)
 					{
 						err = "expecting identifier after '.'";
 						return false;
@@ -205,7 +205,7 @@ namespace Blitz3D.Converter.Parsing
 
 					if(text == "lib")
 					{
-						if(bnext(input) != -2)
+						if(BNext(input) != -2)
 						{
 							err = "expecting string after lib directive";
 							return false;
@@ -217,7 +217,7 @@ namespace Blitz3D.Converter.Parsing
 						err = "unknown decl directive";
 						return false;
 					}
-					bnext(input);
+					BNext(input);
 				}
 				else if(curr == -1)
 				{
@@ -235,7 +235,7 @@ namespace Blitz3D.Converter.Parsing
 						return false;
 					}
 
-					Type ty = bnext(input) switch
+					Type ty = BNext(input) switch
 					{
 						'%' => Type.Int,
 						'#' => Type.Float,
@@ -244,7 +244,7 @@ namespace Blitz3D.Converter.Parsing
 					};
 					if(ty != Type.Void)
 					{
-						bnext(input);
+						BNext(input);
 					}
 
 					DeclSeq @params = new DeclSeq();
@@ -254,7 +254,7 @@ namespace Blitz3D.Converter.Parsing
 						err = "expecting '(' after function identifier";
 						return false;
 					}
-					bnext(input);
+					BNext(input);
 					if(curr != ')')
 					{
 						while(true)
@@ -263,7 +263,7 @@ namespace Blitz3D.Converter.Parsing
 							string arg = text;
 
 							Type ty2 = null;
-							switch(bnext(input))
+							switch(BNext(input))
 							{
 								case '%':ty2 = Type.Int;break;
 								case '#':ty2 = Type.Float;break;
@@ -272,7 +272,7 @@ namespace Blitz3D.Converter.Parsing
 							}
 							if(ty2!=null)
 							{
-								bnext(input);
+								BNext(input);
 							}
 							else
 							{
@@ -282,7 +282,7 @@ namespace Blitz3D.Converter.Parsing
 							@params.InsertDecl(arg, ty2, DeclKind.Param);
 
 							if(curr != ',') break;
-							bnext(input);
+							BNext(input);
 						}
 					}
 					if(curr != ')')
@@ -297,17 +297,17 @@ namespace Blitz3D.Converter.Parsing
 
 					RuntimeEnviron.FuncDecls.InsertDecl(id, fn, DeclKind.Func);
 
-					if(bnext(input) == ':')
+					if(BNext(input) == ':')
 					{
 						//real name?
-						bnext(input);
+						BNext(input);
 						if(curr != -1 && curr != -2)
 						{
 							err = "expecting identifier or string after alias";
 							return false;
 						}
 						id = text;
-						bnext(input);
+						BNext(input);
 					}
 
 					//userFuncs.Add(new UserFunc(id.ToLowerInvariant(), id, lib));

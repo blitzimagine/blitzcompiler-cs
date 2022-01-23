@@ -117,7 +117,7 @@ namespace Blitz3D.Converter.Parsing
 		{
 			if(this == t){return true;}
 
-			if(!(t is VectorType v)){return false;}
+			if(t is not VectorType v){return false;}
 			if(ElementType != v.ElementType){return false;}
 			if(Rank != v.Rank){return false;}
 			

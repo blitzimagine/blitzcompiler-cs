@@ -18,8 +18,8 @@ namespace Blitz3D.Converter.Parsing
 
 		POSITIVE = '+',
 		NEGATIVE = '-',
-		ADD = '+',
-		SUB = '-',
+		ADD = POSITIVE,
+		SUB = NEGATIVE,
 		MUL = '*',
 		DIV = '/',
 		POW = '^',
@@ -292,10 +292,6 @@ namespace Blitz3D.Converter.Parsing
 					while(line[k] != '\n')
 					{
 						k++;
-					}
-					if(line.Contains("required"))
-					{
-
 					}
 					curr = new Token(TokenType.NEWLINE, $"//{line.Substring(from, k-from)}");
 					k++;//Skip the \n

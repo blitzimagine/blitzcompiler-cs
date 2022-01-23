@@ -19,38 +19,38 @@ namespace Blitz3D.Converter.Parsing
 		public IReadOnlyDictionary<string,FileNode> Included => included;
 
 		private Tokenizer toker;
-		private Dictionary<string, DimNode> arrayDecls = new Dictionary<string, DimNode>(StringComparer.OrdinalIgnoreCase);
+		private readonly Dictionary<string, DimNode> arrayDecls = new Dictionary<string, DimNode>(StringComparer.OrdinalIgnoreCase);
 
 		private DeclSeqNode consts;
 		private DeclSeqNode structs;
 		private DeclSeqNode funcs;
 		private DeclSeqNode datas;
 
-		private static bool isTerm(TokenType c) => c == (TokenType)':' || c == TokenType.NEWLINE;
+		private static bool IsTerm(TokenType c) => c == (TokenType)':' || c == TokenType.NEWLINE;
 
 		public Parser(Tokenizer t)
 		{
 			toker = t;
 		}
 
-		public ProgNode parse()
+		public ProgNode Parse()
 		{
 			consts = new DeclSeqNode();
 			structs = new DeclSeqNode();
 			funcs = new DeclSeqNode();
 			datas = new DeclSeqNode();
 
-			StmtSeqNode stmts = parseStmtSeq(STMTS.PROG);	
+			StmtSeqNode stmts = ParseStmtSeq(STMTS.PROG);	
 			
 			if(toker.CurrType!=TokenType.EOF)
 			{
-				throw exp("end-of-file");
+				throw Exp("end-of-file");
 			}
 
 			return new ProgNode(consts, structs, funcs, datas, stmts);
 		}
 
-		private StmtSeqNode parseStmtSeq(STMTS scope)
+		private StmtSeqNode ParseStmtSeq(STMTS scope)
 		{
 			StmtSeqNode stmts = new StmtSeqNode(toker.InputFile);
 			string lastLabel = null;
@@ -58,10 +58,10 @@ namespace Blitz3D.Converter.Parsing
 			{
 				while(toker.CurrType == (TokenType)':' || (scope != STMTS.LINE && toker.CurrType == TokenType.NEWLINE))
 				{
-					string text = toker.TakeText();
-					if(toker.CurrType == TokenType.NEWLINE)
+					var token = toker.Take();
+					if(token.Type == TokenType.NEWLINE)
 					{
-						stmts.AddComment(text);
+						stmts.AddComment(token.Text);
 					}
 				}
 				StmtNode result = null;
@@ -91,11 +91,11 @@ namespace Blitz3D.Converter.Parsing
 							included.Add(i_toker.InputFile, include);
 							
 							//Assign stmts after adding to dictionary so we know that it already exists.
-							include.stmts = parseStmtSeq(scope);
+							include.stmts = ParseStmtSeq(scope);
 
 							if(toker.CurrType!=TokenType.EOF)
 							{
-								throw exp("end-of-file");
+								throw Exp("end-of-file");
 							}
 
 							toker = t_toker;
@@ -106,7 +106,7 @@ namespace Blitz3D.Converter.Parsing
 					case TokenType.IDENT:
 					{
 						string ident = toker.TakeText();
-						string tag = parseTypeTag();
+						string tag = ParseTypeTag();
 						if(!arrayDecls.ContainsKey(ident) && toker.CurrType != TokenType.EQ && toker.CurrType != TokenType.Backslash && toker.CurrType != TokenType.BracketOpen)
 						{
 							//must be a function
@@ -119,9 +119,9 @@ namespace Blitz3D.Converter.Parsing
 								for(k = 1; nest>0; k++)
 								{
 									TokenType c = toker.LookAhead(k);
-									if(isTerm(c))
+									if(IsTerm(c))
 									{
-										throw ex("Mismatched brackets");
+										throw Ex("Mismatched brackets");
 									}
 									else if(c == TokenType.ParenOpen)
 									{
@@ -132,20 +132,20 @@ namespace Blitz3D.Converter.Parsing
 										nest--;
 									}
 								}
-								if(isTerm(toker.LookAhead(k)))
+								if(IsTerm(toker.LookAhead(k)))
 								{
 									toker.NextType();
-									exprs = parseExprSeq();
-									toker.AssertSkip(TokenType.ParenClose, exp,"')'");
+									exprs = ParseExprSeq();
+									toker.AssertSkip(TokenType.ParenClose, Exp,"')'");
 								}
 								else
 								{
-									exprs = parseExprSeq();
+									exprs = ParseExprSeq();
 								}
 							}
 							else
 							{
-								exprs = parseExprSeq();
+								exprs = ParseExprSeq();
 							}
 							CallNode call = new CallNode(ident, tag, exprs);
 							result = new ExprStmtNode(call);
@@ -153,9 +153,9 @@ namespace Blitz3D.Converter.Parsing
 						else
 						{
 							//must be a var
-							VarNode var = parseVar(ident, tag);
-							toker.AssertSkip(TokenType.EQ, exp, "variable assignment");
-							ExprNode expr = parseExpr(false);
+							VarNode var = ParseVar(ident, tag);
+							toker.AssertSkip(TokenType.EQ, Exp, "variable assignment");
+							ExprNode expr = ParseExpr(false);
 							result = new AsgnNode(var, expr);
 						}
 					}
@@ -163,16 +163,16 @@ namespace Blitz3D.Converter.Parsing
 					case TokenType.IF:
 					{
 						toker.NextType();
-						result = parseIf();
+						result = ParseIf();
 						toker.TrySkip(TokenType.ENDIF);
 					}
 					break;
 					case TokenType.WHILE:
 					{
 						toker.NextType();
-						ExprNode expr = parseExpr(false);
-						StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
-						toker.AssertSkip(TokenType.WEND, exp, "'Wend'");
+						ExprNode expr = ParseExpr(false);
+						StmtSeqNode stmts2 = ParseStmtSeq(STMTS.BLOCK);
+						toker.AssertSkip(TokenType.WEND, Exp, "'Wend'");
 						result = new WhileNode(expr, stmts2);
 					}
 					break;
@@ -180,38 +180,41 @@ namespace Blitz3D.Converter.Parsing
 					{
 						toker.NextType();
 						ExprNode expr = null;
-						StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
+						StmtSeqNode stmts2 = ParseStmtSeq(STMTS.BLOCK);
 						TokenType curr = toker.CurrType;
 						if(curr != TokenType.UNTIL && curr != TokenType.FOREVER)
 						{
-							throw exp("'Until' or 'Forever'");
+							throw Exp("'Until' or 'Forever'");
 						}
 						toker.NextType();
-						if(curr == TokenType.UNTIL) expr = parseExpr(false);
+						if(curr == TokenType.UNTIL)
+						{
+							expr = ParseExpr(false);
+						}
 						result = new RepeatNode(stmts2, expr);
 					}
 					break;
 					case TokenType.SELECT:
 					{
 						toker.NextType();
-						ExprNode expr = parseExpr(false);
+						ExprNode expr = ParseExpr(false);
 						SelectNode selNode = new SelectNode(expr);
 						while(!toker.TrySkip(TokenType.END_SELECT))
 						{
-							toker.SkipWhile(isTerm);
+							toker.SkipWhile(IsTerm);
 							if(toker.TrySkip(TokenType.CASE))
 							{
-								ExprSeqNode exprs = parseExprSeq();
-								StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
+								ExprSeqNode exprs = ParseExprSeq();
+								StmtSeqNode stmts2 = ParseStmtSeq(STMTS.BLOCK);
 								selNode.Add(new CaseNode(exprs, stmts2));
 							}
 							else if(toker.TrySkip(TokenType.DEFAULT))
 							{
-								selNode.Add(new DefaultCaseNode(parseStmtSeq(STMTS.BLOCK)));
+								selNode.Add(new DefaultCaseNode(ParseStmtSeq(STMTS.BLOCK)));
 							}
 							else
 							{
-								throw exp("'Case', 'Default' or 'End Select'");
+								throw Exp("'Case', 'Default' or 'End Select'");
 							}
 						}
 						result = selNode;
@@ -220,30 +223,30 @@ namespace Blitz3D.Converter.Parsing
 					case TokenType.FOR:
 					{
 						toker.NextType();
-						VarNode var = parseVar();
-						toker.AssertSkip(TokenType.EQ, exp, "variable assignment");
+						VarNode var = ParseVar();
+						toker.AssertSkip(TokenType.EQ, Exp, "variable assignment");
 						if(toker.TrySkip(TokenType.EACH))
 						{
-							string ident = parseIdent();
-							StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
-							toker.AssertSkip(TokenType.NEXT, exp, "'Next'");
+							string ident = ParseIdent();
+							StmtSeqNode stmts2 = ParseStmtSeq(STMTS.BLOCK);
+							toker.AssertSkip(TokenType.NEXT, Exp, "'Next'");
 							result = new ForEachNode(var, ident, stmts2);
 						}
 						else
 						{
 							ExprNode from, to, step;
-							from = parseExpr(false);
-							toker.AssertSkip(TokenType.TO, exp, "'TO'");
-							to = parseExpr(false);
+							from = ParseExpr(false);
+							toker.AssertSkip(TokenType.TO, Exp, "'TO'");
+							to = ParseExpr(false);
 							//step...
 							if(toker.CurrType == TokenType.STEP)
 							{
 								toker.NextType();
-								step = parseExpr(false);
+								step = ParseExpr(false);
 							}
 							else step = new IntConstNode("1");
-							StmtSeqNode stmts2 = parseStmtSeq(STMTS.BLOCK);
-							toker.AssertSkip(TokenType.NEXT, exp, "'Next'");
+							StmtSeqNode stmts2 = ParseStmtSeq(STMTS.BLOCK);
+							toker.AssertSkip(TokenType.NEXT, Exp, "'Next'");
 							result = new ForNode(var, from, to, step, stmts2);
 						}
 					}
@@ -257,19 +260,19 @@ namespace Blitz3D.Converter.Parsing
 					case TokenType.GOTO:
 					{
 						toker.NextType();
-						result = new GotoNode(parseIdent());
+						result = new GotoNode(ParseIdent());
 					}
 					break;
 					case TokenType.GOSUB:
 					{
 						toker.NextType();
-						result = new GosubNode(parseIdent());
+						result = new GosubNode(ParseIdent());
 					}
 					break;
 					case TokenType.RETURN:
 					{
 						toker.NextType();
-						result = new ReturnNode(parseExpr(true));
+						result = new ReturnNode(ParseExpr(true));
 					}
 					break;
 					case TokenType.DELETE:
@@ -277,12 +280,12 @@ namespace Blitz3D.Converter.Parsing
 						if(toker.NextType() == TokenType.EACH)
 						{
 							toker.NextType();
-							string t = parseIdent();
+							string t = ParseIdent();
 							result = new DeleteEachNode(t);
 						}
 						else
 						{
-							ExprNode expr = parseExpr(false);
+							ExprNode expr = ParseExpr(false);
 							result = new DeleteNode(expr);
 						}
 					}
@@ -290,9 +293,9 @@ namespace Blitz3D.Converter.Parsing
 					case TokenType.INSERT:
 					{
 						toker.NextType();
-						ExprNode expr1 = parseExpr(false);
+						ExprNode expr1 = ParseExpr(false);
 						bool before = toker.TakeType() == TokenType.BEFORE;//If not Keyword.BEFORE, then Keyword.AFTER
-						ExprNode expr2 = parseExpr(false);
+						ExprNode expr2 = ParseExpr(false);
 						result = new InsertNode(expr1, expr2, before);
 					}
 					break;
@@ -300,7 +303,7 @@ namespace Blitz3D.Converter.Parsing
 						do
 						{
 							toker.NextType();
-							VarNode var = parseVar();
+							VarNode var = ParseVar();
 							StmtNode stmt = new ReadNode(var);
 							stmts.Add(stmt);
 						}
@@ -320,32 +323,32 @@ namespace Blitz3D.Converter.Parsing
 						do
 						{
 							toker.NextType();
-							ExprNode expr = parseExpr(false);
+							ExprNode expr = ParseExpr(false);
 							datas.Add(new DataDeclNode(expr, lastLabel));
 						}
 						while(toker.CurrType == TokenType.COMMA);
 						break;
 					case TokenType.TYPE:
 						toker.NextType();
-						structs.Add(parseStructDecl());
+						structs.Add(ParseStructDecl());
 						break;
 					case TokenType.CONST:
 						do
 						{
 							toker.NextType();
-							consts.Add(parseVarDecl(DeclKind.Global, true));
+							consts.Add(ParseVarDecl(DeclKind.Global, true));
 						}
 						while(toker.CurrType == TokenType.COMMA);
 						break;
 					case TokenType.FUNCTION:
 						toker.NextType();
-						funcs.Add(parseFuncDecl());
+						funcs.Add(ParseFuncDecl());
 						break;
 					case TokenType.DIM:
 						do
 						{
 							toker.NextType();
-							StmtNode stmt = parseArrayDecl();
+							StmtNode stmt = ParseArrayDecl();
 							stmts.Add(stmt);
 						}
 						while(toker.CurrType == TokenType.COMMA);
@@ -354,7 +357,7 @@ namespace Blitz3D.Converter.Parsing
 						do
 						{
 							toker.NextType();
-							DeclNode d = parseVarDecl(DeclKind.Local, false);
+							DeclNode d = ParseVarDecl(DeclKind.Local, false);
 							StmtNode stmt = new DeclStmtNode(d);
 							stmts.Add(stmt);
 						}
@@ -364,7 +367,7 @@ namespace Blitz3D.Converter.Parsing
 						do
 						{
 							toker.NextType();
-							DeclNode d = parseVarDecl(DeclKind.Global, false);
+							DeclNode d = ParseVarDecl(DeclKind.Global, false);
 							StmtNode stmt = new DeclStmtNode(d);
 							stmts.Add(stmt);
 						}
@@ -373,7 +376,7 @@ namespace Blitz3D.Converter.Parsing
 					case (TokenType)'.':
 					{
 						toker.NextType();
-						string t = parseIdent();
+						string t = ParseIdent();
 						result = new LabelNode(t);
 						lastLabel = t;
 					}
@@ -396,8 +399,8 @@ namespace Blitz3D.Converter.Parsing
 			}
 		}
 
-		private Ex ex(string s) => new Ex(s, toker.InputFile);
-		private Ex exp(string s) => ex(toker.CurrType switch
+		private Ex Ex(string s) => new Ex(s, toker.InputFile);
+		private Ex Exp(string s) => Ex(toker.CurrType switch
 		{
 			TokenType.NEXT => "'Next' without 'For'",
 			TokenType.WEND => "'Wend' without 'While'",
@@ -412,41 +415,52 @@ namespace Blitz3D.Converter.Parsing
 			_ => "Expecting " + s,
 		});
 
-		private string parseIdent()
+		private string ParseIdent()
 		{
 			if(toker.CurrType != TokenType.IDENT)
 			{
-				throw exp("identifier");
+				throw Exp("identifier");
 			}
 			return toker.TakeText();
 		}
 
-		private string parseTypeTag()
+		private string ParseTypeTag()
 		{
 			switch(toker.CurrType)
 			{
 				case (TokenType)'%': toker.NextType(); return "%";
 				case (TokenType)'#': toker.NextType(); return "#";
 				case (TokenType)'$': toker.NextType(); return "$";
-				case (TokenType)'.': toker.NextType(); return parseIdent();
+				case (TokenType)'.': toker.NextType(); return ParseIdent();
 				default: return "";
 			}
 		}
 
-		private VarNode parseVar()
+		private bool TryParseComment(out string text)
 		{
-			string ident = parseIdent();
-			string tag = parseTypeTag();
-			return parseVar(ident, tag);
+			if(toker.CurrType == TokenType.NEWLINE && !string.IsNullOrEmpty(toker.CurrText))
+			{
+				text = toker.TakeText();
+				return true;
+			}
+			text = null;
+			return false;
 		}
-		private VarNode parseVar(string ident, string tag)
+
+		private VarNode ParseVar()
+		{
+			string ident = ParseIdent();
+			string tag = ParseTypeTag();
+			return ParseVar(ident, tag);
+		}
+		private VarNode ParseVar(string ident, string tag)
 		{
 			VarNode var;
 			if(toker.CurrType == TokenType.ParenOpen)
 			{
 				toker.NextType();
-				ExprSeqNode exprs = parseExprSeq();
-				toker.AssertSkip(TokenType.ParenClose, exp, "')'");
+				ExprSeqNode exprs = ParseExprSeq();
+				toker.AssertSkip(TokenType.ParenClose, Exp, "')'");
 				var = new ArrayVarNode(ident, tag, exprs);
 			}
 			else
@@ -459,18 +473,18 @@ namespace Blitz3D.Converter.Parsing
 				if(toker.CurrType == TokenType.Backslash)
 				{
 					toker.NextType();
-					string ident2 = parseIdent();
-					string tag2 = parseTypeTag();
+					string ident2 = ParseIdent();
+					string tag2 = ParseTypeTag();
 					ExprNode expr = new VarExprNode(var);
 					var = new FieldVarNode(expr, ident2, tag2);
 				}
 				else if(toker.CurrType == TokenType.BracketOpen)
 				{
 					toker.NextType();
-					ExprSeqNode exprs = parseExprSeq();
+					ExprSeqNode exprs = ParseExprSeq();
 					if(exprs.Exprs.Count != 1 || toker.CurrType != TokenType.BracketClose)
 					{
-						throw exp("']'");
+						throw Exp("']'");
 					}
 					toker.NextType();
 					ExprNode expr = new VarExprNode(var);
@@ -484,57 +498,64 @@ namespace Blitz3D.Converter.Parsing
 			return var;
 		}
 
-		private IfNode parseIf()
+		private IfNode ParseIf()
 		{
-
-			ExprNode expr = parseExpr(false);
+			ExprNode expr = ParseExpr(false);
 			toker.TrySkip(TokenType.THEN);
+			
+			bool blockIf = IsTerm(toker.CurrType);
+			var hasComment = TryParseComment(out var comment);
 
-			bool blkif = isTerm(toker.CurrType);
-			StmtSeqNode stmts = parseStmtSeq(blkif ? STMTS.BLOCK : STMTS.LINE);
+			StmtSeqNode stmts = ParseStmtSeq(blockIf ? STMTS.BLOCK : STMTS.LINE);
 
 			StmtSeqNode elseOpt = null;
 			if(toker.TrySkip(TokenType.ELSEIF))
 			{
-				IfNode ifnode = parseIf();
+				IfNode ifnode = ParseIf();
 				elseOpt = new StmtSeqNode(toker.InputFile);
 				elseOpt.Add(ifnode);
 			}
 			else if(toker.TrySkip(TokenType.ELSE))
 			{
-				elseOpt = parseStmtSeq(blkif ? STMTS.BLOCK : STMTS.LINE);
+				elseOpt = ParseStmtSeq(blockIf ? STMTS.BLOCK : STMTS.LINE);
 			}
-			IfNode ret = new IfNode(expr, stmts, elseOpt);
-			if(blkif)
+			IfNode ret = new IfNode(expr, stmts, elseOpt)
 			{
-				toker.AssertCurr(TokenType.ENDIF, exp, "'EndIf'");
+				Comment = comment
+			};
+			if(blockIf)
+			{
+				toker.AssertCurr(TokenType.ENDIF, Exp, "'EndIf'");
 			}
 			else
 			{
-				toker.AssertCurr(TokenType.NEWLINE, exp, "end-of-line");
+				toker.AssertCurr(TokenType.NEWLINE, Exp, "end-of-line");
 			}
 
 			return ret;
 		}
 
-		private DeclNode parseVarDecl(DeclKind kind, bool constant)
+		private DeclNode ParseVarDecl(DeclKind kind, bool constant)
 		{
-			string ident = parseIdent();
-			string tag = parseTypeTag();
+			string ident = ParseIdent();
+			string tag = ParseTypeTag();
 			DeclNode d;
 			if(toker.TrySkip(TokenType.BracketOpen))
 			{
 				if(constant)
 				{
-					throw ex("Blitz arrays may not be constant");
+					throw Ex("Blitz arrays may not be constant");
 				}
-				ExprSeqNode exprs = parseExprSeq();
+				ExprSeqNode exprs = ParseExprSeq();
 				if(exprs.Count != 1 || toker.CurrType != TokenType.BracketClose)
 				{
-					throw exp("']'");
+					throw Exp("']'");
 				}
 				toker.NextType();
-				d = new VectorDeclNode(ident, tag, exprs, kind);
+				d = new VectorDeclNode(ident, tag, exprs, kind)
+				{
+					File = toker.InputFile
+				};
 			}
 			else
 			{
@@ -542,65 +563,68 @@ namespace Blitz3D.Converter.Parsing
 				if(toker.CurrType == TokenType.EQ)
 				{
 					toker.NextType();
-					expr = parseExpr(false);
+					expr = ParseExpr(false);
 				}
 				else if(constant)
 				{
-					throw ex("Constants must be initialized");
+					throw Ex("Constants must be initialized");
 				}
-				d = new VarDeclNode(ident, tag, kind, constant, expr);
+				d = new VarDeclNode(ident, tag, kind, constant, expr)
+				{
+					File = toker.InputFile
+				};
 			}
-			d.file = toker.InputFile;
 			return d;
 		}
-		private DimNode parseArrayDecl()
+		private DimNode ParseArrayDecl()
 		{
-			string ident = parseIdent();
-			string tag = parseTypeTag();
-			toker.AssertSkip(TokenType.ParenOpen, exp, "'('");
-			ExprSeqNode exprs = parseExprSeq();
-			toker.AssertSkip(TokenType.ParenClose, exp, "')'");
+			string ident = ParseIdent();
+			string tag = ParseTypeTag();
+			toker.AssertSkip(TokenType.ParenOpen, Exp, "'('");
+			ExprSeqNode exprs = ParseExprSeq();
+			toker.AssertSkip(TokenType.ParenClose, Exp, "')'");
 			if(exprs.Count==0)
 			{
-				throw ex("can't have a 0 dimensional array");
+				throw Ex("can't have a 0 dimensional array");
 			}
 			DimNode d = new DimNode(ident, tag, exprs);
 			arrayDecls[ident] = d;
 			return d;
 		}
-		private DeclNode parseFuncDecl()
+		private DeclNode ParseFuncDecl()
 		{
-			string ident = parseIdent();
-			string tag = parseTypeTag();
+			string ident = ParseIdent();
+			string tag = ParseTypeTag();
 
 			DeclSeqNode @params = new DeclSeqNode();
-			toker.AssertSkip(TokenType.ParenOpen, exp, "'('");
+			toker.AssertSkip(TokenType.ParenOpen, Exp, "'('");
 			if(!toker.TrySkip(TokenType.ParenClose))
 			{
 				while(true)
 				{
-					@params.Add(parseVarDecl(DeclKind.Param, false));
+					@params.Add(ParseVarDecl(DeclKind.Param, false));
 					if(toker.CurrType != TokenType.COMMA) break;
 					toker.NextType();
 				}
-				toker.AssertSkip(TokenType.ParenClose, exp, "')'");
+				toker.AssertSkip(TokenType.ParenClose, Exp, "')'");
 			}
 
-			StmtSeqNode stmts = parseStmtSeq(STMTS.BLOCK);
+			StmtSeqNode stmts = ParseStmtSeq(STMTS.BLOCK);
 			if(toker.CurrType != TokenType.END_FUNCTION)
 			{
-				throw exp("'End Function'");
+				throw Exp("'End Function'");
 			}
-			StmtNode ret = new ReturnNode(null);
-			stmts.Add(ret);
+			stmts.Add(new ReturnNode(null));
 			toker.NextType();
-			DeclNode d = new FuncDeclNode(ident, tag, @params, stmts);
-			d.file = toker.InputFile;
+			var d = new FuncDeclNode(ident, tag, @params, stmts)
+			{
+				File = toker.InputFile
+			};
 			return d;
 		}
-		private DeclNode parseStructDecl()
+		private DeclNode ParseStructDecl()
 		{
-			string ident = parseIdent();
+			string ident = ParseIdent();
 			DeclSeqNode fields = new DeclSeqNode();
 			while(toker.CurrType == TokenType.NEWLINE)
 			{
@@ -610,7 +634,7 @@ namespace Blitz3D.Converter.Parsing
 			{
 				do
 				{
-					fields.Add(parseVarDecl(DeclKind.Field, false));
+					fields.Add(ParseVarDecl(DeclKind.Field, false));
 				}
 				while(toker.TrySkip(TokenType.COMMA));
 				
@@ -619,17 +643,19 @@ namespace Blitz3D.Converter.Parsing
 					fields.AddComment(toker.TakeText());
 				}
 			}
-			toker.AssertSkip(TokenType.END_TYPE, exp, "'Field' or 'End Type'");
-			DeclNode d = new StructDeclNode(ident, fields);
-			d.file = toker.InputFile;
+			toker.AssertSkip(TokenType.END_TYPE, Exp, "'Field' or 'End Type'");
+			var d = new StructDeclNode(ident, fields)
+			{
+				File = toker.InputFile
+			};
 			return d;
 		}
 
-		private ExprSeqNode parseExprSeq()
+		private ExprSeqNode ParseExprSeq()
 		{
 			ExprSeqNode exprs = new ExprSeqNode();
 			bool opt = true;
-			while(parseExpr(opt) is ExprNode e)
+			while(ParseExpr(opt) is ExprNode e)
 			{
 				exprs.Add(e);
 				if(!toker.TrySkip(TokenType.COMMA))
@@ -641,87 +667,87 @@ namespace Blitz3D.Converter.Parsing
 			return exprs;
 		}
 
-		private ExprNode parseExpr(bool opt)
+		private ExprNode ParseExpr(bool opt)
 		{
 			if(toker.TrySkip(TokenType.NOT))
 			{
-				ExprNode expr = parseExpr1(false);
+				ExprNode expr = ParseExpr1(false);
 				return new UniExprNode(TokenType.NOT, expr);//return new RelExprNode(TokenType.EQ, expr, new IntConstNode("0"));
 			}
-			return parseExpr1(opt);
+			return ParseExpr1(opt);
 		}
-		private ExprNode parseExpr1(bool opt) //And, Or, Eor
+		private ExprNode ParseExpr1(bool opt) //And, Or, Eor
 		{
-			ExprNode lhs = parseExpr2(opt);
+			ExprNode lhs = ParseExpr2(opt);
 			if(lhs is null) return null;
 
 			while(toker.TryTake(out TokenType c, TokenType.AND, TokenType.OR, TokenType.XOR))
 			{
-				ExprNode rhs = parseExpr2(false);
+				ExprNode rhs = ParseExpr2(false);
 				lhs = new BinExprNode(c, lhs, rhs);
 			}
 			return lhs;
 		}
-		private ExprNode parseExpr2(bool opt) //<,=,>,<=,<>,>=
+		private ExprNode ParseExpr2(bool opt) //<,=,>,<=,<>,>=
 		{
-			ExprNode lhs = parseExpr3(opt);
+			ExprNode lhs = ParseExpr3(opt);
 			if(lhs is null) return null;
 
 			while(toker.TryTake(out TokenType c, TokenType.LT, TokenType.GT, TokenType.EQ, TokenType.LE, TokenType.GE, TokenType.NE))
 			{
-				ExprNode rhs = parseExpr3(false);
+				ExprNode rhs = ParseExpr3(false);
 				lhs = new RelExprNode(c, lhs, rhs);
 			}
 			return lhs;
 		}
-		private ExprNode parseExpr3(bool opt) //+,-
+		private ExprNode ParseExpr3(bool opt) //+,-
 		{
-			ExprNode lhs = parseExpr4(opt);
+			ExprNode lhs = ParseExpr4(opt);
 			if(lhs is null) return null;
 
 			while(toker.TryTake(out TokenType c, TokenType.ADD, TokenType.SUB))
 			{
-				ExprNode rhs = parseExpr4(false);
+				ExprNode rhs = ParseExpr4(false);
 				lhs = new ArithExprNode(c, lhs, rhs);
 			}
 			return lhs;
 		}
-		private ExprNode parseExpr4(bool opt) //Lsr,Lsr,Asr
+		private ExprNode ParseExpr4(bool opt) //Lsr,Lsr,Asr
 		{
-			ExprNode lhs = parseExpr5(opt);
+			ExprNode lhs = ParseExpr5(opt);
 			if(lhs is null) return null;
 
 			while(toker.TryTake(out TokenType c, TokenType.SHL, TokenType.SHR, TokenType.SAR))
 			{
-				ExprNode rhs = parseExpr5(false);
+				ExprNode rhs = ParseExpr5(false);
 				lhs = new BinExprNode(c, lhs, rhs);
 			}
 			return lhs;
 		}
-		private ExprNode parseExpr5(bool opt) //*,/,Mod
+		private ExprNode ParseExpr5(bool opt) //*,/,Mod
 		{
-			ExprNode lhs = parseExpr6(opt);
+			ExprNode lhs = ParseExpr6(opt);
 			if(lhs is null) return null;
 			while(toker.TryTake(out TokenType c, TokenType.MUL, TokenType.DIV, TokenType.MOD))
 			{
-				ExprNode rhs = parseExpr6(false);
+				ExprNode rhs = ParseExpr6(false);
 				lhs = new ArithExprNode(c, lhs, rhs);
 			}
 			return lhs;
 		}
-		private ExprNode parseExpr6(bool opt) //^
+		private ExprNode ParseExpr6(bool opt) //^
 		{
-			ExprNode lhs = parseUniExpr(opt);
+			ExprNode lhs = ParseUniExpr(opt);
 			if(lhs is null) return null;
 			while(toker.TryTake(out TokenType c, TokenType.POW))
 			{
-				ExprNode rhs = parseUniExpr(false);
+				ExprNode rhs = ParseUniExpr(false);
 				lhs = new ArithExprNode(c, lhs, rhs);
 			}
 			return lhs;
 		}
 
-		private ExprNode parseUniExpr(bool opt) //+,-,Not,~
+		private ExprNode ParseUniExpr(bool opt) //+,-,Not,~
 		{
 			TokenType c = toker.CurrType;
 			switch(c)
@@ -730,47 +756,47 @@ namespace Blitz3D.Converter.Parsing
 				{
 					toker.NextType();
 					toker.TrySkip((TokenType)'%');
-					ExprNode result = parseUniExpr(false);
+					ExprNode result = ParseUniExpr(false);
 					return new CastNode(result, Type.Int);
 				}
 				case TokenType.FLOAT:
 				{
 					toker.NextType();
 					toker.TrySkip((TokenType)'#');
-					ExprNode result = parseUniExpr(false);
+					ExprNode result = ParseUniExpr(false);
 					return new CastNode(result, Type.Float);
 				}
 				case TokenType.STR:
 				{
 					toker.NextType();
 					toker.TrySkip((TokenType)'$');
-					ExprNode result = parseUniExpr(false);
+					ExprNode result = ParseUniExpr(false);
 					return new CastNode(result, Type.String);
 				}
 				case TokenType.OBJECT:
 				{
 					toker.NextType();
 					toker.TrySkip((TokenType)'.');
-					string t = parseIdent();
-					ExprNode result = parseUniExpr(false);
+					string t = ParseIdent();
+					ExprNode result = ParseUniExpr(false);
 					return new ObjectCastNode(result, t);
 				}
 				case TokenType.HANDLE:
 				{
 					toker.NextType();
-					ExprNode result = parseUniExpr(false);
+					ExprNode result = ParseUniExpr(false);
 					return new ObjectHandleNode(result);
 				}
 				case TokenType.BEFORE:
 				{
 					toker.NextType();
-					ExprNode result = parseUniExpr(false);
+					ExprNode result = ParseUniExpr(false);
 					return new BeforeNode(result);
 				}
 				case TokenType.AFTER:
 				{
 					toker.NextType();
-					ExprNode result = parseUniExpr(false);
+					ExprNode result = ParseUniExpr(false);
 					return new AfterNode(result);
 				}
 				case TokenType.POSITIVE:
@@ -780,40 +806,40 @@ namespace Blitz3D.Converter.Parsing
 				case TokenType.SGN:
 				{
 					toker.NextType();
-					ExprNode result = parseUniExpr(false);
+					ExprNode result = ParseUniExpr(false);
 					return new UniExprNode(c, result);
 				}
 				default:
 				{
-					return parsePrimary(opt);
+					return ParsePrimary(opt);
 				}
 			}
 		}
-		private ExprNode parsePrimary(bool opt)
+		private ExprNode ParsePrimary(bool opt)
 		{
 			switch(toker.CurrType)
 			{
 				case TokenType.ParenOpen:
 				{
 					toker.NextType();
-					ExprNode expr = parseExpr(false);
-					toker.AssertSkip(TokenType.ParenClose, exp, "')'");
+					ExprNode expr = ParseExpr(false);
+					toker.AssertSkip(TokenType.ParenClose, Exp, "')'");
 					return expr;
 				}
 				case TokenType.NEW:
 				{
 					toker.NextType();
-					return new NewNode(parseIdent());
+					return new NewNode(ParseIdent());
 				}
 				case TokenType.FIRST:
 				{
 					toker.NextType();
-					return new FirstNode(parseIdent());
+					return new FirstNode(ParseIdent());
 				}
 				case TokenType.LAST:
 				{
 					toker.NextType();
-					return new LastNode(parseIdent());
+					return new LastNode(ParseIdent());
 				}
 				case TokenType.NULL:
 					toker.NextType();
@@ -849,25 +875,25 @@ namespace Blitz3D.Converter.Parsing
 					return new IntConstNode("false");
 				case TokenType.IDENT:
 					string ident = toker.TakeText();
-					string tag = parseTypeTag();
+					string tag = ParseTypeTag();
 					if(toker.CurrType == TokenType.ParenOpen && !arrayDecls.ContainsKey(ident))
 					{
 						//must be a func
 						toker.NextType();
-						ExprSeqNode exprs = parseExprSeq();
-						toker.AssertSkip(TokenType.ParenClose, exp, "')'");
+						ExprSeqNode exprs = ParseExprSeq();
+						toker.AssertSkip(TokenType.ParenClose, Exp, "')'");
 						return new CallNode(ident, tag, exprs);
 					}
 					else
 					{
 						//must be a var
-						VarNode var = parseVar(ident, tag);
+						VarNode var = ParseVar(ident, tag);
 						return new VarExprNode(var);
 					}
 				default:
 					if(!opt)
 					{
-						throw exp("expression");
+						throw Exp("expression");
 					}
 					return null;
 			}

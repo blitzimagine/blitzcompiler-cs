@@ -65,7 +65,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 				Decl d = decls[k];
 				if(k < Exprs.Count && Exprs[k]!=null)
 				{
-					if(!userlib || !(d.Type is StructType))
+					if(!userlib || (d.Type is not StructType))
 					{
 						Exprs[k] = Exprs[k].CastTo(d.Type, e);
 					}
@@ -564,7 +564,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			{
 				throw new Ex("'After' cannot be used on 'Null'");
 			}
-			if(!(expr.Sem_Type is StructType))
+			if(expr.Sem_Type is not StructType)
 			{
 				throw new Ex("'After' must be used with a custom type object");
 			}
@@ -594,7 +594,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			{
 				throw new Ex("'Before' cannot be used with 'Null'");
 			}
-			if(!(expr.Sem_Type is StructType))
+			if(expr.Sem_Type is not StructType)
 			{
 				throw new Ex("'Before' must be used with a custom type object");
 			}
@@ -658,7 +658,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			expr.Semant(e);
-			if(!(expr.Sem_Type is StructType))
+			if(expr.Sem_Type is not StructType)
 			{
 				throw new Ex("'ObjectHandle' must be used with an object");
 			}

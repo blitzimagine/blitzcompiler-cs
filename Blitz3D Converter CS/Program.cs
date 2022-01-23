@@ -8,11 +8,11 @@ namespace Blitz3D.Converter
 {
 	public static class Program
 	{
-		private static void ShowCompilerInfo()
-		{
-			Console.WriteLine($"BlitzCC V11.8");//Version 1108
-			Console.WriteLine("(C)opyright 2000-2003 Blitz Research Ltd");
-		}
+		//private static void ShowCompilerInfo()
+		//{
+		//	Console.WriteLine($"BlitzCC V11.8");//Version 1108
+		//	Console.WriteLine("(C)opyright 2000-2003 Blitz Research Ltd");
+		//}
 
 		/// <summary>Parse file arguments</summary>
 		/// <returns>Returns error message if bad args given.</returns>
@@ -55,29 +55,7 @@ namespace Blitz3D.Converter
 
 			try
 			{
-				Libs libs = Libs.InitLibs();
-
-				Console.WriteLine("Parsing...");
-				(ProgNode prog, Parser parser) = Parse(fileIn);
-
-				Console.WriteLine("Generating...");
-				Semant(prog, libs);
-
-				Console.WriteLine("Converting...");
-				string output = Convert(prog.WriteData());
-
-				try
-				{
-					Console.WriteLine("Saving...");
-					File.WriteAllText(fileOut.FullName, output);
-				}
-				catch(Exception e)
-				{
-					Console.Error.WriteLine($"Failed to write output to '{fileOut}'.");
-					Console.Error.WriteLine(e);
-					return;
-				}
-				ConvertIncludes(parser);
+				Run(args, fileIn, fileOut);
 			}
 			catch(Ex x)
 			{
@@ -85,12 +63,39 @@ namespace Blitz3D.Converter
 			}
 		}
 
+		private static void Run(string[] args, FileInfo fileIn, FileInfo fileOut)
+		{
+			Libs libs = Libs.InitLibs();
+
+			Console.WriteLine("Parsing...");
+			(ProgNode prog, Parser parser) = Parse(fileIn);
+
+			Console.WriteLine("Generating...");
+			Semant(prog, libs);
+
+			Console.WriteLine("Converting...");
+			string output = Convert(prog.WriteData());
+
+			try
+			{
+				Console.WriteLine("Saving...");
+				File.WriteAllText(fileOut.FullName, output);
+			}
+			catch(Exception e)
+			{
+				Console.Error.WriteLine($"Failed to write output to '{fileOut}'.");
+				Console.Error.WriteLine(e);
+				return;
+			}
+			ConvertIncludes(parser);
+		}
+
 		private static (ProgNode prog, Parser parser) Parse(FileInfo inputFile)
 		{
 			using StreamReader input = new StreamReader(inputFile.OpenRead());
 			Tokenizer toker = new Tokenizer(input, inputFile.FullName);
 			Parser parser = new Parser(toker);
-			return (parser.parse(), parser);
+			return (parser.Parse(), parser);
 		}
 
 		private static void Semant(ProgNode prog, Libs libs)

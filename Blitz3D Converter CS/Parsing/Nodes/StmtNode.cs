@@ -51,9 +51,11 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			}
 		}
 
+		/// <summary>Adds comment to last statement. If a comment already exists, adds a blank line with the comment.</summary>
 		public void AddComment(string comment)
 		{
 			if(string.IsNullOrEmpty(comment)){return;}
+
 			if(Stmts.Count==0 || Stmts[Stmts.Count-1].Comment != null)
 			{
 				Add(new CommentStmtNode());
@@ -120,7 +122,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override IEnumerable<string> WriteData()
 		{
-			yield return decl.WriteData().Single()+Comment+(decl.Comment??"");
+			yield return decl.WriteData().Single()+Comment+(decl.Comment??string.Empty);
 		}
 	}
 
@@ -143,10 +145,10 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override void Semant(Environ e)
 		{
-			Type t = tagType(tag,e);
+			Type t = TagType(tag,e);
 			if(e.FindDecl(ident) is Decl d)
 			{
-				if(!(d.Type is ArrayType a) || a.Rank != exprs.Count || (t!=null && a.ElementType != t))
+				if((d.Type is not ArrayType a) || a.Rank != exprs.Count || (t!=null && a.ElementType != t))
 				{
 					throw new Ex("Duplicate identifier");
 				}

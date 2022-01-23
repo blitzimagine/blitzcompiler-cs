@@ -9,7 +9,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	{
 		public string Comment;
 
-		public string file;
+		public string File{get;init;}
 
 		public abstract void Proto(DeclSeq d, Environ e);
 
@@ -48,7 +48,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 				}
 				catch(Ex x)
 				{
-					x.File ??= decl.file;
+					x.File ??= decl.File;
 					throw;
 				}
 			}
@@ -63,7 +63,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 				}
 				catch(Ex x)
 				{
-					x.File ??= decl.file;
+					x.File ??= decl.File;
 					throw;
 				}
 			}
@@ -127,7 +127,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override void Proto(DeclSeq d, Environ e)
 		{
-			Type ty = tagType(tag, e) ?? Type.Int;
+			Type ty = TagType(tag, e) ?? Type.Int;
 			type = ty;
 
 			if(defExpr!=null)
@@ -190,7 +190,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override void Proto(DeclSeq d, Environ e)
 		{
-			Type t = tagType(returnTag, e) ?? Type.Int;
+			Type t = TagType(returnTag, e) ?? Type.Int;
 			DeclSeq decls = new DeclSeq();
 			@params.Proto(decls, e);
 			sem_type = new FuncType(t, decls, false);
@@ -346,7 +346,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 			if(expr.Sem_Type == Type.String)
 			{
-				str_label = genLabel();
+				str_label = GenLabel();
 			}
 		}
 
@@ -360,6 +360,15 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			yield return ret;
 		}
 		public string WriteData_InstanceDeclaration() => $"public static readonly BlitzData {DataVarName} = new BlitzData();{Comment}";
+
+		private static int genLabel_cnt;
+		////////////////////////////////
+		// Generate a fresh ASM label //
+		////////////////////////////////
+		private static string GenLabel()
+		{
+			return $"_{++genLabel_cnt}";
+		}
 	}
 
 	////////////////////////
@@ -384,7 +393,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 
 		public override void Proto(DeclSeq d, Environ env)
 		{
-			Type ty = tagType(tag, env) ?? Type.Int;
+			Type ty = TagType(tag, env) ?? Type.Int;
 
 			sem_type = new VectorType(ty, exprs.Count);
 			d.InsertDecl(ident, sem_type, kind);

@@ -5,7 +5,7 @@ namespace Blitz3D.Converter
 	{
 		public delegate void LinkSymbol(string sym);
 
-		private static void runtime_link(LinkSymbol linkSymbol)
+		private static void Runtime_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("End");
 			linkSymbol("Stop");
@@ -29,7 +29,7 @@ namespace Blitz3D.Converter
 			linkSymbol("_bbDebugLeave");
 		}
 
-		private static void basic_link(LinkSymbol linkSymbol)
+		private static void Basic_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("_bbIntType");
 			linkSymbol("_bbFltType");
@@ -86,7 +86,7 @@ namespace Blitz3D.Converter
 			linkSymbol("RuntimeStats");
 		}
 
-		private static void math_link(LinkSymbol linkSymbol)
+		private static void Math_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("#Sin#degrees");
 			linkSymbol("#Cos#degrees");
@@ -107,7 +107,7 @@ namespace Blitz3D.Converter
 			linkSymbol("%RndSeed");
 		}
 
-		private static void string_link(LinkSymbol linkSymbol)
+		private static void String_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("$String$string%repeat");
 			linkSymbol("$Left$string%count");
@@ -129,7 +129,7 @@ namespace Blitz3D.Converter
 			linkSymbol("$CurrentTime");
 		}
 
-		private static void stream_link(LinkSymbol linkSymbol)
+		private static void Stream_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("%Eof%stream");
 			linkSymbol("%ReadAvail%stream");
@@ -148,7 +148,7 @@ namespace Blitz3D.Converter
 			linkSymbol("CopyStream%src_stream%dest_stream%buffer_size=16384");
 		}
 
-		private static void sockets_link(LinkSymbol linkSymbol)
+		private static void Sockets_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("$DottedIP%IP");
 			linkSymbol("%CountHostIPs$host_name");
@@ -174,7 +174,7 @@ namespace Blitz3D.Converter
 			linkSymbol("TCPTimeouts%read_millis%accept_millis");
 		}
 
-		private static void filesystem_link(LinkSymbol linkSymbol)
+		private static void Filesystem_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("%OpenFile$filename");
 			linkSymbol("%ReadFile$filename");
@@ -197,7 +197,7 @@ namespace Blitz3D.Converter
 			linkSymbol("DeleteFile$file");
 		}
 
-		private static void bank_link(LinkSymbol linkSymbol)
+		private static void Bank_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("%CreateBank%size=0");
 			linkSymbol("FreeBank%bank");
@@ -217,7 +217,7 @@ namespace Blitz3D.Converter
 			linkSymbol("%CallDLL$dll_name$func_name%in_bank=0%out_bank=0");
 		}
 
-		private static void graphics_link(LinkSymbol linkSymbol)
+		private static void Graphics_link(LinkSymbol linkSymbol)
 		{
 			//gfx driver info
 			linkSymbol("%CountGfxDrivers");
@@ -357,7 +357,7 @@ namespace Blitz3D.Converter
 			linkSymbol("HidePointer");
 		}
 
-		private static void input_link(LinkSymbol linkSymbol)
+		private static void Input_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("%KeyDown%key");
 			linkSymbol("%KeyHit%key");
@@ -405,7 +405,7 @@ namespace Blitz3D.Converter
 			linkSymbol("%DirectInputEnabled");
 		}
 
-		private static void audio_link(LinkSymbol linkSymbol)
+		private static void Audio_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("%LoadSound$filename");
 			linkSymbol("FreeSound%sound");
@@ -426,7 +426,7 @@ namespace Blitz3D.Converter
 			linkSymbol("%Load3DSound$filename");
 		}
 
-		private static void multiplay_link(LinkSymbol linkSymbol)
+		private static void Multiplay_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("%StartNetGame");
 			linkSymbol("%HostNetGame$game_name");
@@ -447,14 +447,14 @@ namespace Blitz3D.Converter
 			linkSymbol("$NetMsgData");
 		}
 
-		private static void userlibs_link(LinkSymbol linkSymbol)
+		private static void Userlibs_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("_bbLoadLibs");
 			linkSymbol("_bbStrToCStr");
 			linkSymbol("_bbCStrToStr");
 		}
 
-		private static void blitz3d_link(LinkSymbol linkSymbol)
+		private static void Blitz3d_link(LinkSymbol linkSymbol)
 		{
 			linkSymbol("LoaderMatrix$file_ext#xx#xy#xz#yx#yy#yz#zx#zy#zz");
 			linkSymbol("HWMultiTex%enable");
@@ -718,9 +718,9 @@ namespace Blitz3D.Converter
 			linkSymbol("$EntityClass%entity");
 		}
 
-		private static void dllFunctions(LinkSymbol linkSymbol)
+		private static void DllFunctions(LinkSymbol linkSymbol)
 		{
-			linkSymbol("%getactivewindow");
+			linkSymbol("%getactivewindow");//Was renamed to HasFocus
 
 			linkSymbol("%HasFocus");
 			linkSymbol("%GetSpecialFolder%id%bank");
@@ -728,30 +728,31 @@ namespace Blitz3D.Converter
 			linkSymbol("%api_GlobalAlloc%a%b");
 		}
 
-		private static void linkSymbols(LinkSymbol linkSymbol)
+		private static void LinkSymbols(LinkSymbol linkSymbol)
 		{
-			runtime_link(linkSymbol);
-			basic_link(linkSymbol);
-			math_link(linkSymbol);
-			string_link(linkSymbol);
-			stream_link(linkSymbol);
-			sockets_link(linkSymbol);
-			filesystem_link(linkSymbol);
-			bank_link(linkSymbol);
-			graphics_link(linkSymbol);
-			input_link(linkSymbol);
-			audio_link(linkSymbol);
-			multiplay_link(linkSymbol);
-			blitz3d_link(linkSymbol);
-			userlibs_link(linkSymbol);
+			Runtime_link(linkSymbol);
+			Basic_link(linkSymbol);
+			Math_link(linkSymbol);
+			String_link(linkSymbol);
+			Stream_link(linkSymbol);
+			Sockets_link(linkSymbol);
+			Filesystem_link(linkSymbol);
+			Bank_link(linkSymbol);
+			Graphics_link(linkSymbol);
+			Input_link(linkSymbol);
+			Audio_link(linkSymbol);
+			Multiplay_link(linkSymbol);
+			Blitz3d_link(linkSymbol);
+			Userlibs_link(linkSymbol);
 
-			//dllFunctions(linkSymbol);
+			//Was commented out. Why?
+			DllFunctions(linkSymbol);
 		}
 
 		public static HashSet<string> GetLinkSymbols()
 		{
 			HashSet<string> ret = new HashSet<string>();
-			linkSymbols(((ICollection<string>)ret).Add);
+			LinkSymbols(((ICollection<string>)ret).Add);
 			return ret;
 		}
 	}

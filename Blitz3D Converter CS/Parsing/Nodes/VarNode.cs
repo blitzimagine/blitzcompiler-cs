@@ -84,7 +84,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			{
 				return;
 			}
-			Type t = tagType(tag, e) ?? Type.Int;
+			Type t = TagType(tag, e) ?? Type.Int;
 			sem_decl = e.FindDecl(ident);
 			if(sem_decl!=null)
 			{
@@ -218,7 +218,7 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		public override void Semant(Environ e)
 		{
 			expr.Semant(e);
-			if(!(expr.Sem_Type is VectorType vec_type))
+			if(expr.Sem_Type is not VectorType vec_type)
 			{
 				throw new Ex("Variable must be a Blitz array");
 			}

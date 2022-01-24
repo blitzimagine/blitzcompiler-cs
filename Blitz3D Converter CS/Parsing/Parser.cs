@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Blitz3D.Converter.Parsing.Nodes;
 
 namespace Blitz3D.Converter.Parsing
@@ -35,19 +36,40 @@ namespace Blitz3D.Converter.Parsing
 
 		public ProgNode Parse()
 		{
-			consts = new DeclSeqNode();
-			structs = new DeclSeqNode();
-			funcs = new DeclSeqNode();
-			datas = new DeclSeqNode();
+			const bool copyIncludesToMainFile = false;
+			consts = new DeclSeqNode()
+			{
+				IgnoreIncludes = !copyIncludesToMainFile,
+				File = toker.InputFile
+			};
+			structs = new DeclSeqNode()
+			{
+				IgnoreIncludes = !copyIncludesToMainFile,
+				File = toker.InputFile
+			};
+			funcs = new DeclSeqNode()
+			{
+				IgnoreIncludes = !copyIncludesToMainFile,
+				File = toker.InputFile
+			};
+			datas = new DeclSeqNode()
+			{
+				IgnoreIncludes = !copyIncludesToMainFile,
+				File = toker.InputFile
+			};
 
 			StmtSeqNode stmts = ParseStmtSeq(STMTS.PROG);	
-			
+			//stmts.Add(new ReturnNode(new IntConstNode("0")));
+
+			//var main = new FuncDeclNode("Main", "", new DeclSeqNode(), stmts);
+			//funcs.Add(main);
+
 			if(toker.CurrType!=TokenType.EOF)
 			{
 				throw Exp("end-of-file");
 			}
 
-			return new ProgNode(consts, structs, funcs, datas, stmts);
+			return new ProgNode(toker.InputFile, consts, structs, funcs, datas, stmts);
 		}
 
 		private StmtSeqNode ParseStmtSeq(STMTS scope)
@@ -87,11 +109,19 @@ namespace Blitz3D.Converter.Parsing
 							Tokenizer t_toker = toker;
 							toker = i_toker;
 
-							include = new FileNode(includeClassPath);
+							include = new FileIncludeNode(includeClassPath);
 							included.Add(i_toker.InputFile, include);
 							
 							//Assign stmts after adding to dictionary so we know that it already exists.
-							include.stmts = ParseStmtSeq(scope);
+							var includeStmts = ParseStmtSeq(scope);
+							((FileIncludeNode)include).Setup
+							(
+								DeclSeqNode.From(inc, consts/*.Where(c => c.File == inc)*/),
+								DeclSeqNode.From(inc, structs/*.Where(s => s.File == inc)*/),
+								DeclSeqNode.From(inc, funcs/*.Where(f => f.File == inc)*/),
+								DeclSeqNode.From(inc, datas/*.Where(d => d.File == inc)*/),
+								includeStmts
+							);
 
 							if(toker.CurrType!=TokenType.EOF)
 							{
@@ -436,9 +466,9 @@ namespace Blitz3D.Converter.Parsing
 			}
 		}
 
-		private bool TryParseComment(out string text)
+		private bool TryParseComment(out string text, bool takeEmpty = true)
 		{
-			if(toker.CurrType == TokenType.NEWLINE && !string.IsNullOrEmpty(toker.CurrText))
+			if(toker.CurrType == TokenType.NEWLINE && (!string.IsNullOrEmpty(toker.CurrText) || takeEmpty))
 			{
 				text = toker.TakeText();
 				return true;
@@ -626,9 +656,9 @@ namespace Blitz3D.Converter.Parsing
 		{
 			string ident = ParseIdent();
 			DeclSeqNode fields = new DeclSeqNode();
-			while(toker.CurrType == TokenType.NEWLINE)
+			while(TryParseComment(out var comment))
 			{
-				fields.AddComment(toker.TakeText());
+				fields.AddComment(comment);
 			}
 			while(toker.TrySkip(TokenType.FIELD))
 			{
@@ -638,9 +668,9 @@ namespace Blitz3D.Converter.Parsing
 				}
 				while(toker.TrySkip(TokenType.COMMA));
 				
-				while(toker.CurrType == TokenType.NEWLINE)
+				while(TryParseComment(out var comment))
 				{
-					fields.AddComment(toker.TakeText());
+					fields.AddComment(comment);
 				}
 			}
 			toker.AssertSkip(TokenType.END_TYPE, Exp, "'Field' or 'End Type'");

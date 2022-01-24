@@ -79,6 +79,13 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			}
 			yield return "}"+Comment_End;
 		}
+
+		public static StmtSeqNode From(string filename, IEnumerable<StmtNode> nodes)
+		{
+			var ret = new StmtSeqNode(filename);
+			ret.Stmts.AddRange(nodes);
+			return ret;
+		}
 	}
 
 	/////////////////
@@ -93,12 +100,15 @@ namespace Blitz3D.Converter.Parsing.Nodes
 			include = ss;
 		}
 
-		public override void Semant(Environ e) => include.stmts.Semant(e);
+		public override void Semant(Environ e) => include.Semant(e);
 
 		public override IEnumerable<string> WriteData()
 		{
 			//TODO: Store include file data
-			yield return $"using static {Path.ChangeExtension(include.FileName,null).Replace('-','_')};{Comment}";
+
+			var name = Path.ChangeExtension(include.FileName,null).Replace('-','_');
+			yield return $"using static {name};";
+			yield return $"{name}.{FileIncludeNode.IncludeFunctionName}()";
 		}
 	}
 

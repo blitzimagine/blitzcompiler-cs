@@ -38,6 +38,18 @@ namespace Blitz3D.Converter.Parsing.Nodes
 	{
 		private readonly List<DeclNode> decls = new List<DeclNode>();
 
+		public bool IgnoreIncludes{get;init;} = false;
+
+		public static DeclSeqNode From(string filename, IEnumerable<DeclNode> declNodes)
+		{
+			var ret = new DeclSeqNode()
+			{
+				File = filename
+			};
+			ret.decls.AddRange(declNodes);
+			return ret;
+		}
+
 		public override void Proto(DeclSeq d, Environ e)
 		{
 			foreach(DeclNode decl in decls)
@@ -73,6 +85,8 @@ namespace Blitz3D.Converter.Parsing.Nodes
 		{
 			foreach(var decl in decls)
 			{
+				if(IgnoreIncludes && decl.File != this.File){continue;}
+
 				foreach(string s in decl.WriteData())
 				{
 					yield return s;
